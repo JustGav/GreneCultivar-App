@@ -2,7 +2,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Leaf, LogIn, LogOut, UserCircle, Loader2, LayoutDashboard, PlusCircleIcon, Home, Search, Filter as FilterIcon } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Leaf, LogIn, LogOut, UserCircle, Loader2, LayoutDashboard, PlusCircleIcon, Home, Search, Filter as FilterIcon, SortAsc, SortDesc } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -12,22 +13,31 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from 'react';
 import LoginModal from '@/components/auth/LoginModal';
 import SubmitCultivarModal from '@/components/auth/SubmitCultivarModal';
-import FilterModal from '@/components/modals/FilterModal'; // Import FilterModal
+import FilterModal from '@/components/modals/FilterModal';
 import { Input } from '@/components/ui/input';
-import { useFilterContext } from '@/contexts/FilterContext'; // Import useFilterContext
+import { useFilterContext, SORT_OPTIONS_CONFIG, type SortOption } from '@/contexts/FilterContext';
 import { cn } from '@/lib/utils';
 
 export default function Header() {
   const { user, loading, logout } = useAuth();
-  const { searchTerm, setSearchTerm, isFiltersActive } = useFilterContext(); // Use FilterContext
+  const { 
+    searchTerm, 
+    setSearchTerm, 
+    isFiltersActive,
+    sortOption,
+    setSortOption,
+  } = useFilterContext();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSubmitCultivarModalOpen, setIsSubmitCultivarModalOpen] = useState(false);
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false); // State for FilterModal
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (user && isLoginModalOpen) {
@@ -36,15 +46,19 @@ export default function Header() {
   }, [user, isLoginModalOpen]);
 
   const handleHeaderSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value); // Update context search term
+    setSearchTerm(e.target.value);
   };
 
   const handleHeaderSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Search is applied live via context, so submit might not be strictly necessary
-    // but can be used for explicit actions like redirecting to a search page if desired.
     console.log("Header search term:", searchTerm);
   };
+
+  const handleSortChange = (value: string) => {
+    setSortOption(value as SortOption);
+  }
+
+  const isPublicBrowserPage = pathname === '/';
 
   return (
     <header className="bg-primary text-primary-foreground shadow-md sticky top-0 z-50">
@@ -54,8 +68,8 @@ export default function Header() {
             <Leaf size={28} className="sm:size-32"/>
             <h1 className="text-2xl sm:text-3xl font-headline">GreneCultivar</h1>
           </Link>
-          {/* Search and Filter for md screens and up */}
-          <div className="relative hidden md:flex items-center gap-2 w-full max-w-xs sm:max-w-sm md:max-w-md">
+          
+          <div className="relative hidden md:flex items-center gap-2 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
             <form onSubmit={handleHeaderSearchSubmit} className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-foreground/60" />
               <Input
@@ -67,21 +81,46 @@ export default function Header() {
                 aria-label="Search cultivars"
               />
             </form>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setIsFilterModalOpen(true)}
-              className={cn(
-                "h-9 w-9 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground relative",
-                isFiltersActive && "ring-2 ring-offset-1 ring-offset-primary ring-accent"
-              )}
-              aria-label="Open filters"
-            >
-              <FilterIcon className="h-4 w-4" />
-              {isFiltersActive && (
-                <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent border-2 border-primary animate-pulse"></span>
-              )}
-            </Button>
+            {isPublicBrowserPage && (
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setIsFilterModalOpen(true)}
+                  className={cn(
+                    "h-9 w-9 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground relative",
+                    isFiltersActive && "ring-2 ring-offset-1 ring-offset-primary ring-accent"
+                  )}
+                  aria-label="Open filters"
+                >
+                  <FilterIcon className="h-4 w-4" />
+                  {isFiltersActive && (
+                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent border-2 border-primary animate-pulse"></span>
+                  )}
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                      aria-label="Sort options"
+                    >
+                      {sortOption.endsWith('-asc') ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 bg-background text-foreground">
+                    <DropdownMenuLabel>Sort By</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={sortOption} onValueChange={handleSortChange}>
+                      {SORT_OPTIONS_CONFIG.map(opt => (
+                        <DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">{opt.label}</DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
           </div>
         </div>
         
@@ -175,7 +214,7 @@ export default function Header() {
           )}
         </nav>
       </div>
-      {/* Search and Filter for mobile */}
+      
       <div className="container mx-auto px-4 pb-2 md:hidden flex items-center gap-2">
         <form onSubmit={handleHeaderSearchSubmit} className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-foreground/60" />
@@ -188,25 +227,51 @@ export default function Header() {
             aria-label="Search cultivars on mobile"
           />
         </form>
-         <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setIsFilterModalOpen(true)}
-            className={cn(
-              "h-9 w-9 flex-shrink-0 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground relative",
-              isFiltersActive && "ring-2 ring-offset-1 ring-offset-primary ring-accent"
-            )}
-            aria-label="Open filters on mobile"
-          >
-            <FilterIcon className="h-4 w-4" />
-            {isFiltersActive && (
-              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent border-2 border-primary animate-pulse"></span>
-            )}
-          </Button>
+        {isPublicBrowserPage && (
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsFilterModalOpen(true)}
+              className={cn(
+                "h-9 w-9 flex-shrink-0 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground relative",
+                isFiltersActive && "ring-2 ring-offset-1 ring-offset-primary ring-accent"
+              )}
+              aria-label="Open filters on mobile"
+            >
+              <FilterIcon className="h-4 w-4" />
+              {isFiltersActive && (
+                <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent border-2 border-primary animate-pulse"></span>
+              )}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9 flex-shrink-0 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                  aria-label="Sort options on mobile"
+                >
+                  {sortOption.endsWith('-asc') ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-background text-foreground">
+                <DropdownMenuLabel>Sort By</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={sortOption} onValueChange={handleSortChange}>
+                  {SORT_OPTIONS_CONFIG.map(opt => (
+                    <DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">{opt.label}</DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
       </div>
       <LoginModal isOpen={isLoginModalOpen} onOpenChange={setIsLoginModalOpen} />
       <SubmitCultivarModal isOpen={isSubmitCultivarModalOpen} onOpenChange={setIsSubmitCultivarModalOpen} />
-      <FilterModal isOpen={isFilterModalOpen} onOpenChange={setIsFilterModalOpen} /> {/* Add FilterModal instance */}
+      <FilterModal isOpen={isFilterModalOpen} onOpenChange={setIsFilterModalOpen} />
     </header>
   );
 }
+

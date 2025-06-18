@@ -3,29 +3,14 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Cultivar, Genetics, CultivarStatus } from '@/types';
-// Removed EFFECT_OPTIONS, FLAVOR_OPTIONS import as they come from context now
 import { getCultivars } from '@/services/firebase';
 import CultivarCard from '@/components/CultivarCard';
 import CultivarDetailModal from '@/components/CultivarDetailModal';
-// Removed Input import as search is in header
 import { Button } from '@/components/ui/button';
-import { ListRestart, SortAsc, SortDesc, X, Leaf, Loader2, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown, Filter as FilterIcon } from 'lucide-react'; // Added FilterIcon
-// Removed Separator, Checkbox, Label, Accordion imports as they are no longer used for local filters
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  // DropdownMenuCheckboxItem, // Removed as not used for sort
-  // DropdownMenuSeparator, // Potentially re-add if other dropdowns need it
-  // DropdownMenuLabel, // Potentially re-add if other dropdowns need it
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
+import { Loader2, EyeOff, Eye, ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react'; 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFilterContext } from '@/contexts/FilterContext'; // Import useFilterContext
-
-type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
+import { useFilterContext, type SortOption, SORT_OPTIONS_CONFIG } from '@/contexts/FilterContext'; 
 
 const ITEMS_PER_PAGE = 9;
 
@@ -46,9 +31,9 @@ export interface CultivarInfoForMap {
 export default function CultivarBrowserPage() {
   const [allCultivars, setAllCultivars] = useState<Cultivar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { searchTerm, selectedEffects, selectedFlavors } = useFilterContext(); // Get filter state from context
+  // Consume sortOption from context, not local state
+  const { searchTerm, selectedEffects, selectedFlavors, sortOption, setSortOption } = useFilterContext(); 
   const [showArchived, setShowArchived] = useState(false);
-  const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
@@ -91,8 +76,6 @@ export default function CultivarBrowserPage() {
     fetchCultivars();
   }, [fetchCultivars]);
 
-  // Local filter handlers (handleEffectToggle, handleFlavorToggle, resetFilters) are removed as this is now handled by FilterContext
-
   const filteredAndSortedCultivars = useMemo(() => {
     let baseFilteredCultivars: Cultivar[];
 
@@ -110,14 +93,12 @@ export default function CultivarBrowserPage() {
 
     let furtherFilteredCultivars = baseFilteredCultivars;
     
-    // Apply search term from context
     if (searchTerm) {
       furtherFilteredCultivars = furtherFilteredCultivars.filter(c => 
         c.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
-    // Apply effects and flavors from context
     if (selectedEffects.length > 0) {
       furtherFilteredCultivars = furtherFilteredCultivars.filter(c => c.effects && selectedEffects.every(eff => c.effects.includes(eff)));
     }
@@ -172,10 +153,7 @@ export default function CultivarBrowserPage() {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
 
-  const handleSortChange = (value: string) => {
-    setSortOption(value as SortOption);
-    setCurrentPage(1);
-  }
+  // handleSortChange is removed, as sort is managed by FilterContext via Header
 
   const handleShowArchivedToggle = () => {
     setShowArchived(prev => !prev);
@@ -187,18 +165,6 @@ export default function CultivarBrowserPage() {
     setIsModalOpen(true);
   };
 
-  const sortOptions: {value: SortOption, label: string, icon?: React.ReactNode}[] = [
-    { value: 'name-asc', label: 'Name (A-Z)'},
-    { value: 'name-desc', label: 'Name (Z-A)'},
-    { value: 'thc-asc', label: 'THC (Low to High)'},
-    { value: 'thc-desc', label: 'THC (High to Low)'},
-    { value: 'cbd-asc', label: 'CBD (Low to High)'},
-    { value: 'cbd-desc', label: 'CBD (High to Low)'},
-    { value: 'rating-asc', label: 'Rating (Low to High)'},
-    { value: 'rating-desc', label: 'Rating (High to Low)'},
-  ];
-
-  // Effect to reset page to 1 if filters change and current page becomes invalid
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
@@ -217,29 +183,14 @@ export default function CultivarBrowserPage() {
           <div>
             <h1 className="text-4xl font-headline text-primary">Explore Cultivars</h1>
             <p className="text-muted-foreground font-body mt-1">
-              Discover your next favorite strain. Use the search and filter options in the header.
+              Discover your next favorite strain. Use the search, filter, and sort options in the header.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 items-end pt-4">
-          <div></div> {/* Placeholder for layout if needed, as search is now in header */}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full justify-between">
-                Sort By: {sortOptions.find(s => s.value === sortOption)?.label || 'Select'}
-                {sortOption.endsWith('-asc') ? <SortAsc className="ml-2 h-4 w-4" /> : <SortDesc className="ml-2 h-4 w-4" />}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuRadioGroup value={sortOption} onValueChange={handleSortChange}>
-                {sortOptions.map(opt => (
-                  <DropdownMenuRadioItem key={opt.value} value={opt.value}>{opt.label}</DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div></div> {/* Placeholder for layout if needed */}
+          {/* Sort Dropdown removed from here */}
           
           {(!authLoading && user) && (
             <Button onClick={handleShowArchivedToggle} variant="outline" className="w-full md:w-auto">
@@ -248,7 +199,6 @@ export default function CultivarBrowserPage() {
             </Button>
           )}
         </div>
-        {/* Accordion for filters has been removed. Filters are now managed by FilterModal via Header. */}
       </section>
 
       {isLoading || authLoading ? (
@@ -308,3 +258,4 @@ export default function CultivarBrowserPage() {
     </div>
   );
 }
+
