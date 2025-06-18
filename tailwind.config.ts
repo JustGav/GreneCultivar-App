@@ -17,8 +17,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['Alegreya', 'serif'],
-        headline: ['Belleza', 'sans-serif'],
+        body: ['Manrope', 'sans-serif'],
+        headline: ['Manrope', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
