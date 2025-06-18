@@ -54,14 +54,18 @@ export default function AddCultivarLoading() {
         <CardContent className="space-y-4">
           {/* Placeholder for one terpene entry */}
           <div className="p-3 border rounded-md space-y-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <Skeleton className="h-4 w-1/4 mb-1" /> {/* Label */}
+                    <Skeleton className="h-4 w-1/3 mb-1" /> {/* Label Name */}
                     <Skeleton className="h-10 w-full" /> {/* Name Input */}
                 </div>
                 <div>
-                    <Skeleton className="h-4 w-1/4 mb-1" /> {/* Label */}
+                    <Skeleton className="h-4 w-1/2 mb-1" /> {/* Label Description */}
                     <Skeleton className="h-10 w-full" /> {/* Description Input */}
+                </div>
+                 <div>
+                    <Skeleton className="h-4 w-1/4 mb-1" /> {/* Label Percentage */}
+                    <Skeleton className="h-10 w-full" /> {/* Percentage Input */}
                 </div>
             </div>
           </div>
@@ -154,4 +158,3 @@ export default function AddCultivarLoading() {
     </div>
   );
 }
-

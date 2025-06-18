@@ -54,9 +54,9 @@ export const mockCultivars: Cultivar[] = [
       ],
     },
     terpeneProfile: [
-      { id: 'tp1-1-gls', name: 'Myrcene', description: 'Earthy, musky, herbal' },
-      { id: 'tp1-2-gls', name: 'Caryophyllene', description: 'Spicy, peppery, woody' },
-      { id: 'tp1-3-gls', name: 'Limonene', description: 'Citrus, lemon, fresh' },
+      { id: 'tp1-1-gls', name: 'Myrcene', description: 'Earthy, musky, herbal', percentage: 0.8 },
+      { id: 'tp1-2-gls', name: 'Caryophyllene', description: 'Spicy, peppery, woody', percentage: 0.5 },
+      { id: 'tp1-3-gls', name: 'Limonene', description: 'Citrus, lemon, fresh', percentage: 0.3 },
     ]
   },
   {
@@ -101,8 +101,8 @@ export const mockCultivars: Cultivar[] = [
       ]
     },
     terpeneProfile: [
-      { id: 'tp2-1-gau', name: 'Terpinolene', description: 'Fruity, floral, piney' },
-      { id: 'tp2-2-gau', name: 'Ocimene', description: 'Sweet, herbal, woody' },
+      { id: 'tp2-1-gau', name: 'Terpinolene', description: 'Fruity, floral, piney', percentage: 1.2 },
+      { id: 'tp2-2-gau', name: 'Ocimene', description: 'Sweet, herbal, woody', percentage: 0.6 },
     ]
   },
   {
@@ -137,8 +137,8 @@ export const mockCultivars: Cultivar[] = [
       yieldPerPlant: { min: 25, max: 50 } //g
     },
     terpeneProfile: [
-      { id: 'tp3-1-mhb', name: 'Pinene', description: 'Pine, woody, sharp' },
-      { id: 'tp3-2-mhb', name: 'Humulene', description: 'Earthy, woody, spicy' },
+      { id: 'tp3-1-mhb', name: 'Pinene', description: 'Pine, woody, sharp', percentage: 0.7 },
+      { id: 'tp3-2-mhb', name: 'Humulene', description: 'Earthy, woody, spicy', percentage: 0.4 },
     ]
   },
   {
@@ -196,7 +196,7 @@ export const mockCultivars: Cultivar[] = [
       yieldPerPlant: { min: 15, max: 30 },
     },
     terpeneProfile: [
-      { id: 'tp5-1-aab', name: 'Linalool', description: 'Floral, lavender, sweet' },
+      { id: 'tp5-1-aab', name: 'Linalool', description: 'Floral, lavender, sweet', percentage: 0.9 },
     ]
   }
 ];
@@ -208,4 +208,3 @@ export const getAllEffects = (): string[] => {
   });
   return Array.from(allEffects).sort();
 };
-

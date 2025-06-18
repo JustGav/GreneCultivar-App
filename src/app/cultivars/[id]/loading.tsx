@@ -68,7 +68,7 @@ export default function CultivarDetailLoading() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {[1, 2, 3].map(i => (
                     <div key={i} className="space-y-1 p-2 bg-muted/40 rounded-md">
-                      <Skeleton className="h-5 w-3/4" /> {/* Terpene Name */}
+                      <Skeleton className="h-5 w-3/4" /> {/* Terpene Name & Percentage */}
                       <Skeleton className="h-4 w-full" /> {/* Terpene Description */}
                     </div>
                   ))}
@@ -229,4 +229,3 @@ export default function CultivarDetailLoading() {
     </div>
   );
 }
-

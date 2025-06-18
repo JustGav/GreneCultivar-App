@@ -174,10 +174,15 @@ export default function CultivarDetailsPage() {
                     <Palette size={20} className="mr-2 text-accent" />
                     Terpene Profile
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
                     {cultivar.terpeneProfile!.map(terpene => (
                       <div key={terpene.id} className="text-sm p-3 bg-muted/50 rounded-md shadow-sm">
-                        <p className="font-medium text-foreground/90">{terpene.name}</p>
+                        <p className="font-medium text-foreground/90">
+                          {terpene.name}
+                          {terpene.percentage !== undefined && (
+                            <span className="text-xs text-muted-foreground ml-1">({terpene.percentage}%)</span>
+                          )}
+                        </p>
                         <p className="text-muted-foreground text-xs mt-1">{terpene.description}</p>
                       </div>
                     ))}
@@ -356,4 +361,3 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
-

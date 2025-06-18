@@ -48,7 +48,8 @@ const additionalImageFileSchema = additionalFileSchema.extend({
 
 const terpeneEntrySchema = z.object({
   name: z.string().min(1, "Terpene name is required."),
-  description: z.string().min(1, "Terpene description/notes are required."),
+  description: z.string().min(1, "Terpene aroma/notes are required."),
+  percentage: z.coerce.number().min(0, "Percentage must be >=0").max(100, "Percentage must be <=100").optional(),
 });
 
 
@@ -169,8 +170,10 @@ export default function AddCultivarPage() {
         },
         additionalInfo: {},
         terpeneProfile: data.terpeneProfile?.map((tp, index) => ({ 
-            ...tp, 
-            id: `terp-${newCultivarId}-${index}` 
+            id: `terp-${newCultivarId}-${index}`,
+            name: tp.name,
+            description: tp.description,
+            percentage: tp.percentage,
         })) || [],
       };
       
@@ -354,12 +357,12 @@ export default function AddCultivarPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline text-2xl text-primary flex items-center"><Palette size={24} className="mr-2" /> Terpene Profile</CardTitle>
-            <CardDescription>List the prominent terpenes and their descriptions or percentages.</CardDescription>
+            <CardDescription>List the prominent terpenes, their aroma/notes, and optional percentage.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {terpeneProfileFields.map((field, index) => (
-              <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div key={field.id} className="space-y-2 p-4 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                   <div>
                     <Label htmlFor={`terpeneProfile.${index}.name`}>Terpene Name *</Label>
                     <Input {...register(`terpeneProfile.${index}.name`)} placeholder="e.g., Myrcene" />
@@ -367,18 +370,24 @@ export default function AddCultivarPage() {
                     {errors.terpeneProfile?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile?.[index]?.name?.message}</p>}
                   </div>
                   <div>
-                    <Label htmlFor={`terpeneProfile.${index}.description`}>Description/Notes *</Label>
-                    <Input {...register(`terpeneProfile.${index}.description`)} placeholder="e.g., Earthy, musky notes or 0.5%" />
+                    <Label htmlFor={`terpeneProfile.${index}.description`}>Aroma/Notes *</Label>
+                    <Input {...register(`terpeneProfile.${index}.description`)} placeholder="e.g., Earthy, musky notes" />
                     {/* @ts-ignore */}
                     {errors.terpeneProfile?.[index]?.description && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile?.[index]?.description?.message}</p>}
                   </div>
+                  <div>
+                    <Label htmlFor={`terpeneProfile.${index}.percentage`}>Percentage (%)</Label>
+                    <Input type="number" step="0.01" {...register(`terpeneProfile.${index}.percentage`)} placeholder="e.g., 0.5" />
+                    {/* @ts-ignore */}
+                    {errors.terpeneProfile?.[index]?.percentage && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile?.[index]?.percentage?.message}</p>}
+                  </div>
                 </div>
-                <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 text-destructive hover:bg-destructive/10" onClick={() => removeTerpene(index)}>
+                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeTerpene(index)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', description: '' })}>
+            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', description: '', percentage: undefined })}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Terpene
             </Button>
             {terpeneProfileFields.length === 0 && <p className="text-sm text-muted-foreground">No terpenes added yet.</p>}
@@ -474,7 +483,7 @@ export default function AddCultivarPage() {
                         </Button>
                     </div>
                     {geneticCertificateFields.map((field, index) => (
-                        <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative">
+                        <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor={`additionalInfo_geneticCertificates.${index}.name`}>File Name *</Label>
@@ -489,7 +498,7 @@ export default function AddCultivarPage() {
                                     {errors.additionalInfo_geneticCertificates?.[index]?.url && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_geneticCertificates?.[index]?.url?.message}</p>}
                                 </div>
                             </div>
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 text-destructive hover:bg-destructive/10" onClick={() => removeGeneticCertificate(index)}>
+                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeGeneticCertificate(index)}>
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         </div>
@@ -507,7 +516,7 @@ export default function AddCultivarPage() {
                         </Button>
                     </div>
                     {plantPictureFields.map((field, index) => (
-                        <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative">
+                        <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor={`additionalInfo_plantPictures.${index}.name`}>File Name *</Label>
@@ -526,7 +535,7 @@ export default function AddCultivarPage() {
                                 <Label htmlFor={`additionalInfo_plantPictures.${index}.dataAiHint`}>Image AI Hint (keywords)</Label>
                                 <Input {...register(`additionalInfo_plantPictures.${index}.dataAiHint`)} placeholder="e.g. cannabis bud, trichome macro" />
                             </div>
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 text-destructive hover:bg-destructive/10" onClick={() => removePlantPicture(index)}>
+                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removePlantPicture(index)}>
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         </div>
@@ -544,7 +553,7 @@ export default function AddCultivarPage() {
                         </Button>
                     </div>
                     {cannabinoidInfoFields.map((field, index) => (
-                        <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative">
+                        <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor={`additionalInfo_cannabinoidInfos.${index}.name`}>File Name *</Label>
@@ -559,7 +568,7 @@ export default function AddCultivarPage() {
                                     {errors.additionalInfo_cannabinoidInfos?.[index]?.url && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_cannabinoidInfos?.[index]?.url?.message}</p>}
                                 </div>
                             </div>
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 text-destructive hover:bg-destructive/10" onClick={() => removeCannabinoidInfo(index)}>
+                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeCannabinoidInfo(index)}>
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         </div>
@@ -577,7 +586,7 @@ export default function AddCultivarPage() {
                         </Button>
                     </div>
                     {terpeneInfoFields.map((field, index) => (
-                        <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative">
+                        <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor={`additionalInfo_terpeneInfos.${index}.name`}>File Name *</Label>
@@ -592,7 +601,7 @@ export default function AddCultivarPage() {
                                     {errors.additionalInfo_terpeneInfos?.[index]?.url && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_terpeneInfos?.[index]?.url?.message}</p>}
                                 </div>
                             </div>
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 text-destructive hover:bg-destructive/10" onClick={() => removeTerpeneInfo(index)}>
+                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeTerpeneInfo(index)}>
                                 <Trash2 className="h-4 w-4" />
                             </Button>
                         </div>
@@ -612,4 +621,3 @@ export default function AddCultivarPage() {
     </div>
   );
 }
-
