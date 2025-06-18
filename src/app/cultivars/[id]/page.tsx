@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import NextImage from 'next/image'; // Aliased to avoid conflict with Lucide's Image
-import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey } from '@/types';
+import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene } from '@/types';
 import { mockCultivars } from '@/lib/mock-data';
 import ImageGallery from '@/components/ImageGallery';
 import ReviewForm from '@/components/ReviewForm';
@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -117,6 +117,7 @@ export default function CultivarDetailsPage() {
   );
 
   const hasAdditionalInfo = cultivar.additionalInfo && Object.values(cultivar.additionalInfo).some(files => files && files.length > 0);
+  const hasTerpeneProfile = cultivar.terpeneProfile && cultivar.terpeneProfile.length > 0;
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -166,6 +167,23 @@ export default function CultivarDetailsPage() {
                   </div>
                 </div>
               </div>
+
+              {hasTerpeneProfile && (
+                <div className="mb-6 pt-6 border-t">
+                  <h3 className="font-semibold text-lg flex items-center mb-3">
+                    <Palette size={20} className="mr-2 text-accent" />
+                    Terpene Profile
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2">
+                    {cultivar.terpeneProfile!.map(terpene => (
+                      <div key={terpene.id} className="text-sm p-3 bg-muted/50 rounded-md shadow-sm">
+                        <p className="font-medium text-foreground/90">{terpene.name}</p>
+                        <p className="text-muted-foreground text-xs mt-1">{terpene.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {hasPlantCharacteristics && cultivar.plantCharacteristics && (
                 <div className="mb-6 pt-6 border-t">
@@ -338,3 +356,4 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
+

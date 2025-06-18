@@ -1,5 +1,5 @@
 
-import type { Cultivar, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey } from '@/types';
+import type { Cultivar, Terpene } from '@/types';
 
 export const mockCultivars: Cultivar[] = [
   {
@@ -52,7 +52,12 @@ export const mockCultivars: Cultivar[] = [
         { id: 'ti1-1', name: 'Terpene_Profile_GLS.jpg', url: 'https://placehold.co/120x90.png', fileType: 'image', category: 'terpeneInfo', 'data-ai-hint': 'terpene chart' },
         { id: 'ti1-2', name: 'Detailed_Terpenes_GLS.pdf', url: 'https://placehold.co/200x100.png?text=TerpeneReport.pdf', fileType: 'pdf', category: 'terpeneInfo' },
       ],
-    }
+    },
+    terpeneProfile: [
+      { id: 'tp1-1-gls', name: 'Myrcene', description: 'Earthy, musky, herbal' },
+      { id: 'tp1-2-gls', name: 'Caryophyllene', description: 'Spicy, peppery, woody' },
+      { id: 'tp1-3-gls', name: 'Limonene', description: 'Citrus, lemon, fresh' },
+    ]
   },
   {
     id: '2',
@@ -94,7 +99,11 @@ export const mockCultivars: Cultivar[] = [
       terpeneInfo: [
         { id: 'ti2-1', name: 'GAU_Terpene_Analysis.pdf', url: 'https://placehold.co/200x100.png?text=GAU_Terpenes.pdf', fileType: 'pdf', category: 'terpeneInfo' },
       ]
-    }
+    },
+    terpeneProfile: [
+      { id: 'tp2-1-gau', name: 'Terpinolene', description: 'Fruity, floral, piney' },
+      { id: 'tp2-2-gau', name: 'Ocimene', description: 'Sweet, herbal, woody' },
+    ]
   },
   {
     id: '3',
@@ -126,8 +135,11 @@ export const mockCultivars: Cultivar[] = [
       minHeight: 80,
       minMoisture: 10,
       yieldPerPlant: { min: 25, max: 50 } //g
-    }
-    // No additionalInfo for this one to test empty state
+    },
+    terpeneProfile: [
+      { id: 'tp3-1-mhb', name: 'Pinene', description: 'Pine, woody, sharp' },
+      { id: 'tp3-2-mhb', name: 'Humulene', description: 'Earthy, woody, spicy' },
+    ]
   },
   {
     id: '4',
@@ -156,6 +168,7 @@ export const mockCultivars: Cultivar[] = [
         { id: 'gc4-1', name: 'CPP_Genetics_Official.pdf', url: 'https://placehold.co/200x100.png?text=CPP_Genetics.pdf', fileType: 'pdf', category: 'geneticCertificate' },
       ]
     }
+    // No terpene profile for this one to test empty state
   },
   {
     id: '5',
@@ -182,6 +195,9 @@ export const mockCultivars: Cultivar[] = [
       maxHeight: 70,
       yieldPerPlant: { min: 15, max: 30 },
     },
+    terpeneProfile: [
+      { id: 'tp5-1-aab', name: 'Linalool', description: 'Floral, lavender, sweet' },
+    ]
   }
 ];
 
@@ -192,3 +208,4 @@ export const getAllEffects = (): string[] => {
   });
   return Array.from(allEffects).sort();
 };
+

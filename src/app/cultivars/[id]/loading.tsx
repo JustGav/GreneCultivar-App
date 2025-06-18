@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton } from "lucide-react";
+import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton, Palette } from "lucide-react";
 
 export default function CultivarDetailLoading() {
   return (
@@ -56,6 +56,22 @@ export default function CultivarDetailLoading() {
                     <Skeleton className="h-6 w-20 rounded-full" />
                     <Skeleton className="h-6 w-12 rounded-full" />
                   </div>
+                </div>
+              </div>
+
+              {/* Terpene Profile Skeleton */}
+              <div className="mb-6 pt-6 border-t">
+                <div className="flex items-center mb-3">
+                  <Palette size={20} className="mr-2 text-muted-foreground/50" />
+                  <Skeleton className="h-6 w-1/3" /> {/* Section Title: Terpene Profile */}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="space-y-1 p-2 bg-muted/40 rounded-md">
+                      <Skeleton className="h-5 w-3/4" /> {/* Terpene Name */}
+                      <Skeleton className="h-4 w-full" /> {/* Terpene Description */}
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -213,3 +229,4 @@ export default function CultivarDetailLoading() {
     </div>
   );
 }
+

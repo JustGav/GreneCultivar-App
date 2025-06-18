@@ -8,7 +8,7 @@ import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { mockCultivars } from '@/lib/mock-data';
-import type { Cultivar, Genetics, CannabinoidProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, YieldProfile } from '@/types';
+import type { Cultivar, Genetics, CannabinoidProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, YieldProfile, Terpene } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette } from 'lucide-react';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
 
@@ -44,6 +44,11 @@ const additionalFileSchema = z.object({
 
 const additionalImageFileSchema = additionalFileSchema.extend({
   dataAiHint: z.string().optional(),
+});
+
+const terpeneEntrySchema = z.object({
+  name: z.string().min(1, "Terpene name is required."),
+  description: z.string().min(1, "Terpene description/notes are required."),
 });
 
 
@@ -85,6 +90,8 @@ const cultivarFormSchema = z.object({
   additionalInfo_plantPictures: z.array(additionalImageFileSchema).optional(),
   additionalInfo_cannabinoidInfos: z.array(additionalFileSchema).optional(),
   additionalInfo_terpeneInfos: z.array(additionalFileSchema).optional(),
+
+  terpeneProfile: z.array(terpeneEntrySchema).optional(),
 });
 
 type CultivarFormData = z.infer<typeof cultivarFormSchema>;
@@ -115,6 +122,7 @@ export default function AddCultivarPage() {
       additionalInfo_plantPictures: [],
       additionalInfo_cannabinoidInfos: [],
       additionalInfo_terpeneInfos: [],
+      terpeneProfile: [],
     },
   });
 
@@ -122,6 +130,7 @@ export default function AddCultivarPage() {
   const { fields: plantPictureFields, append: appendPlantPicture, remove: removePlantPicture } = useFieldArray({ control, name: "additionalInfo_plantPictures" });
   const { fields: cannabinoidInfoFields, append: appendCannabinoidInfo, remove: removeCannabinoidInfo } = useFieldArray({ control, name: "additionalInfo_cannabinoidInfos" });
   const { fields: terpeneInfoFields, append: appendTerpeneInfo, remove: removeTerpeneInfo } = useFieldArray({ control, name: "additionalInfo_terpeneInfos" });
+  const { fields: terpeneProfileFields, append: appendTerpene, remove: removeTerpene } = useFieldArray({ control, name: "terpeneProfile" });
 
 
   const onSubmit = (data: CultivarFormData) => {
@@ -159,6 +168,10 @@ export default function AddCultivarPage() {
             yieldPerM2: data.plantCharacteristics?.yieldPerM2?.min !== undefined || data.plantCharacteristics?.yieldPerM2?.max !== undefined ? data.plantCharacteristics.yieldPerM2 as YieldProfile : undefined,
         },
         additionalInfo: {},
+        terpeneProfile: data.terpeneProfile?.map((tp, index) => ({ 
+            ...tp, 
+            id: `terp-${newCultivarId}-${index}` 
+        })) || [],
       };
       
       const processAdditionalInfoCategory = (
@@ -335,6 +348,40 @@ export default function AddCultivarPage() {
                 <Input id="primaryImageDataAiHint" {...register("primaryImageDataAiHint")} placeholder="e.g., cannabis bud" />
                 {errors.primaryImageDataAiHint && <p className="text-sm text-destructive mt-1">{errors.primaryImageDataAiHint.message}</p>}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-2xl text-primary flex items-center"><Palette size={24} className="mr-2" /> Terpene Profile</CardTitle>
+            <CardDescription>List the prominent terpenes and their descriptions or percentages.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {terpeneProfileFields.map((field, index) => (
+              <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor={`terpeneProfile.${index}.name`}>Terpene Name *</Label>
+                    <Input {...register(`terpeneProfile.${index}.name`)} placeholder="e.g., Myrcene" />
+                    {/* @ts-ignore */}
+                    {errors.terpeneProfile?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile?.[index]?.name?.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor={`terpeneProfile.${index}.description`}>Description/Notes *</Label>
+                    <Input {...register(`terpeneProfile.${index}.description`)} placeholder="e.g., Earthy, musky notes or 0.5%" />
+                    {/* @ts-ignore */}
+                    {errors.terpeneProfile?.[index]?.description && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile?.[index]?.description?.message}</p>}
+                  </div>
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 text-destructive hover:bg-destructive/10" onClick={() => removeTerpene(index)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', description: '' })}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Terpene
+            </Button>
+            {terpeneProfileFields.length === 0 && <p className="text-sm text-muted-foreground">No terpenes added yet.</p>}
           </CardContent>
         </Card>
 

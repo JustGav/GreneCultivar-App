@@ -55,6 +55,12 @@ export interface AdditionalFileInfo {
   'data-ai-hint'?: string; // For images
 }
 
+export interface Terpene {
+  id: string;
+  name: string;
+  description: string; // e.g., "Earthy, musky notes" or "0.5%"
+}
+
 export interface Cultivar {
   id: string;
   name: string;
@@ -77,4 +83,6 @@ export interface Cultivar {
     cannabinoidInfo?: AdditionalFileInfo[];
     terpeneInfo?: AdditionalFileInfo[];
   };
+  terpeneProfile?: Terpene[];
 }
+
