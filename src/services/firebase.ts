@@ -68,7 +68,7 @@ const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
 
   return {
     id,
-    name: data.name,
+    name: typeof data.name === 'string' && data.name.trim() ? data.name : 'Unnamed Cultivar',
     genetics: data.genetics,
     status: data.status || 'recentlyAdded',
     source: data.source,
@@ -195,7 +195,7 @@ export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id'
     }
 
     const initialHistoryEntry: CultivarHistoryEntry = {
-        timestamp: new Date().toISOString(), // Use client-generated timestamp for initial history entry
+        timestamp: new Date().toISOString(),
         event: cultivarDataInput.status === 'User Submitted' ? "Cultivar Submitted by User" : "Cultivar Created",
         details: { status: cultivarDataInput.status || 'recentlyAdded', source: cultivarDataInput.source || 'System' }
     };

@@ -115,7 +115,11 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
     }
 
     const currentCultivarName = displayedCultivarData.name;
-    // Initialize sets with valid names from the current cultivar, filtering out any non-string or empty string values
+    if (typeof currentCultivarName !== 'string' || !currentCultivarName.trim()) {
+        console.warn("Current cultivar in modal has an invalid name:", displayedCultivarData);
+        return { effectiveParents: [], effectiveChildren: [] }; // Guard against invalid name
+    }
+    
     const parentsSet = new Set<string>(
       (displayedCultivarData.parents || []).filter(p => typeof p === 'string' && p.trim() !== '')
     );
@@ -123,20 +127,17 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
       (displayedCultivarData.children || []).filter(c => typeof c === 'string' && c.trim() !== '')
     );
 
-    // Iterate through the cultivarInfoMap to find additional relationships
-    for (const [nameKey, info] of cultivarInfoMap.entries()) { // nameKey is the lowercased name from map key
-      // Ensure info.name is a valid string to use for adding to sets and for comparison
+    for (const info of cultivarInfoMap.values()) { 
       if (typeof info.name !== 'string' || info.name.trim() === '') continue;
-
+      
+      // Check if info.name is valid before toLowerCase comparison
       if (info.name.toLowerCase() === currentCultivarName.toLowerCase()) continue;
 
-      // If this cultivar in the map lists the current modal's cultivar as a child, it's a parent.
       if (info.children?.includes(currentCultivarName)) {
-        parentsSet.add(info.name); // Add the actual name (info.name)
+        parentsSet.add(info.name);
       }
-      // If this cultivar in the map lists the current modal's cultivar as a parent, it's a child.
       if (info.parents?.includes(currentCultivarName)) {
-        childrenSet.add(info.name); // Add the actual name (info.name)
+        childrenSet.add(info.name);
       }
     }
 
@@ -308,7 +309,8 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                           <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                             {effectiveParents.map((parentName, index) => {
                               if (typeof parentName !== 'string' || !parentName.trim()) {
-                                return null;
+                                console.warn("Skipping rendering for invalid parent name:", parentName);
+                                return null; 
                               }
                               const parentInfo = cultivarInfoMap?.get(parentName.toLowerCase());
                               const isLinkable = parentInfo && (parentInfo.status === 'Live' || parentInfo.status === 'featured');
@@ -347,7 +349,8 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                           <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                             {effectiveChildren.map((childName, index) => {
                               if (typeof childName !== 'string' || !childName.trim()) {
-                                return null;
+                                console.warn("Skipping rendering for invalid child name:", childName);
+                                return null; 
                               }
                               const childInfo = cultivarInfoMap?.get(childName.toLowerCase());
                               const isLinkable = childInfo && (childInfo.status === 'Live' || childInfo.status === 'featured');
