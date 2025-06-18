@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { Cultivar, CultivarStatus } from '@/types';
 import Image from 'next/image';
 import {
@@ -22,13 +22,14 @@ import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import { getCultivarById } from '@/services/firebase';
 import { useToast } from '@/hooks/use-toast';
+import type { CultivarInfoForMap } from '@/app/page';
 
 
 interface CultivarDetailModalProps {
   cultivar: Cultivar | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  cultivarInfoMap?: Map<string, { id: string; status: CultivarStatus }>;
+  cultivarInfoMap?: Map<string, CultivarInfoForMap>;
 }
 
 const calculateAverageRating = (reviews: Cultivar['reviews'] = []): number => {
@@ -108,6 +109,31 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
     }
   };
 
+  const { effectiveParents, effectiveChildren } = useMemo(() => {
+    if (!displayedCultivarData || !cultivarInfoMap) {
+      return { effectiveParents: [], effectiveChildren: [] };
+    }
+
+    const currentCultivarName = displayedCultivarData.name;
+    let parentsSet = new Set<string>(displayedCultivarData.parents || []);
+    let childrenSet = new Set<string>(displayedCultivarData.children || []);
+
+    for (const [name, info] of cultivarInfoMap.entries()) {
+      if (name.toLowerCase() === currentCultivarName.toLowerCase()) continue;
+
+      if (info.children?.includes(currentCultivarName)) {
+        parentsSet.add(info.name);
+      }
+      if (info.parents?.includes(currentCultivarName)) {
+        childrenSet.add(info.name);
+      }
+    }
+    return {
+      effectiveParents: Array.from(parentsSet),
+      effectiveChildren: Array.from(childrenSet),
+    };
+  }, [displayedCultivarData, cultivarInfoMap]);
+
 
   if (!displayedCultivarData && !isLoadingLineage) {
     return null;
@@ -118,13 +144,13 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   const thcMax = displayedCultivarData?.thc?.max ?? 'N/A';
   const cbdMin = displayedCultivarData?.cbd?.min ?? 'N/A';
   const cbdMax = displayedCultivarData?.cbd?.max ?? 'N/A';
-  const hasLineageData = (displayedCultivarData?.parents && displayedCultivarData.parents.length > 0) || (displayedCultivarData?.children && displayedCultivarData.children.length > 0);
+  const hasLineageData = effectiveParents.length > 0 || effectiveChildren.length > 0;
 
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
-        setHistoryStack([]);
+        setHistoryStack([]); // Reset history when modal closes
       }
       onOpenChange(open);
     }}>
@@ -142,7 +168,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               )}
-              <div className={cn("flex-grow", historyStack.length <=1 && "pl-9")}>
+              <div className={cn("flex-grow", historyStack.length <=1 && "pl-9")}> {/* Adjust padding if no back button */}
                 <DialogTitle className="font-headline text-3xl text-primary flex items-center">
                   <Leaf size={30} className="mr-3 text-primary/80 flex-shrink-0" />
                   <span className="truncate">{displayedCultivarData.name}</span>
@@ -160,7 +186,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
             </DialogHeader>
 
             <ScrollArea ref={scrollAreaRef} className="flex-grow overflow-y-auto px-6">
-              <div key={displayedCultivarData.id} className="space-y-4 pb-6">
+              <div key={displayedCultivarData.id} className="space-y-4 pb-6"> {/* Unique key for re-render on data change */}
                 {displayedCultivarData.images && displayedCultivarData.images.length > 0 ? (
                   <div className="relative w-full aspect-video rounded-md overflow-hidden my-4 shadow-md">
                     <Image
@@ -209,10 +235,10 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                             <Badge
                               key={effect}
                               className={cn(
-                                "text-black",
+                                "text-black", // Base text color
                                 isNegative
-                                  ? 'bg-destructive/10 border-destructive/30'
-                                  : 'bg-primary/10 border-primary/30'
+                                  ? 'bg-destructive/10 border-destructive/30' // Destructive for negative
+                                  : 'bg-primary/10 border-primary/30' // Primary for positive/neutral
                               )}
                             >
                               {effect}
@@ -264,22 +290,22 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                       <Network size={20} className="mr-2 text-accent" />Lineage
                     </h3>
                     <div className="text-center space-y-3">
-                      {displayedCultivarData.parents && displayedCultivarData.parents.length > 0 && (
+                      {effectiveParents.length > 0 && (
                         <div className="mb-3">
                           <h4 className="text-sm font-semibold text-muted-foreground mb-2">Parents</h4>
                           <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
-                            {displayedCultivarData.parents.map((parentName, index) => {
+                            {effectiveParents.map((parentName, index) => {
                               const parentInfo = cultivarInfoMap?.get(parentName.toLowerCase());
                               const isLinkable = parentInfo && (parentInfo.status === 'Live' || parentInfo.status === 'featured');
                               return (
                                 <Badge
-                                  key={`parent-${index}`}
+                                  key={`parent-${index}-${parentName}`}
                                   variant="outline"
                                   className={cn("text-xs", isLinkable ? "cursor-pointer hover:bg-accent/20 hover:border-accent/50" : "bg-muted/50 text-muted-foreground/80")}
-                                  onClick={isLinkable ? () => handleLineageItemClick(parentInfo.id) : undefined}
+                                  onClick={isLinkable && parentInfo ? () => handleLineageItemClick(parentInfo.id) : undefined}
                                   role={isLinkable ? "button" : undefined}
                                   tabIndex={isLinkable ? 0 : -1}
-                                  onKeyDown={isLinkable ? (e) => { if ((e.key === 'Enter' || e.key === ' ') && parentInfo) handleLineageItemClick(parentInfo.id); } : undefined}
+                                  onKeyDown={isLinkable && parentInfo ? (e) => { if ((e.key === 'Enter' || e.key === ' ') && parentInfo) handleLineageItemClick(parentInfo.id); } : undefined}
                                 >
                                   {parentName}
                                 </Badge>
@@ -297,25 +323,25 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                         <p className="text-xs text-muted-foreground">Current Cultivar</p>
                       </div>
 
-                      {displayedCultivarData.children && displayedCultivarData.children.length > 0 && (
+                      {effectiveChildren.length > 0 && (
                         <div className="mt-3">
                           <div className="flex justify-center mb-2">
                             <div className="w-px h-4 bg-border"></div>
                           </div>
                           <h4 className="text-sm font-semibold text-muted-foreground mb-2">Children</h4>
                           <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
-                            {displayedCultivarData.children.map((childName, index) => {
+                            {effectiveChildren.map((childName, index) => {
                               const childInfo = cultivarInfoMap?.get(childName.toLowerCase());
                               const isLinkable = childInfo && (childInfo.status === 'Live' || childInfo.status === 'featured');
                               return (
                                  <Badge
-                                  key={`child-${index}`}
+                                  key={`child-${index}-${childName}`}
                                   variant="outline"
                                   className={cn("text-xs", isLinkable ? "cursor-pointer hover:bg-accent/20 hover:border-accent/50" : "bg-muted/50 text-muted-foreground/80")}
-                                  onClick={isLinkable ? () => handleLineageItemClick(childInfo.id) : undefined}
+                                  onClick={isLinkable && childInfo ? () => handleLineageItemClick(childInfo.id) : undefined}
                                   role={isLinkable ? "button" : undefined}
                                   tabIndex={isLinkable ? 0 : -1}
-                                  onKeyDown={isLinkable ? (e) => { if ((e.key === 'Enter' || e.key === ' ') && childInfo) handleLineageItemClick(childInfo.id); } : undefined}
+                                  onKeyDown={isLinkable && childInfo ? (e) => { if ((e.key === 'Enter' || e.key === ' ') && childInfo) handleLineageItemClick(childInfo.id); } : undefined}
                                 >
                                   {childName}
                                 </Badge>
@@ -324,7 +350,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                           </div>
                         </div>
                       )}
-                      {(!displayedCultivarData.parents || displayedCultivarData.parents.length === 0) && (!displayedCultivarData.children || displayedCultivarData.children.length === 0) && (
+                      {effectiveParents.length === 0 && effectiveChildren.length === 0 && (
                         <p className="text-muted-foreground text-sm pt-2">No specific parent/child lineage information available.</p>
                       )}
                     </div>
@@ -361,4 +387,3 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
     </Dialog>
   );
 }
-

@@ -42,6 +42,13 @@ const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
   return total / reviews.length;
 };
 
+export interface CultivarInfoForMap {
+  id: string;
+  status: CultivarStatus;
+  parents: string[];
+  children: string[];
+}
+
 export default function CultivarBrowserPage() {
   const [allCultivars, setAllCultivars] = useState<Cultivar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +63,7 @@ export default function CultivarBrowserPage() {
 
   const [selectedCultivarForModal, setSelectedCultivarForModal] = useState<Cultivar | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [cultivarInfoMap, setCultivarInfoMap] = useState<Map<string, { id: string; status: CultivarStatus }>>(new Map());
+  const [cultivarInfoMap, setCultivarInfoMap] = useState<Map<string, CultivarInfoForMap>>(new Map());
 
   const allAvailableEffects = EFFECT_OPTIONS;
   const allAvailableFlavors = FLAVOR_OPTIONS;
@@ -67,9 +74,14 @@ export default function CultivarBrowserPage() {
     try {
       const fetchedCultivars = await getCultivars();
       setAllCultivars(fetchedCultivars);
-      const infoMap = new Map<string, { id: string; status: CultivarStatus }>();
+      const infoMap = new Map<string, CultivarInfoForMap>();
         fetchedCultivars.forEach(c => {
-            infoMap.set(c.name.toLowerCase(), { id: c.id, status: c.status });
+            infoMap.set(c.name.toLowerCase(), {
+              id: c.id,
+              status: c.status,
+              parents: c.parents || [],
+              children: c.children || []
+            });
         });
       setCultivarInfoMap(infoMap);
     } catch (error) {
@@ -114,9 +126,9 @@ export default function CultivarBrowserPage() {
   const filteredAndSortedCultivars = useMemo(() => {
     let baseFilteredCultivars: Cultivar[];
 
-    if (!user) {
+    if (!user) { // Not logged in - public view rules
       baseFilteredCultivars = allCultivars.filter(c => c.status === 'Live' || c.status === 'featured');
-    } else {
+    } else { // Logged in - admin/user view rules
       if (!showArchived) {
         baseFilteredCultivars = allCultivars.filter(c => c.status !== 'archived');
       } else {
@@ -136,7 +148,7 @@ export default function CultivarBrowserPage() {
     }
 
     return [...furtherFilteredCultivars].sort((a, b) => {
-      if (!user) {
+      if (!user) { // Public view specific sorting for featured
         const isAFeatured = a.status === 'featured';
         const isBFeatured = b.status === 'featured';
         if (isAFeatured && !isBFeatured) return -1;
@@ -162,7 +174,7 @@ export default function CultivarBrowserPage() {
         default: return 0;
       }
     });
-  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived, user]);
+  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived, user, authLoading]);
 
 
   const totalPages = Math.ceil(filteredAndSortedCultivars.length / ITEMS_PER_PAGE);
@@ -384,5 +396,3 @@ export default function CultivarBrowserPage() {
     </div>
   );
 }
-
-    

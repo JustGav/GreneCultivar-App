@@ -19,6 +19,7 @@ import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import CultivarDetailLoading from './loading';
+import type { CultivarInfoForMap } from '@/app/page';
 
 const calculateAverageRating = (reviews: ReviewType[]): number => {
   if (!reviews || reviews.length === 0) return 0;
@@ -106,7 +107,7 @@ export default function CultivarDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const [cultivarInfoMap, setCultivarInfoMap] = useState<Map<string, { id: string; status: CultivarStatus }>>(new Map());
+  const [cultivarInfoMap, setCultivarInfoMap] = useState<Map<string, CultivarInfoForMap>>(new Map());
 
   const fetchCultivarData = useCallback(async () => {
     if (!id) return;
@@ -123,9 +124,14 @@ export default function CultivarDetailsPage() {
 
       try {
         const allCultivarsData = await getCultivars();
-        const infoMap = new Map<string, { id: string; status: CultivarStatus }>();
+        const infoMap = new Map<string, CultivarInfoForMap>();
         allCultivarsData.forEach(c => {
-            infoMap.set(c.name.toLowerCase(), { id: c.id, status: c.status });
+            infoMap.set(c.name.toLowerCase(), {
+              id: c.id,
+              status: c.status,
+              parents: c.parents || [],
+              children: c.children || []
+            });
         });
         setCultivarInfoMap(infoMap);
       } catch (err) {
@@ -231,7 +237,26 @@ export default function CultivarDetailsPage() {
   const hasEffects = cultivar.effects && cultivar.effects.length > 0;
   const hasMedicalEffects = cultivar.medicalEffects && cultivar.medicalEffects.length > 0;
   const hasFlavors = cultivar.flavors && cultivar.flavors.length > 0;
-  const hasLineage = (cultivar.parents && cultivar.parents.length > 0) || (cultivar.children && cultivar.children.length > 0);
+
+  const effectiveParents = Array.from(
+    new Set([
+      ...(cultivar.parents || []),
+      ...Array.from(cultivarInfoMap.values())
+        .filter(c => c.children.includes(cultivar.name))
+        .map(c => c.name)
+    ])
+  );
+
+  const effectiveChildren = Array.from(
+    new Set([
+      ...(cultivar.children || []),
+      ...Array.from(cultivarInfoMap.values())
+        .filter(c => c.parents.includes(cultivar.name))
+        .map(c => c.name)
+    ])
+  );
+
+  const hasLineage = effectiveParents.length > 0 || effectiveChildren.length > 0;
 
 
   return (
@@ -506,11 +531,11 @@ export default function CultivarDetailsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-center space-y-3">
-                {cultivar.parents && cultivar.parents.length > 0 && (
+                {effectiveParents.length > 0 && (
                   <div className="mb-3">
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">Parents</h4>
                     <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
-                      {cultivar.parents.map((parentName, index) => {
+                      {effectiveParents.map((parentName, index) => {
                         const parentInfo = cultivarInfoMap.get(parentName.toLowerCase());
                         const isLinkable = parentInfo && (parentInfo.status === 'Live' || parentInfo.status === 'featured');
                         return isLinkable ? (
@@ -535,14 +560,14 @@ export default function CultivarDetailsPage() {
                   <p className="text-xs text-muted-foreground">Current Cultivar</p>
                 </div>
 
-                {cultivar.children && cultivar.children.length > 0 && (
+                {effectiveChildren.length > 0 && (
                   <div className="mt-3">
                     <div className="flex justify-center mb-2">
                       <div className="w-px h-4 bg-border"></div>
                     </div>
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">Children</h4>
                     <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
-                      {cultivar.children.map((childName, index) => {
+                      {effectiveChildren.map((childName, index) => {
                         const childInfo = cultivarInfoMap.get(childName.toLowerCase());
                         const isLinkable = childInfo && (childInfo.status === 'Live' || childInfo.status === 'featured');
                         return isLinkable ? (
@@ -559,7 +584,7 @@ export default function CultivarDetailsPage() {
                   </div>
                 )}
 
-                {(!cultivar.parents || cultivar.parents.length === 0) && (!cultivar.children || cultivar.children.length === 0) && (
+                {effectiveParents.length === 0 && effectiveChildren.length === 0 && (
                   <p className="text-muted-foreground text-sm">No lineage information available.</p>
                 )}
               </CardContent>
@@ -676,4 +701,3 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
-
