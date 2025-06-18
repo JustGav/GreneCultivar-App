@@ -119,10 +119,10 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                         <Badge 
                           key={effect} 
                           className={cn(
-                            "text-black", // Ensure text is black
+                            "text-black",
                             isNegative 
-                              ? 'bg-destructive/10 border-destructive/30' // Red-ish for negative
-                              : 'bg-primary/10 border-primary/30'      // Green-ish for positive
+                              ? 'bg-destructive/10 border-destructive/30'
+                              : 'bg-primary/10 border-primary/30'
                           )}
                         >
                           {effect}
@@ -150,14 +150,14 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
             {hasLineage && (
               <div className="pt-2">
                 <Separator className="my-3"/>
-                <h3 className="font-semibold text-lg flex items-center mb-2">
+                <h3 className="font-semibold text-lg flex items-center mb-3">
                   <Network size={20} className="mr-2 text-accent" />Lineage
                 </h3>
-                <div className="text-sm space-y-2">
+                <div className="text-sm space-y-3">
                   {cultivar.parents && cultivar.parents.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold text-muted-foreground mb-1">Parents</h4>
-                      <div className="flex flex-wrap gap-1">
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">Parents</h4>
+                      <div className="flex flex-wrap gap-1.5">
                         {cultivar.parents.map((parentName, index) => (
                           <Badge key={`parent-${index}`} variant="outline" className="text-xs">
                             {parentName}
@@ -167,17 +167,17 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                     </div>
                   )}
                    {cultivar.name && (
-                    <div className="my-1">
-                      <h4 className="text-xs font-semibold text-muted-foreground mb-1">Current</h4>
-                        <Badge variant="secondary" className="text-xs bg-primary/20 border-primary/40">
+                    <div className="my-1.5">
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">Current</h4>
+                        <Badge variant="secondary" className="text-xs bg-primary/20 border-primary/40 text-primary font-medium">
                             {cultivar.name}
                         </Badge>
                     </div>
                   )}
                   {cultivar.children && cultivar.children.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold text-muted-foreground mb-1">Children</h4>
-                      <div className="flex flex-wrap gap-1">
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">Children</h4>
+                      <div className="flex flex-wrap gap-1.5">
                         {cultivar.children.map((childName, index) => (
                           <Badge key={`child-${index}`} variant="outline" className="text-xs">
                             {childName}
@@ -191,7 +191,7 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
             )}
 
             {cultivar.supplierUrl && (
-                 <div className="pt-2">
+                 <div className="pt-3 mt-3 border-t">
                     <a href={cultivar.supplierUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:text-accent font-medium transition-colors">
                         Visit Supplier Website
                     </a>
@@ -211,3 +211,4 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
     </Dialog>
   );
 }
+
