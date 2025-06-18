@@ -24,7 +24,7 @@ const calculateAverageRating = (reviews: ReviewType[]): number => {
 };
 
 const CannabinoidDisplay: React.FC<{ label: string; profile?: CannabinoidProfile }> = ({ label, profile }) => {
-  if (!profile) {
+  if (!profile || profile.min === undefined || profile.max === undefined) {
     return <p className="text-sm">{label}: N/A</p>;
   }
   return (

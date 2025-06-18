@@ -42,12 +42,12 @@ export default function CultivarDetailLoading() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="space-y-3">
                   <h3 className="font-semibold text-lg flex items-center"><Percent size={20} className="mr-2 text-muted-foreground/50"/>Cannabinoid Profile</h3>
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="h-5 w-1/2" />
-                  <Skeleton className="h-5 w-1/2" />
+                  <Skeleton className="h-5 w-3/4" /> {/* THC */}
+                  <Skeleton className="h-5 w-3/4" /> {/* CBD */}
+                  <Skeleton className="h-5 w-2/3" /> {/* CBC */}
+                  <Skeleton className="h-5 w-2/3" /> {/* CBG */}
+                  <Skeleton className="h-5 w-1/2" /> {/* CBN */}
+                  <Skeleton className="h-5 w-1/2" /> {/* THCV */}
                 </div>
                 <div className="space-y-3">
                   <h3 className="font-semibold text-lg flex items-center"><Smile size={20} className="mr-2 text-muted-foreground/50"/>Effects</h3>

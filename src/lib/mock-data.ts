@@ -64,7 +64,7 @@ export const mockCultivars: Cultivar[] = [
     cbd: { min: 1, max: 2 },
     cbc: { min: 0.3, max: 0.6 },
     cbg: { min: 0.4, max: 0.8 },
-    cbn: { min: 0.1, max: 0.25 },
+    // cbn: undefined (will show as N/A)
     thcv: { min: 0.2, max: 0.5 },
     effects: ['Balanced', 'Happy', 'Relaxed', 'Euphoric'],
     description: 'A well-balanced hybrid that offers the best of both worlds. It starts with a gentle euphoric lift, gradually easing into a comfortable state of relaxation without heavy sedation. Notes of pine and berry.',
@@ -90,7 +90,7 @@ export const mockCultivars: Cultivar[] = [
     genetics: 'Sativa',
     thc: { min: 22, max: 28 },
     cbd: { min: 0.1, max: 0.5 },
-    // Leaving other cannabinoids undefined for variety, will show as N/A
+    // cbc, cbg, cbn, thcv will be undefined (will show as N/A)
     effects: ['Energetic', 'Euphoric', 'Talkative'],
     description: 'A potent Sativa known for its strong cerebral effects and energizing buzz. Not for the faint of heart, Crimson Peak Power delivers a rush of euphoria and creativity. It has a spicy, peppery aroma.',
     images: [
