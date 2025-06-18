@@ -125,7 +125,7 @@ export default function LogsPage() {
 
         const nameMatch = cultivarNameFilter ? log.cultivarName.toLowerCase().includes(cultivarNameFilter.toLowerCase()) : true;
         const userMatch = userFilter ? log.userDisplay.toLowerCase().includes(userFilter.toLowerCase()) || (log.userId && log.userId.toLowerCase().includes(userFilter.toLowerCase())) : true;
-        const eventTypeMatch = eventTypeFilters.length > 0 ? eventTypeFilters.some(filterEvent => log.event.includes(filterEvent)) : true;
+        const eventTypeMatch = eventTypeFilters.length > 0 ? eventTypeFilters.some(filterEvent => log.event && log.event.includes(filterEvent)) : true;
         
         let dateMatch = true;
         if (dateRange?.from && dateRange?.to) {
@@ -374,3 +374,4 @@ export default function LogsPage() {
     </div>
   );
 }
+
