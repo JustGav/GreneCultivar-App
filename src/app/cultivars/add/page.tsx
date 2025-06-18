@@ -39,8 +39,6 @@ const yieldRangeSchema = z.object({
   path: ["min"],
 });
 
-// For file inputs, it's common to handle File objects separately and validate them if needed.
-// Zod can validate instanceof File. Max size validation can also be added.
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ACCEPTED_DOC_TYPES = ["application/pdf"];
@@ -65,15 +63,17 @@ const additionalFileFormSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "File name is required."),
   url: z.string().url({ message: "Please enter a valid URL." }).optional(), // URL will be populated after upload
-  file: pdfFileInputSchema, // For PDF type files like certificates
+  file: pdfFileInputSchema,
+  category: z.custom<AdditionalInfoCategoryKey>()
 });
 
 const additionalImageFileFormSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "File name is required."),
   url: z.string().url({ message: "Please enter a valid URL." }).optional(), // URL will be populated after upload
-  file: imageFileInputSchema, // For image type files
+  file: imageFileInputSchema,
   dataAiHint: z.string().optional(),
+  category: z.custom<AdditionalInfoCategoryKey>()
 });
 
 
@@ -176,7 +176,7 @@ export default function AddCultivarPage() {
 
   const { control, handleSubmit, register, formState: { errors, isDirty, isValid } } = useForm<CultivarFormData>({
     resolver: zodResolver(cultivarFormSchema),
-    mode: 'onChange', // Validate on change for better UX with file inputs
+    mode: 'onChange', 
     defaultValues: {
       name: '',
       genetics: undefined,
@@ -192,6 +192,10 @@ export default function AddCultivarPage() {
       primaryImageDataAiHint: '',
       thc: { min: undefined, max: undefined },
       cbd: { min: undefined, max: undefined },
+      cbc: {},
+      cbg: {},
+      cbn: {},
+      thcv: {},
       cultivationPhases: {},
       plantCharacteristics: {
         minHeight: undefined,
@@ -230,91 +234,40 @@ export default function AddCultivarPage() {
         const uniqueFileName = `${timestamp}-${data.primaryImageFile.name}`;
         primaryImageUrlForFirebase = await uploadImage(data.primaryImageFile, `cultivar-images/${uniqueFileName}`);
       }
-
-      const uploadedPlantPictures: AdditionalFileInfo[] = [];
-      if (data.additionalInfo_plantPictures) {
-        for (const pic of data.additionalInfo_plantPictures) {
-          let url = pic.url; // Use existing URL if no new file
-          if (pic.file) {
-            const timestamp = Date.now();
-            const uniqueFileName = `${timestamp}-${pic.file.name}`;
-            url = await uploadImage(pic.file, `cultivar-images/additional/${uniqueFileName}`);
-          }
-          if (url) { // Only add if we have a URL (either existing or newly uploaded)
-             uploadedPlantPictures.push({
-                id: pic.id || `addpic-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-                name: pic.name,
-                url: url,
-                fileType: 'image',
-                category: 'plantPicture',
-                'data-ai-hint': pic.dataAiHint,
-            });
-          }
-        }
-      }
       
-      const uploadedGeneticCertificates: AdditionalFileInfo[] = [];
-       if (data.additionalInfo_geneticCertificates) {
-        for (const cert of data.additionalInfo_geneticCertificates) {
-          let url = cert.url;
-          if (cert.file) {
+      const processAdditionalFiles = async (
+        formFiles: (typeof data.additionalInfo_plantPictures | typeof data.additionalInfo_geneticCertificates),
+        storagePath: string,
+        category: AdditionalInfoCategoryKey,
+        fileType: 'image' | 'pdf'
+      ): Promise<AdditionalFileInfo[]> => {
+        if (!formFiles) return [];
+        const processedFiles: AdditionalFileInfo[] = [];
+        for (const formFile of formFiles) {
+          let url = formFile.url; // Existing URL in case of edit, undefined for add
+          if (formFile.file) { // New file uploaded
             const timestamp = Date.now();
-            const uniqueFileName = `${timestamp}-${cert.file.name}`;
-            url = await uploadImage(cert.file, `cultivar-docs/certificates/${uniqueFileName}`);
+            const uniqueFileName = `${timestamp}-${formFile.file.name}`;
+            url = await uploadImage(formFile.file, `${storagePath}/${uniqueFileName}`);
           }
-          if (url) {
-            uploadedGeneticCertificates.push({
-              id: cert.id || `addcert-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-              name: cert.name,
+          if (url) { // Only add if we have a URL
+            processedFiles.push({
+              id: formFile.id || `${category.substring(0,3)}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              name: formFile.name,
               url: url,
-              fileType: 'pdf',
-              category: 'geneticCertificate',
+              fileType: fileType,
+              category: category,
+              'data-ai-hint': (formFile as typeof data.additionalInfo_plantPictures[0])?.dataAiHint,
             });
           }
         }
-      }
-      
-      const uploadedCannabinoidInfos: AdditionalFileInfo[] = [];
-        if (data.additionalInfo_cannabinoidInfos) {
-            for (const info of data.additionalInfo_cannabinoidInfos) {
-                let url = info.url;
-                if (info.file) {
-                    const timestamp = Date.now();
-                    const uniqueFileName = `${timestamp}-${info.file.name}`;
-                    url = await uploadImage(info.file, `cultivar-docs/cannabinoid-info/${uniqueFileName}`);
-                }
-                if (url) {
-                    uploadedCannabinoidInfos.push({
-                        id: info.id || `addcbinfo-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-                        name: info.name,
-                        url: url,
-                        fileType: 'pdf',
-                        category: 'cannabinoidInfo',
-                    });
-                }
-            }
-        }
+        return processedFiles;
+      };
 
-        const uploadedTerpeneInfos: AdditionalFileInfo[] = [];
-        if (data.additionalInfo_terpeneInfos) {
-            for (const info of data.additionalInfo_terpeneInfos) {
-                let url = info.url;
-                if (info.file) {
-                    const timestamp = Date.now();
-                    const uniqueFileName = `${timestamp}-${info.file.name}`;
-                    url = await uploadImage(info.file, `cultivar-docs/terpene-info/${uniqueFileName}`);
-                }
-                if (url) {
-                    uploadedTerpeneInfos.push({
-                        id: info.id || `addtrpinfo-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-                        name: info.name,
-                        url: url,
-                        fileType: 'pdf',
-                        category: 'terpeneInfo',
-                    });
-                }
-            }
-        }
+      const uploadedPlantPictures = await processAdditionalFiles(data.additionalInfo_plantPictures, 'cultivar-images/additional', 'plantPicture', 'image');
+      const uploadedGeneticCertificates = await processAdditionalFiles(data.additionalInfo_geneticCertificates, 'cultivar-docs/certificates', 'geneticCertificate', 'pdf');
+      const uploadedCannabinoidInfos = await processAdditionalFiles(data.additionalInfo_cannabinoidInfos, 'cultivar-docs/cannabinoid-info', 'cannabinoidInfo', 'pdf');
+      const uploadedTerpeneInfos = await processAdditionalFiles(data.additionalInfo_terpeneInfos, 'cultivar-docs/terpene-info', 'terpeneInfo', 'pdf');
 
 
       const cultivarDataForFirebase: Omit<Cultivar, 'id' | 'reviews'> = {
@@ -340,27 +293,21 @@ export default function AddCultivarPage() {
         }] : [],
         thc: data.thc as CannabinoidProfile,
         cbd: data.cbd as CannabinoidProfile,
-        cbc: data.cbc?.min !== undefined || data.cbc?.max !== undefined ? data.cbc as CannabinoidProfile : undefined,
-        cbg: data.cbg?.min !== undefined || data.cbg?.max !== undefined ? data.cbg as CannabinoidProfile : undefined,
-        cbn: data.cbn?.min !== undefined || data.cbn?.max !== undefined ? data.cbn as CannabinoidProfile : undefined,
-        thcv: data.thcv?.min !== undefined || data.thcv?.max !== undefined ? data.thcv as CannabinoidProfile : undefined,
+        cbc: data.cbc,
+        cbg: data.cbg,
+        cbn: data.cbn,
+        thcv: data.thcv,
         cultivationPhases: data.cultivationPhases,
         plantCharacteristics: {
             minHeight: data.plantCharacteristics?.minHeight,
             maxHeight: data.plantCharacteristics?.maxHeight,
             minMoisture: data.plantCharacteristics?.minMoisture,
             maxMoisture: data.plantCharacteristics?.maxMoisture,
-            yieldPerPlant: data.plantCharacteristics?.yieldPerPlant?.min !== undefined || data.plantCharacteristics?.yieldPerPlant?.max !== undefined ? data.plantCharacteristics.yieldPerPlant as YieldProfile : undefined,
-            yieldPerWatt: data.plantCharacteristics?.yieldPerWatt?.min !== undefined || data.plantCharacteristics?.yieldPerWatt?.max !== undefined ? data.plantCharacteristics.yieldPerWatt as YieldProfile : undefined,
-            yieldPerM2: data.plantCharacteristics?.yieldPerM2?.min !== undefined || data.plantCharacteristics?.yieldPerM2?.max !== undefined ? data.plantCharacteristics.yieldPerM2 as YieldProfile : undefined,
+            yieldPerPlant: data.plantCharacteristics?.yieldPerPlant,
+            yieldPerWatt: data.plantCharacteristics?.yieldPerWatt,
+            yieldPerM2: data.plantCharacteristics?.yieldPerM2,
         },
-        pricing: (data.pricing?.min !== undefined || data.pricing?.max !== undefined || data.pricing?.avg !== undefined)
-          ? {
-              min: data.pricing.min,
-              max: data.pricing.max,
-              avg: data.pricing.avg,
-            }
-          : undefined,
+        pricing: data.pricing,
         additionalInfo: {
           geneticCertificate: uploadedGeneticCertificates,
           plantPicture: uploadedPlantPictures,
@@ -392,33 +339,38 @@ export default function AddCultivarPage() {
 
   const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string) => {
     const fieldPrefix = String(fieldPrefixKey);
-    const errorsForPrefix = errors[fieldPrefix.split('.')[0] as keyof CultivarFormData] as any;
-    const nestedErrorPath = fieldPrefix.includes('.') ? fieldPrefix.split('.').slice(1).join('.') : undefined;
+    
+    // Type assertion to help TypeScript understand the structure of errors
+    const errorsAny = errors as any;
+    let minErrorMsg, maxErrorMsg, rootErrorMsg;
 
-    let minError, maxError, rootError;
-
-    if (nestedErrorPath && errorsForPrefix && errorsForPrefix[nestedErrorPath]) {
-        minError = errorsForPrefix[nestedErrorPath]?.min?.message;
-        maxError = errorsForPrefix[nestedErrorPath]?.max?.message;
-        rootError = errorsForPrefix[nestedErrorPath]?.message;
-    } else if (errorsForPrefix && !nestedErrorPath) {
-        minError = errorsForPrefix?.min?.message;
-        maxError = errorsForPrefix?.max?.message;
-        rootError = errorsForPrefix?.message;
+    if (fieldPrefix.includes('.')) {
+        const [baseKey, nestedKey] = fieldPrefix.split('.') as [keyof CultivarFormData, string];
+        if (errorsAny[baseKey] && errorsAny[baseKey][nestedKey]) {
+            minErrorMsg = errorsAny[baseKey][nestedKey]?.min?.message;
+            maxErrorMsg = errorsAny[baseKey][nestedKey]?.max?.message;
+            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message; // For root-level errors on the object
+        }
+    } else {
+        if (errorsAny[fieldPrefix]) {
+            minErrorMsg = errorsAny[fieldPrefix]?.min?.message;
+            maxErrorMsg = errorsAny[fieldPrefix]?.max?.message;
+            rootErrorMsg = errorsAny[fieldPrefix]?.message;
+        }
     }
-
+    
     return (
         <div className="grid grid-cols-2 gap-4 items-start">
             <div>
                 <Label htmlFor={`${fieldPrefix}.min`}>{label} Min {subLabel}</Label>
                 <Input id={`${fieldPrefix}.min`} type="number" step="0.01" {...register(`${fieldPrefix}.min` as any)} placeholder="e.g., 18.0" />
-                {minError && <p className="text-sm text-destructive mt-1">{minError}</p>}
-                {rootError && !minError && !maxError && <p className="text-sm text-destructive mt-1">{rootError}</p>}
+                {minErrorMsg && <p className="text-sm text-destructive mt-1">{minErrorMsg}</p>}
+                {rootErrorMsg && !minErrorMsg && !maxErrorMsg && <p className="text-sm text-destructive mt-1">{rootErrorMsg}</p>}
             </div>
             <div>
                 <Label htmlFor={`${fieldPrefix}.max`}>{label} Max {subLabel}</Label>
                 <Input id={`${fieldPrefix}.max`} type="number" step="0.01" {...register(`${fieldPrefix}.max` as any)} placeholder="e.g., 22.5" />
-                {maxError && <p className="text-sm text-destructive mt-1">{maxError}</p>}
+                {maxErrorMsg && <p className="text-sm text-destructive mt-1">{maxErrorMsg}</p>}
             </div>
         </div>
     );
@@ -535,7 +487,46 @@ export default function AddCultivarPage() {
             {terpeneProfileFields.length === 0 && <p className="text-sm text-muted-foreground">No terpenes added yet.</p>}
           </CardContent>
         </Card>
+        
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-2xl text-primary flex items-center"><ImageIcon size={24} className="mr-2" /> Primary Image</CardTitle>
+            <CardDescription>Upload the main image for this cultivar.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+                <Label htmlFor="primaryImageFile">Primary Image File</Label>
+                <Input id="primaryImageFile" type="file" accept="image/*" {...register("primaryImageFile")} />
+                {errors.primaryImageFile && <p className="text-sm text-destructive mt-1">{errors.primaryImageFile.message}</p>}
+            </div>
+            <div>
+                <Label htmlFor="primaryImageAlt">Primary Image Alt Text</Label>
+                <Input id="primaryImageAlt" {...register("primaryImageAlt")} placeholder="e.g., Close-up of [Cultivar Name] bud" />
+                {errors.primaryImageAlt && <p className="text-sm text-destructive mt-1">{errors.primaryImageAlt.message}</p>}
+            </div>
+             <div>
+                <Label htmlFor="primaryImageDataAiHint">Primary Image AI Hint (keywords)</Label>
+                <Input id="primaryImageDataAiHint" {...register("primaryImageDataAiHint")} placeholder="e.g., cannabis bud" />
+                {errors.primaryImageDataAiHint && <p className="text-sm text-destructive mt-1">{errors.primaryImageDataAiHint.message}</p>}
+            </div>
+          </CardContent>
+        </Card>
 
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-2xl text-primary flex items-center"><Percent size={24} className="mr-2" /> Cannabinoid Profile</CardTitle>
+            <CardDescription>Enter the min/max percentages for THC and CBD. Other cannabinoids are optional.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {renderMinMaxInput("thc", "THC", "(%) *")}
+            {renderMinMaxInput("cbd", "CBD", "(%) *")}
+            {renderMinMaxInput("cbc", "CBC", "(%)")}
+            {renderMinMaxInput("cbg", "CBG", "(%)")}
+            {renderMinMaxInput("cbn", "CBN", "(%)")}
+            {renderMinMaxInput("thcv", "THCV", "(%)")}
+          </CardContent>
+        </Card>
+        
         <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center"><Smile size={24} className="mr-2" /> Reported Effects</CardTitle>
@@ -624,45 +615,6 @@ export default function AddCultivarPage() {
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="font-headline text-2xl text-primary flex items-center"><ImageIcon size={24} className="mr-2" /> Primary Image</CardTitle>
-            <CardDescription>Upload the main image for this cultivar.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-                <Label htmlFor="primaryImageFile">Primary Image File</Label>
-                <Input id="primaryImageFile" type="file" accept="image/*" {...register("primaryImageFile")} />
-                {errors.primaryImageFile && <p className="text-sm text-destructive mt-1">{errors.primaryImageFile.message}</p>}
-            </div>
-            <div>
-                <Label htmlFor="primaryImageAlt">Primary Image Alt Text</Label>
-                <Input id="primaryImageAlt" {...register("primaryImageAlt")} placeholder="e.g., Close-up of [Cultivar Name] bud" />
-                {errors.primaryImageAlt && <p className="text-sm text-destructive mt-1">{errors.primaryImageAlt.message}</p>}
-            </div>
-             <div>
-                <Label htmlFor="primaryImageDataAiHint">Primary Image AI Hint (keywords)</Label>
-                <Input id="primaryImageDataAiHint" {...register("primaryImageDataAiHint")} placeholder="e.g., cannabis bud" />
-                {errors.primaryImageDataAiHint && <p className="text-sm text-destructive mt-1">{errors.primaryImageDataAiHint.message}</p>}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl text-primary flex items-center"><Percent size={24} className="mr-2" /> Cannabinoid Profile</CardTitle>
-            <CardDescription>Enter the min/max percentages for THC and CBD. Other cannabinoids are optional.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {renderMinMaxInput("thc", "THC", "(%) *")}
-            {renderMinMaxInput("cbd", "CBD", "(%) *")}
-            {renderMinMaxInput("cbc", "CBC", "(%)")}
-            {renderMinMaxInput("cbg", "CBG", "(%)")}
-            {renderMinMaxInput("cbn", "CBN", "(%)")}
-            {renderMinMaxInput("thcv", "THCV", "(%)")}
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-lg">
-          <CardHeader>
             <CardTitle className="font-headline text-2xl text-primary flex items-center"><Clock size={24} className="mr-2" /> Cultivation Phases</CardTitle>
             <CardDescription>Provide estimated durations for each cultivation phase.</CardDescription>
           </CardHeader>
@@ -699,8 +651,6 @@ export default function AddCultivarPage() {
             <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center"><Sprout size={24} className="mr-2" /> Plant Characteristics</CardTitle>
                 <CardDescription>Detail the physical traits and yield expectations of the cultivar.</CardDescription>
-                 {errors.plantCharacteristics?.maxHeight?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxHeight.message}</p>}
-                 {errors.plantCharacteristics?.maxMoisture?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxMoisture.message}</p>}
             </CardHeader>
             <CardContent className="space-y-6">
                 <div>
@@ -828,18 +778,20 @@ export default function AddCultivarPage() {
         <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center"><Paperclip size={28} className="mr-3"/> Additional Information</CardTitle>
-                <CardDescription>Upload relevant documents or images. Add multiple files if needed.</CardDescription>
+                <CardDescription>Upload relevant documents or images. Add multiple files if needed. Uploading a new file will replace an existing one for that slot.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+                {/* Genetic Certificates */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><Award size={18} className="mr-2 text-accent"/>Genetic Certificates (PDF)</h4 >
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendGeneticCertificate({ name: '', file: undefined })}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendGeneticCertificate({ name: '', file: undefined, category: 'geneticCertificate' })}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Certificate
                         </Button>
                     </div>
                     {geneticCertificateFields.map((field, index) => (
                         <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
+                            {field.url && !watch(`additionalInfo_geneticCertificates.${index}.file`) && <p className="text-xs text-muted-foreground">Current file: <a href={field.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{field.name}</a></p>}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor={`additionalInfo_geneticCertificates.${index}.name`}>File Name *</Label>
@@ -847,7 +799,7 @@ export default function AddCultivarPage() {
                                     {errors.additionalInfo_geneticCertificates?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_geneticCertificates?.[index]?.name?.message}</p>}
                                 </div>
                                 <div>
-                                    <Label htmlFor={`additionalInfo_geneticCertificates.${index}.file`}>File Upload (PDF)</Label>
+                                    <Label htmlFor={`additionalInfo_geneticCertificates.${index}.file`}>New File Upload (PDF)</Label>
                                     <Input type="file" accept=".pdf" {...register(`additionalInfo_geneticCertificates.${index}.file`)} />
                                     {errors.additionalInfo_geneticCertificates?.[index]?.file && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_geneticCertificates?.[index]?.file?.message as string}</p>}
                                 </div>
@@ -857,19 +809,32 @@ export default function AddCultivarPage() {
                             </Button>
                         </div>
                     ))}
-                     {geneticCertificateFields.length === 0 && <p className="text-sm text-muted-foreground">No genetic certificates added yet.</p>}
+                     {geneticCertificateFields.length === 0 && <p className="text-sm text-muted-foreground">No genetic certificates added.</p>}
                 </div>
                 <Separator />
 
+                {/* Plant Pictures */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><ImageIcon size={18} className="mr-2 text-accent"/>Plant Pictures (Image)</h4 >
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendPlantPicture({ name: '', file: undefined, dataAiHint: '' })}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendPlantPicture({ name: '', file: undefined, dataAiHint: '', category: 'plantPicture' })}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Picture
                         </Button>
                     </div>
                     {plantPictureFields.map((field, index) => (
                         <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
+                             {field.url && !watch(`additionalInfo_plantPictures.${index}.file`) && (
+                                <div className="mb-2">
+                                    <p className="text-xs text-muted-foreground">Current: <a href={field.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{field.name}</a></p>
+                                    <NextImage src={field.url} alt={field.name || "Plant picture"} width={100} height={75} className="rounded-md border object-cover mt-1"/>
+                                </div>
+                            )}
+                            {watch(`additionalInfo_plantPictures.${index}.file`) && (
+                                 <div className="mb-2">
+                                    <p className="text-xs text-muted-foreground">New Preview:</p>
+                                    <NextImage src={URL.createObjectURL(watch(`additionalInfo_plantPictures.${index}.file`)!)} alt="New plant picture preview" width={100} height={75} className="rounded-md border object-cover mt-1"/>
+                                </div>
+                            )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor={`additionalInfo_plantPictures.${index}.name`}>Picture Name *</Label>
@@ -877,7 +842,7 @@ export default function AddCultivarPage() {
                                     {errors.additionalInfo_plantPictures?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_plantPictures?.[index]?.name?.message}</p>}
                                 </div>
                                 <div>
-                                    <Label htmlFor={`additionalInfo_plantPictures.${index}.file`}>File Upload (Image)</Label>
+                                    <Label htmlFor={`additionalInfo_plantPictures.${index}.file`}>New File Upload (Image)</Label>
                                     <Input type="file" accept="image/*" {...register(`additionalInfo_plantPictures.${index}.file`)} />
                                      {errors.additionalInfo_plantPictures?.[index]?.file && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_plantPictures?.[index]?.file?.message as string}</p>}
                                 </div>
@@ -891,19 +856,21 @@ export default function AddCultivarPage() {
                             </Button>
                         </div>
                     ))}
-                    {plantPictureFields.length === 0 && <p className="text-sm text-muted-foreground">No plant pictures added yet.</p>}
+                    {plantPictureFields.length === 0 && <p className="text-sm text-muted-foreground">No plant pictures added.</p>}
                 </div>
                 <Separator />
-
+                
+                {/* Cannabinoid Infos */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FileText size={18} className="mr-2 text-accent"/>Cannabinoid Information (PDF)</h4 >
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendCannabinoidInfo({ name: '', file: undefined })}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendCannabinoidInfo({ name: '', file: undefined, category: 'cannabinoidInfo' })}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Cannabinoid Info
                         </Button>
                     </div>
                     {cannabinoidInfoFields.map((field, index) => (
                         <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
+                            {field.url && !watch(`additionalInfo_cannabinoidInfos.${index}.file`) && <p className="text-xs text-muted-foreground">Current file: <a href={field.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{field.name}</a></p>}
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor={`additionalInfo_cannabinoidInfos.${index}.name`}>File Name *</Label>
@@ -911,7 +878,7 @@ export default function AddCultivarPage() {
                                     {errors.additionalInfo_cannabinoidInfos?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_cannabinoidInfos?.[index]?.name?.message}</p>}
                                 </div>
                                 <div>
-                                    <Label htmlFor={`additionalInfo_cannabinoidInfos.${index}.file`}>File Upload (PDF)</Label>
+                                    <Label htmlFor={`additionalInfo_cannabinoidInfos.${index}.file`}>New File Upload (PDF)</Label>
                                     <Input type="file" accept=".pdf" {...register(`additionalInfo_cannabinoidInfos.${index}.file`)} />
                                     {errors.additionalInfo_cannabinoidInfos?.[index]?.file && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_cannabinoidInfos?.[index]?.file?.message as string}</p>}
                                 </div>
@@ -921,19 +888,21 @@ export default function AddCultivarPage() {
                             </Button>
                         </div>
                     ))}
-                    {cannabinoidInfoFields.length === 0 && <p className="text-sm text-muted-foreground">No cannabinoid information added yet.</p>}
+                    {cannabinoidInfoFields.length === 0 && <p className="text-sm text-muted-foreground">No cannabinoid information added.</p>}
                 </div>
                 <Separator />
 
+                {/* Terpene Infos */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FlaskConical size={18} className="mr-2 text-accent"/>Terpene Information (PDF)</h4 >
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendTerpeneInfo({ name: '', file: undefined })}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendTerpeneInfo({ name: '', file: undefined, category: 'terpeneInfo' })}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Terpene Info
                         </Button>
                     </div>
                     {terpeneInfoFields.map((field, index) => (
                         <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
+                            {field.url && !watch(`additionalInfo_terpeneInfos.${index}.file`) && <p className="text-xs text-muted-foreground">Current file: <a href={field.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{field.name}</a></p>}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor={`additionalInfo_terpeneInfos.${index}.name`}>File Name *</Label>
@@ -941,7 +910,7 @@ export default function AddCultivarPage() {
                                     {errors.additionalInfo_terpeneInfos?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_terpeneInfos?.[index]?.name?.message}</p>}
                                 </div>
                                 <div>
-                                    <Label htmlFor={`additionalInfo_terpeneInfos.${index}.file`}>File Upload (PDF)</Label>
+                                    <Label htmlFor={`additionalInfo_terpeneInfos.${index}.file`}>New File Upload (PDF)</Label>
                                     <Input type="file" accept=".pdf" {...register(`additionalInfo_terpeneInfos.${index}.file`)} />
                                     {errors.additionalInfo_terpeneInfos?.[index]?.file && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_terpeneInfos?.[index]?.file?.message as string}</p>}
                                 </div>
@@ -951,7 +920,7 @@ export default function AddCultivarPage() {
                             </Button>
                         </div>
                     ))}
-                    {terpeneInfoFields.length === 0 && <p className="text-sm text-muted-foreground">No terpene information added yet.</p>}
+                    {terpeneInfoFields.length === 0 && <p className="text-sm text-muted-foreground">No terpene information added.</p>}
                 </div>
             </CardContent>
         </Card>
@@ -959,7 +928,7 @@ export default function AddCultivarPage() {
 
         <CardFooter className="pt-6 border-t">
           <Button type="submit" className="w-full md:w-auto" size="lg" disabled={isSubmitting || !isDirty || !isValid}>
-            {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding Cultivar...</>) : 'Add Cultivar'}
+            {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Changes...</>) : 'Save Changes'}
           </Button>
         </CardFooter>
       </form>

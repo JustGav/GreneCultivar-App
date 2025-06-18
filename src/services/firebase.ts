@@ -1,6 +1,6 @@
 
 import { db, storage } from '@/lib/firebase-config';
-import type { Cultivar, Review, CannabinoidProfile, PlantCharacteristics, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, PricingProfile, YieldProfile } from '@/types';
+import type { Cultivar, Review, CannabinoidProfile, PlantCharacteristics, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, PricingProfile, YieldProfile, CultivarImage } from '@/types';
 import {
   collection,
   getDocs,
@@ -13,8 +13,9 @@ import {
   DocumentData,
   query,
   orderBy,
+  deleteField,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 const CULTIVARS_COLLECTION = 'cultivars';
 
@@ -31,8 +32,24 @@ export const uploadImage = async (file: File, path: string): Promise<string> => 
   }
 };
 
+// Helper function to delete an image from Firebase Storage
+export const deleteImageByUrl = async (imageUrl: string): Promise<void> => {
+  try {
+    const imageRef = ref(storage, imageUrl);
+    await deleteObject(imageRef);
+  } catch (error: any) {
+    if (error.code === 'storage/object-not-found') {
+      console.warn(`File not found for deletion (may have already been deleted or never existed): ${imageUrl}`);
+    } else {
+      console.error(`Error deleting image ${imageUrl}:`, error);
+      throw error; // Re-throw other errors
+    }
+  }
+};
+
+
 const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
-  const data = docData as any;
+  const data = docData as any; // Use 'as any' carefully or define a more specific Firestore type
   return {
     id,
     name: data.name,
@@ -91,6 +108,17 @@ export const getCultivarById = async (id: string): Promise<Cultivar | null> => {
   }
 };
 
+// Helper to prepare data for Firestore, removing undefined top-level fields
+const prepareDataForFirestore = (data: Record<string, any>): Record<string, any> => {
+  const cleanedData: Record<string, any> = {};
+  for (const key in data) {
+    if (data[key] !== undefined) {
+      cleanedData[key] = data[key];
+    }
+  }
+  return cleanedData;
+};
+
 export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'reviews'>): Promise<Cultivar> => {
   try {
     const dataToSave: { [key: string]: any } = {};
@@ -126,10 +154,12 @@ export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'revi
 
     const finalDataForFirestore = {
       ...dataToSave,
-      reviews: [],
+      reviews: [], // Always initialize reviews as an empty array
     };
 
-    const docRef = await addDoc(collection(db, CULTIVARS_COLLECTION), finalDataForFirestore);
+    const cleanedData = prepareDataForFirestore(finalDataForFirestore);
+    const docRef = await addDoc(collection(db, CULTIVARS_COLLECTION), cleanedData);
+    
     const savedDoc = await getDoc(docRef);
     if (!savedDoc.exists()) {
       throw new Error("Failed to retrieve saved cultivar post-creation.");
@@ -142,16 +172,57 @@ export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'revi
   }
 };
 
+
+export const updateCultivar = async (id: string, cultivarData: Partial<Cultivar>): Promise<void> => {
+  try {
+    const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
+    const cleanedData = prepareDataForFirestore(cultivarData);
+    
+    // Ensure array fields are not undefined, set to empty array if so
+    const arrayFields: (keyof Cultivar)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile'];
+    arrayFields.forEach(field => {
+      if (cleanedData[field] === undefined && cultivarData.hasOwnProperty(field)) {
+        cleanedData[field] = [];
+      }
+    });
+
+    // Ensure additionalInfo and its sub-arrays are not undefined
+    if (cultivarData.hasOwnProperty('additionalInfo')) {
+      if (cleanedData.additionalInfo === undefined || cleanedData.additionalInfo === null) {
+        cleanedData.additionalInfo = {};
+      }
+      const ai = cleanedData.additionalInfo as NonNullable<Cultivar['additionalInfo']>;
+      const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
+      expectedAICategories.forEach(catKey => {
+        if (ai[catKey] === undefined && cultivarData.additionalInfo?.hasOwnProperty(catKey)) {
+          (ai[catKey] as any) = [];
+        }
+      });
+    }
+
+
+    await updateDoc(cultivarDocRef, cleanedData);
+  } catch (error) {
+    console.error(`Error updating cultivar with ID ${id}: `, error);
+    throw error;
+  }
+};
+
+
 export const addReviewToCultivar = async (cultivarId: string, reviewData: Review): Promise<void> => {
   try {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, cultivarId);
+    // Ensure createdAt is a string when saving
+    const reviewToSave = {
+      ...reviewData,
+      createdAt: typeof reviewData.createdAt === 'string' ? reviewData.createdAt : new Date(reviewData.createdAt).toISOString(),
+    };
     await updateDoc(cultivarDocRef, {
-      reviews: arrayUnion({
-        ...reviewData,
-      })
+      reviews: arrayUnion(reviewToSave)
     });
   } catch (error) {
     console.error("Error adding review: ", error);
     throw error;
   }
 };
+
