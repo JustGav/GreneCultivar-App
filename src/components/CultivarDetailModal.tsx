@@ -48,9 +48,8 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (initialCultivar && isOpen) { // Only update if modal is open and initialCultivar is provided
+    if (initialCultivar && isOpen) { 
         setDisplayedCultivarData(initialCultivar);
-        // Reset history stack only if the initial cultivar is different from the current top of the stack
         if (!historyStack.length || historyStack[historyStack.length - 1]?.id !== initialCultivar.id) {
             setHistoryStack([initialCultivar]);
         }
@@ -59,7 +58,6 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
           scrollAreaRef.current.scrollTo({ top: 0 });
         }
     } else if (!isOpen) {
-      // Reset internal state when modal is explicitly closed
       setDisplayedCultivarData(null);
       setHistoryStack([]);
       setIsLoadingLineage(false);
@@ -68,8 +66,6 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
 
 
   useEffect(() => {
-    // This effect could potentially lead to premature closing if initialCultivar is null
-    // but the modal is intended to be open. Rely on the parent to control initial opening.
     if (isOpen && !displayedCultivarData && !isLoadingLineage && historyStack.length === 0 && !initialCultivar) {
       onOpenChange(false);
     }
@@ -122,29 +118,29 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
       return { effectiveParents: [], effectiveChildren: [] };
     }
 
-    const currentCultivarName = displayedCultivarData.name;
-    if (typeof currentCultivarName !== 'string' || !currentCultivarName.trim()) {
-        console.warn("Current cultivar in modal has an invalid name for lineage calculation:", displayedCultivarData);
-        return { effectiveParents: [], effectiveChildren: [] };
+    const currentCultivarName = (typeof displayedCultivarData.name === 'string' && displayedCultivarData.name.trim() !== '') ? displayedCultivarData.name : null;
+    if (!currentCultivarName) {
+      return { effectiveParents: [], effectiveChildren: [] };
     }
     
     const parentsSet = new Set<string>(
-      (displayedCultivarData.parents || []).filter(p => p && typeof p === 'string' && p.trim() !== '')
+      (displayedCultivarData.parents || []).filter(p => typeof p === 'string' && p.trim() !== '')
     );
     const childrenSet = new Set<string>(
-      (displayedCultivarData.children || []).filter(c => c && typeof c === 'string' && c.trim() !== '')
+      (displayedCultivarData.children || []).filter(c => typeof c === 'string' && c.trim() !== '')
     );
 
     for (const info of cultivarInfoMap.values()) { 
-      if (typeof info.name !== 'string' || !info.name.trim()) continue;
-      if (info.name.toLowerCase() === currentCultivarName.toLowerCase()) continue;
+      if (typeof info.name !== 'string' || !info.name.trim() || info.name.toLowerCase() === currentCultivarName.toLowerCase()) {
+        continue;
+      }
 
-      const infoChildren = (info.children || []).filter(c => c && typeof c === 'string');
+      const infoChildren = (info.children || []).filter(c => typeof c === 'string' && c.trim() !== '');
       if (infoChildren.includes(currentCultivarName)) {
         parentsSet.add(info.name);
       }
 
-      const infoParents = (info.parents || []).filter(p => p && typeof p === 'string');
+      const infoParents = (info.parents || []).filter(p => typeof p === 'string' && p.trim() !== '');
       if (infoParents.includes(currentCultivarName)) {
         childrenSet.add(info.name);
       }
@@ -157,10 +153,10 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   }, [displayedCultivarData, cultivarInfoMap]);
 
 
-  if (!displayedCultivarData && !isLoadingLineage && !isOpen) { // Added !isOpen check
+  if (!displayedCultivarData && !isLoadingLineage && !isOpen) { 
     return null;
   }
-   if (!displayedCultivarData && isOpen && !isLoadingLineage) { // Show loader or message if open but no data (e.g. initial state)
+   if (!displayedCultivarData && isOpen && !isLoadingLineage) { 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 items-center justify-center">
@@ -183,8 +179,6 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
-        // When explicitly closing via UI (not programmatic change from parent), reset history.
-        // The parent component controls `initialCultivar` and `isOpen` for initial population.
         setDisplayedCultivarData(null); 
         setHistoryStack([]);
       }
@@ -331,10 +325,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                           <h4 className="text-sm font-semibold text-muted-foreground mb-2">Parents</h4>
                           <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                             {effectiveParents.map((parentName, index) => {
-                              if (!parentName || typeof parentName.toLowerCase !== 'function') {
-                                console.warn("Modal Lineage: Skipping parent due to invalid name or missing toLowerCase", parentName);
-                                return null;
-                              }
+                              if (!parentName || typeof parentName.toLowerCase !== 'function') return null;
                               const parentInfo = cultivarInfoMap?.get(parentName.toLowerCase());
                               const isLinkable = parentInfo && (parentInfo.status === 'Live' || parentInfo.status === 'featured');
                               return (
@@ -371,10 +362,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                           <h4 className="text-sm font-semibold text-muted-foreground mb-2">Children</h4>
                           <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                             {effectiveChildren.map((childName, index) => {
-                               if (!childName || typeof childName.toLowerCase !== 'function') {
-                                console.warn("Modal Lineage: Skipping child due to invalid name or missing toLowerCase", childName);
-                                return null;
-                              }
+                               if (!childName || typeof childName.toLowerCase !== 'function') return null;
                               const childInfo = cultivarInfoMap?.get(childName.toLowerCase());
                               const isLinkable = childInfo && (childInfo.status === 'Live' || childInfo.status === 'featured');
                               return (

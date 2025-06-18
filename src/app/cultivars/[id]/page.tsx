@@ -128,6 +128,7 @@ export default function CultivarDetailsPage() {
         allCultivarsData.forEach(c => {
             infoMap.set(c.name.toLowerCase(), {
               id: c.id,
+              name: c.name, // Add name to infoMap for easier access
               status: c.status,
               parents: c.parents || [],
               children: c.children || []
@@ -238,24 +239,30 @@ export default function CultivarDetailsPage() {
   const hasMedicalEffects = cultivar.medicalEffects && cultivar.medicalEffects.length > 0;
   const hasFlavors = cultivar.flavors && cultivar.flavors.length > 0;
 
-  const effectiveParents = Array.from(
-    new Set([
-      ...(cultivar.parents || []),
-      ...Array.from(cultivarInfoMap.values())
-        .filter(c => c.children.includes(cultivar.name))
-        .map(c => c.name)
-    ])
+  const currentCultivarNameForLineage = (typeof cultivar.name === 'string' && cultivar.name.trim() !== '') ? cultivar.name : null;
+
+  const effectiveParentsSet = new Set<string>(
+    (cultivar.parents || []).filter(p => typeof p === 'string' && p.trim() !== '')
+  );
+  const effectiveChildrenSet = new Set<string>(
+    (cultivar.children || []).filter(c => typeof c === 'string' && c.trim() !== '')
   );
 
-  const effectiveChildren = Array.from(
-    new Set([
-      ...(cultivar.children || []),
-      ...Array.from(cultivarInfoMap.values())
-        .filter(c => c.parents.includes(cultivar.name))
-        .map(c => c.name)
-    ])
-  );
-
+  if (currentCultivarNameForLineage && cultivarInfoMap.size > 0) {
+    for (const info of cultivarInfoMap.values()) {
+      if (typeof info.name !== 'string' || info.name.trim() === '' || info.name.toLowerCase() === currentCultivarNameForLineage.toLowerCase()) {
+        continue;
+      }
+      if ((info.children || []).filter(c => typeof c === 'string' && c.trim() !== '').includes(currentCultivarNameForLineage)) {
+        effectiveParentsSet.add(info.name);
+      }
+      if ((info.parents || []).filter(p => typeof p === 'string' && p.trim() !== '').includes(currentCultivarNameForLineage)) {
+        effectiveChildrenSet.add(info.name);
+      }
+    }
+  }
+  const effectiveParents = Array.from(effectiveParentsSet);
+  const effectiveChildren = Array.from(effectiveChildrenSet);
   const hasLineage = effectiveParents.length > 0 || effectiveChildren.length > 0;
 
 
@@ -536,14 +543,15 @@ export default function CultivarDetailsPage() {
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">Parents</h4>
                     <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                       {effectiveParents.map((parentName, index) => {
+                        if (!parentName || typeof parentName.toLowerCase !== 'function') return null;
                         const parentInfo = cultivarInfoMap.get(parentName.toLowerCase());
                         const isLinkable = parentInfo && (parentInfo.status === 'Live' || parentInfo.status === 'featured');
                         return isLinkable ? (
-                          <Link key={`parent-${index}`} href={`/cultivars/${parentInfo.id}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm text-primary hover:underline hover:bg-muted/60 transition-colors">
+                          <Link key={`parent-${index}-${parentName}`} href={`/cultivars/${parentInfo.id}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm text-primary hover:underline hover:bg-muted/60 transition-colors">
                             {parentName}
                           </Link>
                         ) : (
-                          <div key={`parent-${index}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm">
+                          <div key={`parent-${index}-${parentName}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm">
                             {parentName}
                           </div>
                         );
@@ -568,14 +576,15 @@ export default function CultivarDetailsPage() {
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">Children</h4>
                     <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                       {effectiveChildren.map((childName, index) => {
+                         if (!childName || typeof childName.toLowerCase !== 'function') return null;
                         const childInfo = cultivarInfoMap.get(childName.toLowerCase());
                         const isLinkable = childInfo && (childInfo.status === 'Live' || childInfo.status === 'featured');
                         return isLinkable ? (
-                          <Link key={`child-${index}`} href={`/cultivars/${childInfo.id}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm text-primary hover:underline hover:bg-muted/60 transition-colors">
+                          <Link key={`child-${index}-${childName}`} href={`/cultivars/${childInfo.id}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm text-primary hover:underline hover:bg-muted/60 transition-colors">
                             {childName}
                           </Link>
                         ) : (
-                          <div key={`child-${index}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm">
+                          <div key={`child-${index}-${childName}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm">
                             {childName}
                           </div>
                         );
@@ -701,3 +710,4 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
+
