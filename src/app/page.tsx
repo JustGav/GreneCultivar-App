@@ -3,12 +3,12 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Cultivar, Genetics, CultivarStatus } from '@/types';
-import { EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data'; 
+import { EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data';
 import { getCultivars, updateCultivarStatus } from '@/services/firebase';
 import CultivarCard from '@/components/CultivarCard';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -25,6 +25,12 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
@@ -46,7 +52,7 @@ export default function CultivarBrowserPage() {
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
-  
+
   const allAvailableEffects = EFFECT_OPTIONS;
   const allAvailableFlavors = FLAVOR_OPTIONS;
 
@@ -62,7 +68,7 @@ export default function CultivarBrowserPage() {
         description: "Could not load cultivars from the database. Please try again later.",
         variant: "destructive",
       });
-      setAllCultivars([]); 
+      setAllCultivars([]);
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +94,7 @@ export default function CultivarBrowserPage() {
 
   const handleCultivarStatusChange = useCallback((cultivarId: string, newStatus: CultivarStatus) => {
     setAllCultivars(prevCultivars =>
-      prevCultivars.map(c => 
+      prevCultivars.map(c =>
         c.id === cultivarId ? { ...c, status: newStatus } : c
       )
     );
@@ -98,11 +104,11 @@ export default function CultivarBrowserPage() {
     setSearchTerm('');
     setSelectedEffects([]);
     setSelectedFlavors([]);
-    setShowArchived(false);
-    setSortOption('name-asc');
+    // setShowArchived(false); // User might want to keep this persisted
+    // setSortOption('name-asc'); // User might want to keep sort persisted
     setCurrentPage(1);
   };
-  
+
   const filteredAndSortedCultivars = useMemo(() => {
     let filtered = allCultivars;
 
@@ -164,7 +170,7 @@ export default function CultivarBrowserPage() {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
   };
-  
+
   const handleSortChange = (value: string) => {
     setSortOption(value as SortOption);
     setCurrentPage(1);
@@ -204,9 +210,9 @@ export default function CultivarBrowserPage() {
             </Button>
           </Link>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 items-end pt-4">
-          <div className="relative">
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 items-end pt-4">
+          <div className="relative lg:col-span-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               type="text"
@@ -234,61 +240,72 @@ export default function CultivarBrowserPage() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button onClick={resetFilters} variant="outline" className="w-full">
-            <ListRestart className="mr-2 h-4 w-4" /> Reset Filters
-          </Button>
           <Button onClick={handleShowArchivedToggle} variant="outline" className="w-full">
             {showArchived ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
             {showArchived ? 'Hide Archived' : 'Show Archived'}
           </Button>
         </div>
-        
-        <Separator className="my-6" />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center">
-              <Utensils className="mr-2 h-5 w-5 text-primary" />
-              Filter by Flavors:
-            </h3>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
-                {allAvailableFlavors.map(flavor => (
-                  <div key={flavor} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`flavor-${flavor}`}
-                      checked={selectedFlavors.includes(flavor)}
-                      onCheckedChange={(checked) => handleFlavorToggle(flavor, !!checked)}
-                      aria-label={`Filter by ${flavor}`}
-                    />
-                    <Label htmlFor={`flavor-${flavor}`} className="font-normal text-sm">{flavor}</Label>
-                  </div>
-                ))}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="item-1">
+            <AccordionTrigger>
+              <div className="flex items-center text-lg font-semibold">
+                <Filter className="mr-2 h-5 w-5 text-primary" />
+                Advanced Filters
               </div>
-            </div>
-          </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <Utensils className="mr-2 h-5 w-5 text-primary" />
+                    Filter by Flavors:
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                      {allAvailableFlavors.map(flavor => (
+                        <div key={flavor} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`flavor-${flavor}`}
+                            checked={selectedFlavors.includes(flavor)}
+                            onCheckedChange={(checked) => handleFlavorToggle(flavor, !!checked)}
+                            aria-label={`Filter by ${flavor}`}
+                          />
+                          <Label htmlFor={`flavor-${flavor}`} className="font-normal text-sm">{flavor}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
 
-          <div>
-            <h3 className="text-lg font-semibold mb-3 flex items-center">
-              <Filter className="mr-2 h-5 w-5 text-primary" />
-              Filter by Effects:
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {allAvailableEffects.map(effect => (
-                <Button
-                  key={effect}
-                  variant={selectedEffects.includes(effect) ? "default" : "outline"}
-                  onClick={() => handleEffectToggle(effect)}
-                  className={`transition-all duration-200 ease-in-out text-sm rounded-full px-4 py-1.5 ${selectedEffects.includes(effect) ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-accent/10'}`}
-                  aria-pressed={selectedEffects.includes(effect)}
-                >
-                  {effect}
-                  {selectedEffects.includes(effect) && <X className="ml-2 h-3 w-3" />}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <ChevronsUpDown className="mr-2 h-5 w-5 text-primary" /> {/* Changed icon for effects */}
+                    Filter by Effects:
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {allAvailableEffects.map(effect => (
+                      <Button
+                        key={effect}
+                        variant={selectedEffects.includes(effect) ? "default" : "outline"}
+                        onClick={() => handleEffectToggle(effect)}
+                        className={`transition-all duration-200 ease-in-out text-sm rounded-full px-4 py-1.5 ${selectedEffects.includes(effect) ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-accent/10'}`}
+                        aria-pressed={selectedEffects.includes(effect)}
+                      >
+                        {effect}
+                        {selectedEffects.includes(effect) && <X className="ml-2 h-3 w-3" />}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <Separator className="my-6" />
+              <Button onClick={resetFilters} variant="outline" className="w-full sm:w-auto">
+                <ListRestart className="mr-2 h-4 w-4" /> Reset Flavor/Effect Filters
+              </Button>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </section>
 
       {isLoading ? (
