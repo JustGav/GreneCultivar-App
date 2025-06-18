@@ -115,19 +115,31 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
     }
 
     const currentCultivarName = displayedCultivarData.name;
-    let parentsSet = new Set<string>(displayedCultivarData.parents || []);
-    let childrenSet = new Set<string>(displayedCultivarData.children || []);
+    // Initialize sets with valid names from the current cultivar, filtering out any non-string or empty string values
+    const parentsSet = new Set<string>(
+      (displayedCultivarData.parents || []).filter(p => typeof p === 'string' && p.trim() !== '')
+    );
+    const childrenSet = new Set<string>(
+      (displayedCultivarData.children || []).filter(c => typeof c === 'string' && c.trim() !== '')
+    );
 
-    for (const [name, info] of cultivarInfoMap.entries()) {
-      if (name.toLowerCase() === currentCultivarName.toLowerCase()) continue;
+    // Iterate through the cultivarInfoMap to find additional relationships
+    for (const [nameKey, info] of cultivarInfoMap.entries()) { // nameKey is the lowercased name from map key
+      // Ensure info.name is a valid string to use for adding to sets and for comparison
+      if (typeof info.name !== 'string' || info.name.trim() === '') continue;
 
+      if (info.name.toLowerCase() === currentCultivarName.toLowerCase()) continue;
+
+      // If this cultivar in the map lists the current modal's cultivar as a child, it's a parent.
       if (info.children?.includes(currentCultivarName)) {
-        parentsSet.add(info.name);
+        parentsSet.add(info.name); // Add the actual name (info.name)
       }
+      // If this cultivar in the map lists the current modal's cultivar as a parent, it's a child.
       if (info.parents?.includes(currentCultivarName)) {
-        childrenSet.add(info.name);
+        childrenSet.add(info.name); // Add the actual name (info.name)
       }
     }
+
     return {
       effectiveParents: Array.from(parentsSet),
       effectiveChildren: Array.from(childrenSet),
@@ -295,6 +307,9 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                           <h4 className="text-sm font-semibold text-muted-foreground mb-2">Parents</h4>
                           <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                             {effectiveParents.map((parentName, index) => {
+                              if (typeof parentName !== 'string' || !parentName.trim()) {
+                                return null;
+                              }
                               const parentInfo = cultivarInfoMap?.get(parentName.toLowerCase());
                               const isLinkable = parentInfo && (parentInfo.status === 'Live' || parentInfo.status === 'featured');
                               return (
@@ -331,6 +346,9 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                           <h4 className="text-sm font-semibold text-muted-foreground mb-2">Children</h4>
                           <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                             {effectiveChildren.map((childName, index) => {
+                              if (typeof childName !== 'string' || !childName.trim()) {
+                                return null;
+                              }
                               const childInfo = cultivarInfoMap?.get(childName.toLowerCase());
                               const isLinkable = childInfo && (childInfo.status === 'Live' || childInfo.status === 'featured');
                               return (
@@ -387,3 +405,4 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
     </Dialog>
   );
 }
+
