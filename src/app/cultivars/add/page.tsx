@@ -102,13 +102,19 @@ const cultivarFormSchema = z.object({
   }).optional(),
 
   plantCharacteristics: z.object({
-    minHeight: z.coerce.number().min(0).optional(),
-    maxHeight: z.coerce.number().min(0).optional(),
-    minMoisture: z.coerce.number().min(0).max(100).optional(),
-    maxMoisture: z.coerce.number().min(0).max(100).optional(),
+    minHeight: z.coerce.number().min(0, "Min height must be >= 0").optional(),
+    maxHeight: z.coerce.number().min(0, "Max height must be >= 0").optional(),
+    minMoisture: z.coerce.number().min(0, "Min moisture must be >= 0").max(100, "Min moisture must be <= 100").optional(),
+    maxMoisture: z.coerce.number().min(0, "Max moisture must be >= 0").max(100, "Max moisture must be <= 100").optional(),
     yieldPerPlant: yieldRangeSchema.optional(),
     yieldPerWatt: yieldRangeSchema.optional(),
     yieldPerM2: yieldRangeSchema.optional(),
+  }).refine(data => (data.minHeight === undefined || data.maxHeight === undefined) || data.minHeight <= data.maxHeight, {
+    message: "Min height must be less than or equal to Max height",
+    path: ["minHeight"],
+  }).refine(data => (data.minMoisture === undefined || data.maxMoisture === undefined) || data.minMoisture <= data.maxMoisture, {
+    message: "Min moisture must be less than or equal to Max moisture",
+    path: ["minMoisture"],
   }).optional(),
   
   additionalInfo_geneticCertificates: z.array(additionalFileSchema).optional(),
@@ -143,6 +149,10 @@ export default function AddCultivarPage() {
       primaryImageAlt: '',
       cultivationPhases: {},
       plantCharacteristics: {
+        minHeight: undefined,
+        maxHeight: undefined,
+        minMoisture: undefined,
+        maxMoisture: undefined,
         yieldPerPlant: {},
         yieldPerM2: {},
         yieldPerWatt: {}
@@ -264,43 +274,41 @@ export default function AddCultivarPage() {
     }
   };
   
-  const renderMinMaxInput = (fieldPrefix: keyof CultivarFormData | `plantCharacteristics.${string}` | `pricing`, label: string, subLabel?: string) => (
-    <div className="grid grid-cols-2 gap-4 items-end">
-      <div>
-        <Label htmlFor={`${String(fieldPrefix)}.min`}>{label} Min {subLabel}</Label>
-        <Input id={`${String(fieldPrefix)}.min`} type="number" step="0.1" {...register(`${String(fieldPrefix)}.min` as any)} placeholder="e.g., 18.0" />
-        {/* @ts-ignore */}
-        {errors[fieldPrefix as keyof CultivarFormData]?.min && <p className="text-sm text-destructive mt-1">{errors[fieldPrefix as keyof CultivarFormData]?.min?.message}</p>}
-        {/* @ts-ignore */}
-        {fieldPrefix.includes('.') && errors[fieldPrefix.split('.')[0] as keyof CultivarFormData]?.[fieldPrefix.split('.')[1] as any]?.min && <p className="text-sm text-destructive mt-1">{errors[fieldPrefix.split('.')[0]as keyof CultivarFormData]?.[fieldPrefix.split('.')[1]as any]?.min?.message}</p>}
-        {/* @ts-ignore */}
-        {errors[fieldPrefix as keyof CultivarFormData]?.message && <p className="text-sm text-destructive mt-1">{errors[fieldPrefix as keyof CultivarFormData]?.message}</p>}
-      </div>
-      <div>
-        <Label htmlFor={`${String(fieldPrefix)}.max`}>{label} Max {subLabel}</Label>
-        <Input id={`${String(fieldPrefix)}.max`} type="number" step="0.1" {...register(`${String(fieldPrefix)}.max` as any)} placeholder="e.g., 22.5" />
-        {/* @ts-ignore */}
-        {errors[fieldPrefix as keyof CultivarFormData]?.max && <p className="text-sm text-destructive mt-1">{errors[fieldPrefix as keyof CultivarFormData]?.max?.message}</p>}
-         {/* @ts-ignore */}
-        {fieldPrefix.includes('.') && errors[fieldPrefix.split('.')[0]as keyof CultivarFormData]?.[fieldPrefix.split('.')[1]as any]?.max && <p className="text-sm text-destructive mt-1">{errors[fieldPrefix.split('.')[0]as keyof CultivarFormData]?.[fieldPrefix.split('.')[1]as any]?.max?.message}</p>}
-      </div>
-    </div>
-  );
-  
-  // @ts-ignore
-  const getNestedError = (fieldName) => {
-    const parts = fieldName.split('.');
-    let currentError = errors;
-    for (const part of parts) {
-      if (currentError && currentError[part]) {
-        // @ts-ignore
-        currentError = currentError[part];
-      } else {
-        return null;
-      }
+  const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string) => {
+    const fieldPrefix = String(fieldPrefixKey);
+    // Type assertion to help TypeScript understand the structure for error handling
+    const errorsForPrefix = errors[fieldPrefix.split('.')[0] as keyof CultivarFormData] as any;
+    const nestedErrorPath = fieldPrefix.includes('.') ? fieldPrefix.split('.').slice(1).join('.') : undefined;
+
+    let minError, maxError, rootError;
+
+    if (nestedErrorPath && errorsForPrefix && errorsForPrefix[nestedErrorPath]) {
+        minError = errorsForPrefix[nestedErrorPath]?.min?.message;
+        maxError = errorsForPrefix[nestedErrorPath]?.max?.message;
+        rootError = errorsForPrefix[nestedErrorPath]?.message;
+    } else if (errorsForPrefix) {
+        minError = errorsForPrefix?.min?.message;
+        maxError = errorsForPrefix?.max?.message;
+        rootError = errorsForPrefix?.message;
     }
-    return currentError;
-  };
+
+
+    return (
+        <div className="grid grid-cols-2 gap-4 items-end">
+            <div>
+                <Label htmlFor={`${fieldPrefix}.min`}>{label} Min {subLabel}</Label>
+                <Input id={`${fieldPrefix}.min`} type="number" step="0.01" {...register(`${fieldPrefix}.min` as any)} placeholder="e.g., 18.0" />
+                {minError && <p className="text-sm text-destructive mt-1">{minError}</p>}
+                {rootError && <p className="text-sm text-destructive mt-1">{rootError}</p>}
+            </div>
+            <div>
+                <Label htmlFor={`${fieldPrefix}.max`}>{label} Max {subLabel}</Label>
+                <Input id={`${fieldPrefix}.max`} type="number" step="0.01" {...register(`${fieldPrefix}.max` as any)} placeholder="e.g., 22.5" />
+                {maxError && <p className="text-sm text-destructive mt-1">{maxError}</p>}
+            </div>
+        </div>
+    );
+};
 
 
   return (
@@ -565,44 +573,47 @@ export default function AddCultivarPage() {
         <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center"><Sprout size={24} className="mr-2" /> Plant Characteristics</CardTitle>
+                 {errors.plantCharacteristics?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.message}</p>}
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    <div>
-                        <Label className="font-medium mb-1 block">Plant Height (cm)</Label>
-                        {renderMinMaxInput("plantCharacteristics.minHeight" as any, "Min Height", "")}
-                         {/* @ts-ignore */}
-                        {getNestedError("plantCharacteristics.minHeight")?.message && <p className="text-sm text-destructive mt-1">{getNestedError("plantCharacteristics.minHeight")?.message}</p>}
-                    </div>
-                     <div>
-                        <Label className="font-medium mb-1 block">Max Height (cm)</Label> 
-                        <Input id="plantCharacteristics.maxHeight" type="number" step="0.1" {...register("plantCharacteristics.maxHeight")} placeholder="e.g., 120" />
-                         {/* @ts-ignore */}
-                        {getNestedError("plantCharacteristics.maxHeight")?.message && <p className="text-sm text-destructive mt-1">{getNestedError("plantCharacteristics.maxHeight")?.message}</p>}
+                <div>
+                    <Label className="font-medium mb-2 block">Plant Height (cm)</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        <div>
+                            <Label htmlFor="plantCharacteristics.minHeight">Min Height</Label>
+                            <Input id="plantCharacteristics.minHeight" type="number" step="0.1" {...register("plantCharacteristics.minHeight")} placeholder="e.g., 60" />
+                            {errors.plantCharacteristics?.minHeight?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.minHeight.message}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="plantCharacteristics.maxHeight">Max Height</Label>
+                            <Input id="plantCharacteristics.maxHeight" type="number" step="0.1" {...register("plantCharacteristics.maxHeight")} placeholder="e.g., 120" />
+                            {errors.plantCharacteristics?.maxHeight?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxHeight.message}</p>}
+                        </div>
                     </div>
                 </div>
-                 <Separator />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                     <div>
-                        <Label className="font-medium mb-1 block">Dry Product Moisture (%)</Label>
-                         {renderMinMaxInput("plantCharacteristics.minMoisture" as any, "Min Moisture", "")}
-                          {/* @ts-ignore */}
-                         {getNestedError("plantCharacteristics.minMoisture")?.message && <p className="text-sm text-destructive mt-1">{getNestedError("plantCharacteristics.minMoisture")?.message}</p>}
-                    </div>
-                     <div>
-                        <Label className="font-medium mb-1 block">Max Moisture (%)</Label> 
-                         <Input id="plantCharacteristics.maxMoisture" type="number" step="0.1" {...register("plantCharacteristics.maxMoisture")} placeholder="e.g., 12" />
-                          {/* @ts-ignore */}
-                         {getNestedError("plantCharacteristics.maxMoisture")?.message && <p className="text-sm text-destructive mt-1">{getNestedError("plantCharacteristics.maxMoisture")?.message}</p>}
+                <Separator />
+                <div>
+                    <Label className="font-medium mb-2 block">Dry Product Moisture (%)</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        <div>
+                            <Label htmlFor="plantCharacteristics.minMoisture">Min Moisture</Label>
+                            <Input id="plantCharacteristics.minMoisture" type="number" step="0.1" {...register("plantCharacteristics.minMoisture")} placeholder="e.g., 9" />
+                            {errors.plantCharacteristics?.minMoisture?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.minMoisture.message}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="plantCharacteristics.maxMoisture">Max Moisture</Label>
+                            <Input id="plantCharacteristics.maxMoisture" type="number" step="0.1" {...register("plantCharacteristics.maxMoisture")} placeholder="e.g., 12" />
+                            {errors.plantCharacteristics?.maxMoisture?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxMoisture.message}</p>}
+                        </div>
                     </div>
                 </div>
                 <Separator />
                 <div>
                     <Label className="font-medium mb-2 block">Estimated Yield</Label>
                     <div className="space-y-4">
-                        {renderMinMaxInput("plantCharacteristics.yieldPerPlant" as any, "Yield/Plant", "(g)")}
-                        {renderMinMaxInput("plantCharacteristics.yieldPerWatt" as any, "Yield/Watt", "(g/W)")}
-                        {renderMinMaxInput("plantCharacteristics.yieldPerM2" as any, "Yield/m²", "(g/m²)")}
+                        {renderMinMaxInput("plantCharacteristics.yieldPerPlant", "Yield/Plant", "(g)")}
+                        {renderMinMaxInput("plantCharacteristics.yieldPerWatt", "Yield/Watt", "(g/W)")}
+                        {renderMinMaxInput("plantCharacteristics.yieldPerM2", "Yield/m²", "(g/m²)")}
                     </div>
                 </div>
             </CardContent>
@@ -611,7 +622,7 @@ export default function AddCultivarPage() {
         <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center"><DollarSign size={24} className="mr-2" /> Pricing Information (per gram)</CardTitle>
-                <CardDescription>Enter the estimated minimum, maximum, and average price per gram.</CardDescription>
+                <CardDescription>Enter the estimated minimum, maximum, and average price per gram (€).</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
@@ -624,6 +635,10 @@ export default function AddCultivarPage() {
                     <Label htmlFor="pricing.max">Max Price (€)</Label>
                     <Input id="pricing.max" type="number" step="0.01" {...register("pricing.max")} placeholder="e.g., 11.50" />
                     {errors.pricing?.max && <p className="text-sm text-destructive mt-1">{errors.pricing.max.message}</p>}
+                     {/* Display root-level error for pricing object if it exists (e.g. min > max) */}
+                     {errors.pricing && !errors.pricing.min && !errors.pricing.max && !errors.pricing.avg && errors.pricing.message && (
+                        <p className="text-sm text-destructive mt-1">{errors.pricing.message}</p>
+                    )}
                 </div>
                 <div>
                     <Label htmlFor="pricing.avg">Average Price (€)</Label>
@@ -631,7 +646,6 @@ export default function AddCultivarPage() {
                     {errors.pricing?.avg && <p className="text-sm text-destructive mt-1">{errors.pricing.avg.message}</p>}
                 </div>
                 </div>
-                 {errors.pricing?.message && <p className="text-sm text-destructive mt-1">{errors.pricing.message}</p>}
             </CardContent>
         </Card>
         
@@ -780,4 +794,3 @@ export default function AddCultivarPage() {
     </div>
   );
 }
-
