@@ -58,7 +58,7 @@ export interface AdditionalFileInfo {
 export interface Terpene {
   id: string;
   name: string;
-  description: string; // e.g., "Earthy, musky notes"
+  description?: string; // e.g., "Earthy, musky notes" - Now optional
   percentage?: number; // Optional percentage value
 }
 
@@ -93,4 +93,3 @@ export interface Cultivar {
   terpeneProfile?: Terpene[];
   pricing?: PricingProfile;
 }
-

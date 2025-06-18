@@ -185,7 +185,7 @@ export default function CultivarDetailsPage() {
                             <span className="text-xs text-muted-foreground ml-1">({terpene.percentage}%)</span>
                           )}
                         </p>
-                        <p className="text-muted-foreground text-xs mt-1">{terpene.description}</p>
+                        {terpene.description && <p className="text-muted-foreground text-xs mt-1">{terpene.description}</p>}
                       </div>
                     ))}
                   </div>
@@ -377,4 +377,3 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
-

@@ -49,7 +49,7 @@ const additionalImageFileSchema = additionalFileSchema.extend({
 
 const terpeneEntrySchema = z.object({
   name: z.string().min(1, "Terpene name is required."),
-  description: z.string().min(1, "Terpene aroma/notes are required."),
+  // description field removed from schema as input is removed
   percentage: z.coerce.number().min(0, "Percentage must be >=0").max(100, "Percentage must be <=100").optional(),
 });
 
@@ -191,7 +191,7 @@ export default function AddCultivarPage() {
         terpeneProfile: data.terpeneProfile?.map((tp, index) => ({ 
             id: `terp-${newCultivarId}-${index}`,
             name: tp.name,
-            description: tp.description,
+            // description: tp.description, // Removed as input is removed, will be undefined
             percentage: tp.percentage,
         })) || [],
         pricing: (data.pricing?.min !== undefined || data.pricing?.max !== undefined || data.pricing?.avg !== undefined)
@@ -383,12 +383,12 @@ export default function AddCultivarPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline text-2xl text-primary flex items-center"><Palette size={24} className="mr-2" /> Terpene Profile</CardTitle>
-            <CardDescription>List the prominent terpenes, their aroma/notes, and optional percentage.</CardDescription>
+            <CardDescription>List the prominent terpenes and their optional percentage.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {terpeneProfileFields.map((field, index) => (
               <div key={field.id} className="space-y-3 p-4 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                   <div>
                     <Label htmlFor={`terpeneProfile.${index}.name`}>Terpene Name *</Label>
                     <Controller
@@ -419,12 +419,6 @@ export default function AddCultivarPage() {
                     {errors.terpeneProfile?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile?.[index]?.name?.message}</p>}
                   </div>
                   <div>
-                    <Label htmlFor={`terpeneProfile.${index}.description`}>Aroma/Notes *</Label>
-                    <Input {...register(`terpeneProfile.${index}.description`)} placeholder="e.g., Earthy, musky notes" />
-                    {/* @ts-ignore */}
-                    {errors.terpeneProfile?.[index]?.description && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile?.[index]?.description?.message}</p>}
-                  </div>
-                  <div>
                     <Label htmlFor={`terpeneProfile.${index}.percentage`}>Percentage (%)</Label>
                     <Input type="number" step="0.01" {...register(`terpeneProfile.${index}.percentage`)} placeholder="e.g., 0.5" />
                     {/* @ts-ignore */}
@@ -436,7 +430,7 @@ export default function AddCultivarPage() {
                 </Button>
               </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', description: '', percentage: undefined })}>
+            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', percentage: undefined })}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Terpene
             </Button>
             {terpeneProfileFields.length === 0 && <p className="text-sm text-muted-foreground">No terpenes added yet.</p>}
@@ -696,4 +690,3 @@ export default function AddCultivarPage() {
     </div>
   );
 }
-
