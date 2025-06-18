@@ -33,7 +33,7 @@ export default function CultivarBrowserPage() {
   const [isLoading, setIsLoading] = useState(true);
   // Consume sortOption from context, not local state
   const { searchTerm, selectedEffects, selectedFlavors, sortOption, setSortOption } = useFilterContext(); 
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived, setShowArchived] = useState(false); // This state is for admin view logic, not directly controlled by a button here anymore
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
@@ -82,11 +82,11 @@ export default function CultivarBrowserPage() {
     if (!user && !authLoading) { 
       baseFilteredCultivars = allCultivars.filter(c => c.status === 'Live' || c.status === 'featured');
     } else if (user) { 
-      if (!showArchived) {
-        baseFilteredCultivars = allCultivars.filter(c => c.status !== 'archived');
-      } else {
-        baseFilteredCultivars = [...allCultivars];
-      }
+      // Admin view logic: show all non-archived by default. Archived can be toggled on Dashboard page.
+      // For this public page, if admin is logged in, we'll assume they might want to see everything not explicitly 'archived' or 'Hide'
+      // This could be refined based on specific requirements for admin view on public page.
+      // For now, let's show 'Live', 'featured', 'User Submitted', 'recentlyAdded'
+      baseFilteredCultivars = allCultivars.filter(c => c.status !== 'archived' && c.status !== 'Hide');
     } else { 
         baseFilteredCultivars = [];
     }
@@ -134,7 +134,7 @@ export default function CultivarBrowserPage() {
         default: return 0;
       }
     });
-  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived, user, authLoading]);
+  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, user, authLoading]);
 
 
   const totalPages = Math.ceil(filteredAndSortedCultivars.length / ITEMS_PER_PAGE);
@@ -152,13 +152,6 @@ export default function CultivarBrowserPage() {
   const handlePreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
-
-  // handleSortChange is removed, as sort is managed by FilterContext via Header
-
-  const handleShowArchivedToggle = () => {
-    setShowArchived(prev => !prev);
-    setCurrentPage(1);
-  }
 
   const handleOpenCultivarModal = (cultivar: Cultivar) => {
     setSelectedCultivarForModal(cultivar);
@@ -187,18 +180,7 @@ export default function CultivarBrowserPage() {
             </p>
           </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 items-end pt-4">
-          <div></div> {/* Placeholder for layout if needed */}
-          {/* Sort Dropdown removed from here */}
-          
-          {(!authLoading && user) && (
-            <Button onClick={handleShowArchivedToggle} variant="outline" className="w-full md:w-auto">
-              {showArchived ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-              {showArchived ? 'Hide Archived' : 'Show Archived'}
-            </Button>
-          )}
-        </div>
+        {/* Removed the div that previously held sort and archived toggle */}
       </section>
 
       {isLoading || authLoading ? (
@@ -258,4 +240,3 @@ export default function CultivarBrowserPage() {
     </div>
   );
 }
-
