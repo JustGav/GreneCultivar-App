@@ -1,69 +1,80 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Cultivars Collection
+    // Cultivars Collection (Main Data)
     match /cultivars/{cultivarId} {
-      // PUBLIC READ for 'Live' or 'featured' cultivars.
-      // AUTHENTICATED USER (for prototype, any auth user; for prod, admin) can read all.
-      allow read: if resource.data.status == 'Live' || resource.data.status == 'featured' || request.auth != null;
-      // TODO: For production, refine authenticated user read access if needed (e.g., only admins can read 'Hide' or 'archived' if not done by frontend filtering).
+      // Anyone can read cultivars that are 'Live' or 'featured'
+      allow read: if resource.data.status == 'Live' || resource.data.status == 'featured';
+      // Authenticated users (intended as admins) can read any cultivar
+      allow read: if request.auth != null;
 
-      // WRITE (create, update, delete)
-      // For PROTOTYPING: Allow write if user is authenticated.
-      // TODO: For PRODUCTION, implement proper admin role check (e.g., using custom claims or a users collection with roles).
-      allow write: if request.auth != null && (
-                    (request.method == 'create' &&
-                      request.resource.data.name is string && request.resource.data.name.size() > 0 &&
-                      request.resource.data.createdAt == request.time && // Server timestamp for creation
-                      request.resource.data.updatedAt == request.time && // Server timestamp for update
-                      request.resource.data.reviews is list && request.resource.data.reviews.size() == 0 && // Reviews must be empty on create
-                      request.resource.data.history is list && request.resource.data.history.size() > 0 && // History must exist and have initial entry
-                      request.resource.data.history[0].timestamp is string &&
-                      request.resource.data.history[0].event is string &&
-                      // Ensure status is provided and valid if necessary, e.g., not allowing direct 'featured' on create by non-admin without extra checks.
-                      (request.resource.data.status is string || request.resource.data.status == null) // status can be string or not present (defaults)
-                    ) ||
-                    (request.method == 'update' &&
-                      request.resource.data.updatedAt == request.time && // Server timestamp for update
-                      // Prevent direct modification of createdAt and reviews array root by client
-                      (!(request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdAt', 'reviews'])))
-                      // Allow appending to history (arrayUnion handles this implicitly on client)
-                    ) ||
-                    request.method == 'delete' // Authenticated user (prototype admin) can delete
-                  );
+
+      // Only authenticated users (intended as admins) can create new cultivars directly
+      allow create: if request.auth != null &&
+                       request.resource.data.name is string &&
+                       request.resource.data.name.size() > 0 &&
+                       request.resource.data.status is string &&
+                       request.resource.data.createdAt == request.time &&
+                       request.resource.data.updatedAt == request.time &&
+                       request.resource.data.history is list &&
+                       request.resource.data.history.size() > 0 &&
+                       request.resource.data.history[0].event == "Cultivar Created by Admin" &&
+                       request.resource.data.reviews is list &&
+                       request.resource.data.reviews.size() == 0;
+
+      // Only authenticated users (intended as admins) can update cultivars
+      allow update: if request.auth != null &&
+                       request.resource.data.updatedAt == request.time &&
+                       request.resource.data.createdAt == resource.data.createdAt; // createdAt should not change
+
+      // Only authenticated users (intended as admins) can delete cultivars
+      allow delete: if request.auth != null;
     }
 
-    // Submitted Cultivars Collection (for user submissions)
+    // Submitted Cultivars Collection (For Review)
     match /submitted_cultivars/{submissionId} {
-      // ADMINS (for prototype, any auth user) can read, update (for moderation), and delete.
-      // TODO: For PRODUCTION, implement proper admin role check.
-      allow read, update, delete: if request.auth != null;
+      // Admins can read, update, delete submissions
+      allow read, update, delete: if request.auth != null; // TODO: Restrict to admin role
 
-      // ANYONE can create a submission, with validation.
+      // Allow anyone to submit a new cultivar for review
       allow create: if request.resource.data.name is string && request.resource.data.name.size() > 0 &&
-                       request.resource.data.sourceEmail is string && request.resource.data.sourceEmail.matches('^[^@]+@[^@]+\\.[^@]+$') &&
+                       request.resource.data.sourceEmail is string && request.resource.data.sourceEmail.matches("^[^@]+@[^@]+\\.[^@]+$") &&
                        request.resource.data.status == 'User Submitted' &&
                        request.resource.data.submittedAt == request.time &&
-                       // Image validation (optional image)
-                       (request.resource.data.images == null || request.resource.data.images.size() == 0 ||
-                         (request.resource.data.images.size() == 1 &&
-                          request.resource.data.images[0].url is string &&
-                          // Ensure the URL is from the correct Firebase Storage bucket and path for user submissions.
-                          // Replace 'YOUR_PROJECT_ID' with your actual Firebase project ID IF firebase.env("PROJECT_ID") is not working in your deployment.
-                          request.resource.data.images[0].url.startsWith('https://firebasestorage.googleapis.com/v0/b/' + firebase.env("PROJECT_ID") + '/o/cultivar-images%2Fuser-submitted%2F')
+                       // Optional fields: check for null or correct type using get()
+                       (request.resource.data.get('genetics', null) == null || request.resource.data.genetics is string) &&
+                       (request.resource.data.get('description', null) == null || request.resource.data.description is string) &&
+                       (request.resource.data.get('effects', null) == null || request.resource.data.effects is list) &&
+                       (request.resource.data.get('flavors', null) == null || request.resource.data.flavors is list) &&
+                       (request.resource.data.get('terpeneProfile', null) == null || request.resource.data.terpeneProfile is list) &&
+                       (request.resource.data.get('thc', null) == null || request.resource.data.thc is map) &&
+                       (request.resource.data.get('cbd', null) == null || request.resource.data.cbd is map) &&
+                       // Image validation with hardcoded project ID
+                       (request.resource.data.get('images', null) == null || (
+                           request.resource.data.images is list &&
+                           (request.resource.data.images.size() == 0 ||
+                            (request.resource.data.images.size() == 1 &&
+                             request.resource.data.images[0].url is string &&
+                             // Replace 'grenecultivar' with your actual Firebase Project ID if different.
+                             request.resource.data.images[0].url.matches('^https://firebasestorage.googleapis.com/v0/b/grenecultivar/o/cultivar-images%2Fuser-submitted%2F.+') &&
+                             request.resource.data.images[0].alt is string
+                            )
+                           )
                          )
                        ) &&
-                       // Ensure only allowed fields are present or are of correct type if optional
+                       // Ensure no unexpected top-level fields are present
                        request.resource.data.keys().hasOnly(['name', 'sourceEmail', 'source', 'genetics', 'description', 'effects', 'flavors', 'terpeneProfile', 'images', 'thc', 'cbd', 'status', 'submittedAt']);
     }
 
-    // Optional: Users collection for managing isAdmin flag (manual setup needed in Firestore database)
+    // TODO: Add rules for user profiles if you have them
     // match /users/{userId} {
-    //   allow read: if request.auth != null && request.auth.uid == userId;
-    //   // Example: Only admins can change other user roles.
-    //   allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    //   allow read: if true;
+    //   allow write: if request.auth.uid == userId;
     // }
   }
 }
+
+    

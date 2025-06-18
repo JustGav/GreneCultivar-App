@@ -1,46 +1,41 @@
-rules_version = '2';
 
+rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Cultivar Images (Main Collection - typically admin uploads or approved submissions)
-    // Path: cultivar-images/{imageId} or cultivar-images/additional/{imageId} or cultivar-images/user-submitted (after approval and move)
-    match /cultivar-images/{allPaths=**} {
+    // Cultivar images directly added by admin
+    match /cultivar-images/{imageId} {
       allow read: if true; // Publicly readable
-
-      // For PROTOTYPING: Allow write if user is authenticated.
-      // TODO: For PRODUCTION, restrict write to authenticated admins (e.g., custom claims or Firestore role check).
-      allow write: if request.auth != null;
+      allow write: if request.auth != null; // Only authenticated users (admins) can write
     }
 
-    // User Submitted Cultivar Images (Staging area - before approval)
-    // Path: cultivar-images/user-submitted/{imageId} -> This path segment is mainly for Firestore rule matching of the URL.
-    // The actual Storage rule path can be broader as above, or more specific if needed, but the key is that
-    // the Firestore rule for submitted_cultivars.images[0].url will check this specific path structure.
-    // Note: The rule above for /cultivar-images/{allPaths=**} will cover cultivar-images/user-submitted/
-    // If you want stricter rules JUST for the user-submitted staging path:
-    /*
-    match /cultivar-images/user-submitted/{imageId} {
-      // Allow anyone to write (upload) new images here, with size and type validation.
-      allow write: if (request.auth == null || request.auth != null) &&
-                      request.resource.size < 5 * 1024 * 1024 && // Max 5MB
-                      request.resource.contentType.matches('image/.*');
+    // Additional cultivar images directly added by admin (e.g., plantPicture, etc.)
+    match /cultivar-images/additional/{imageId} {
+      allow read: if true; // Publicly readable
+      allow write: if request.auth != null; // Only authenticated users (admins) can write
+    }
 
-      // For PROTOTYPING: Allow read if user is authenticated (simplifies admin review).
-      // TODO: For PRODUCTION, restrict read/delete to authenticated admins for moderation.
+    // Cultivar documents (certificates, info sheets) directly added by admin
+    match /cultivar-docs/{category}/{docId} {
+      allow read: if true; // Publicly readable (adjust if some docs should be private)
+      allow write: if request.auth != null; // Only authenticated users (admins) can write
+    }
+
+    // User submitted images (go to a specific path for review)
+    match /cultivar-images/user-submitted/{submissionImageId} {
+      // Allow anyone to write (submit an image) with size and type validation
+      allow write: if request.resource.size < 5 * 1024 * 1024 && // Max 5MB
+                      request.resource.contentType.matches('image/.*'); // Only images
+
+      // Only authenticated users (admins) can read or delete these submitted images
       allow read, delete: if request.auth != null;
     }
-    */
 
-
-    // Cultivar Documents (e.g., COAs, terpene reports)
-    // Path: cultivar-docs/{category}/{docId}
-    match /cultivar-docs/{allPaths=**} {
-      allow read: if true; // Publicly readable (adjust if some docs should be private)
-
-      // For PROTOTYPING: Allow write if user is authenticated.
-      // TODO: For PRODUCTION, restrict write to authenticated admins.
-      allow write: if request.auth != null;
+    // Default deny all other paths for security
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
+
+    
