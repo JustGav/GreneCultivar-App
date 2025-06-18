@@ -194,8 +194,8 @@ export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id'
       };
     }
 
-    const initialHistoryEntry: Omit<CultivarHistoryEntry, 'timestamp'> & { timestamp: any } = {
-        timestamp: serverTimestamp(),
+    const initialHistoryEntry: CultivarHistoryEntry = {
+        timestamp: new Date().toISOString(), // Use client-generated timestamp for initial history entry
         event: cultivarDataInput.status === 'User Submitted' ? "Cultivar Submitted by User" : "Cultivar Created",
         details: { status: cultivarDataInput.status || 'recentlyAdded', source: cultivarDataInput.source || 'System' }
     };
@@ -313,7 +313,7 @@ export const updateMultipleCultivarStatuses = async (cultivarIds: string[], newS
 
 export const addReviewToCultivar = async (cultivarId: string, reviewData: Review): Promise<void> => {
   try {
-    const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
+    const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, cultivarId); 
     const reviewToSave = {
       ...reviewData,
       createdAt: typeof reviewData.createdAt === 'string' ? reviewData.createdAt : new Date().toISOString(),
@@ -333,3 +333,6 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
     throw error;
   }
 };
+
+
+    
