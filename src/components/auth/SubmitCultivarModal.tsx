@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -20,13 +22,16 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import { Loader2, PlusCircle, Upload, Leaf, Percent, Smile, Utensils, Image as ImageIcon } from 'lucide-react';
+import { Loader2, PlusCircle, Upload, Leaf, Percent, Smile, Utensils, Image as ImageIcon, Palette } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addCultivar, uploadImage } from '@/services/firebase';
-import type { Genetics, CannabinoidProfile, CultivarStatus } from '@/types';
+import type { Genetics, CannabinoidProfile, CultivarStatus, Terpene } from '@/types';
+import { EFFECT_OPTIONS, FLAVOR_OPTIONS, TERPENE_OPTIONS, TERPENE_CATEGORIES } from '@/lib/mock-data';
 import NextImage from 'next/image';
 
 const GENETIC_OPTIONS_MODAL: Genetics[] = ['Sativa', 'Indica', 'Hybrid', 'Ruderalis'];
+const PRIMARY_TERPENES = TERPENE_OPTIONS.filter(t => t.category === TERPENE_CATEGORIES.PRIMARY).map(t => t.name).sort();
+
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -56,8 +61,9 @@ const submitCultivarFormSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }),
   genetics: z.enum(GENETIC_OPTIONS_MODAL).optional(),
   description: z.string().optional(),
-  effects: z.string().optional(), // Comma-separated
-  flavors: z.string().optional(), // Comma-separated
+  effects: z.array(z.string()).optional().default([]),
+  flavors: z.array(z.string()).optional().default([]),
+  terpeneProfile: z.array(z.object({ id: z.string(), name: z.string() })).optional().default([]),
   primaryImageFile: optionalImageFileInputSchema,
   primaryImageAlt: z.string().optional(),
   thc: numberRangeSchemaOptional,
@@ -72,7 +78,7 @@ interface SubmitCultivarModalProps {
 }
 
 export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCultivarModalProps) {
-  const { user } = useAuth(); // Though modal is for non-logged in, good to have context
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
@@ -89,8 +95,9 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
       name: '',
       genetics: undefined,
       description: '',
-      effects: '',
-      flavors: '',
+      effects: [],
+      flavors: [],
+      terpeneProfile: [],
       primaryImageFile: undefined,
       primaryImageAlt: '',
       thc: { min: undefined, max: undefined },
@@ -110,34 +117,26 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
         primaryImageUrlForFirebase = await uploadImage(data.primaryImageFile, `cultivar-images/user-submitted/${uniqueFileName}`);
       }
 
-      const effectsArray = data.effects ? data.effects.split(',').map(e => e.trim()).filter(e => e) : [];
-      const flavorsArray = data.flavors ? data.flavors.split(',').map(f => f.trim()).filter(f => f) : [];
-
       const cultivarDataForFirebase = {
         name: data.name,
-        genetics: data.genetics as Genetics, // Will be undefined if not selected, which is fine
+        genetics: data.genetics,
         description: data.description || '',
-        effects: effectsArray,
-        flavors: flavorsArray,
+        effects: data.effects || [],
+        flavors: data.flavors || [],
+        terpeneProfile: data.terpeneProfile?.map(tp => ({...tp, id: tp.id || tp.name})) || [],
         images: primaryImageUrlForFirebase ? [{
             id: `img-user-${Date.now()}`,
             url: primaryImageUrlForFirebase,
             alt: data.primaryImageAlt || `${data.name} - user submitted`,
-            'data-ai-hint': 'cannabis bud' // Generic hint for user uploads
+            'data-ai-hint': 'cannabis bud'
         }] : [],
-        thc: data.thc as CannabinoidProfile | undefined,
-        cbd: data.cbd as CannabinoidProfile | undefined,
-        // Explicitly set status and source
+        thc: data.thc,
+        cbd: data.cbd,
         status: 'User Submitted' as CultivarStatus,
         source: 'User Modal Submission',
-        // Fill in other required fields with defaults if addCultivar expects them
-        // or ensure addCultivar handles their absence.
-        // For simplicity, we'll let addCultivar handle defaults for non-provided optional fields.
-        // Essential fields like reviews, history, createdAt, updatedAt are handled by addCultivar.
       };
 
-      // @ts-ignore - addCultivar expects more fields than this simplified form provides,
-      // but it's designed to fill them with defaults. This cast silences TS for this specific case.
+      // @ts-ignore
       await addCultivar(cultivarDataForFirebase as any);
 
       toast({
@@ -177,7 +176,7 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(handleCultivarSubmit)} className="flex-grow overflow-y-auto px-6 space-y-4">
+        <form id="submit-cultivar-modal-form" onSubmit={handleSubmit(handleCultivarSubmit)} className="flex-grow overflow-y-auto px-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Cultivar Name *</Label>
             <Input id="name" {...register('name')} placeholder="e.g., Community Haze" disabled={isSubmitting} />
@@ -190,7 +189,7 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
               name="genetics"
               control={control}
               render={({ field }) => (
-                <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4 mt-1" disabled={isSubmitting}>
+                <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap space-x-4 mt-1" disabled={isSubmitting}>
                   {GENETIC_OPTIONS_MODAL.map(option => (
                     <div key={option} className="flex items-center space-x-2">
                       <RadioGroupItem value={option} id={`genetics-modal-${option}`} />
@@ -206,19 +205,110 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
             <Label htmlFor="description">Description (Optional)</Label>
             <Textarea id="description" {...register('description')} placeholder="Briefly describe the cultivar..." rows={3} disabled={isSubmitting} />
           </div>
-
+          
+          {/* Effects Checkboxes */}
           <div className="space-y-2">
-            <Label htmlFor="effects">Effects (Optional, comma-separated)</Label>
-            <Input id="effects" {...register('effects')} placeholder="e.g., Relaxed, Happy, Uplifted" disabled={isSubmitting} />
+            <Label className="flex items-center"><Smile className="mr-2 h-4 w-4 text-primary" />Effects (Optional)</Label>
+            <Controller
+              name="effects"
+              control={control}
+              render={({ field }) => (
+                <ScrollArea className="h-32 rounded-md border p-3">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {EFFECT_OPTIONS.map((effect) => (
+                      <div key={effect} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`effect-${effect}`}
+                          checked={field.value?.includes(effect)}
+                          onCheckedChange={(checked) => {
+                            const current = field.value || [];
+                            if (checked) {
+                              field.onChange([...current, effect]);
+                            } else {
+                              field.onChange(current.filter(item => item !== effect));
+                            }
+                          }}
+                          disabled={isSubmitting}
+                        />
+                        <Label htmlFor={`effect-${effect}`} className="font-normal text-sm">{effect}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            />
           </div>
 
+          {/* Flavors Checkboxes */}
           <div className="space-y-2">
-            <Label htmlFor="flavors">Flavors (Optional, comma-separated)</Label>
-            <Input id="flavors" {...register('flavors')} placeholder="e.g., Earthy, Sweet, Citrus" disabled={isSubmitting} />
+            <Label className="flex items-center"><Utensils className="mr-2 h-4 w-4 text-primary" />Flavors (Optional)</Label>
+            <Controller
+              name="flavors"
+              control={control}
+              render={({ field }) => (
+                 <ScrollArea className="h-32 rounded-md border p-3">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {FLAVOR_OPTIONS.map((flavor) => (
+                      <div key={flavor} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`flavor-${flavor}`}
+                          checked={field.value?.includes(flavor)}
+                           onCheckedChange={(checked) => {
+                            const current = field.value || [];
+                            if (checked) {
+                              field.onChange([...current, flavor]);
+                            } else {
+                              field.onChange(current.filter(item => item !== flavor));
+                            }
+                          }}
+                          disabled={isSubmitting}
+                        />
+                        <Label htmlFor={`flavor-${flavor}`} className="font-normal text-sm">{flavor}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            />
+          </div>
+          
+          {/* Terpenes Checkboxes */}
+          <div className="space-y-2">
+            <Label className="flex items-center"><Palette className="mr-2 h-4 w-4 text-primary" />Primary Terpenes (Optional)</Label>
+            <Controller
+              name="terpeneProfile"
+              control={control}
+              render={({ field }) => (
+                <ScrollArea className="h-32 rounded-md border p-3">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    {PRIMARY_TERPENES.map((terpName) => (
+                      <div key={terpName} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`terpene-${terpName}`}
+                          checked={field.value?.some(t => t.name === terpName)}
+                          onCheckedChange={(checked) => {
+                            const current = field.value || [];
+                            const terpObject = { id: terpName, name: terpName };
+                            if (checked) {
+                              field.onChange([...current, terpObject]);
+                            } else {
+                              field.onChange(current.filter(item => item.name !== terpName));
+                            }
+                          }}
+                          disabled={isSubmitting}
+                        />
+                        <Label htmlFor={`terpene-${terpName}`} className="font-normal text-sm">{terpName}</Label>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            />
           </div>
 
+
           <div className="space-y-2">
-            <Label htmlFor="primaryImageFile">Primary Image (Optional)</Label>
+            <Label htmlFor="primaryImageFile" className="flex items-center"><ImageIcon className="mr-2 h-4 w-4 text-primary" />Primary Image (Optional)</Label>
             {watchedPrimaryImageFile instanceof File && (
                 <div className="my-2">
                     <NextImage src={URL.createObjectURL(watchedPrimaryImageFile)} alt="New primary image preview" width={100} height={75} className="rounded-md border object-cover" />
@@ -231,13 +321,13 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>THC % (Optional)</Label>
+              <Label className="flex items-center"><Percent className="mr-2 h-4 w-4 text-primary" />THC % (Optional)</Label>
               <Input type="number" step="0.1" {...register('thc.min')} placeholder="Min %" disabled={isSubmitting}/>
               {errors.thc?.min && <p className="text-sm text-destructive">{errors.thc.min.message}</p>}
                {errors.thc && !errors.thc.min && !errors.thc.max && errors.thc.message && <p className="text-sm text-destructive mt-1">{errors.thc.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label>&nbsp;</Label> {/* Spacer for alignment */}
+              <Label>&nbsp;</Label>
               <Input type="number" step="0.1" {...register('thc.max')} placeholder="Max %" disabled={isSubmitting}/>
               {errors.thc?.max && <p className="text-sm text-destructive">{errors.thc.max.message}</p>}
             </div>
@@ -245,18 +335,18 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
 
            <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>CBD % (Optional)</Label>
+              <Label className="flex items-center"><Percent className="mr-2 h-4 w-4 text-primary" />CBD % (Optional)</Label>
               <Input type="number" step="0.1" {...register('cbd.min')} placeholder="Min %" disabled={isSubmitting}/>
               {errors.cbd?.min && <p className="text-sm text-destructive">{errors.cbd.min.message}</p>}
                {errors.cbd && !errors.cbd.min && !errors.cbd.max && errors.cbd.message && <p className="text-sm text-destructive mt-1">{errors.cbd.message}</p>}
             </div>
             <div className="space-y-2">
-               <Label>&nbsp;</Label> {/* Spacer for alignment */}
+               <Label>&nbsp;</Label>
               <Input type="number" step="0.1" {...register('cbd.max')} placeholder="Max %" disabled={isSubmitting}/>
               {errors.cbd?.max && <p className="text-sm text-destructive">{errors.cbd.max.message}</p>}
             </div>
           </div>
-          <div className="pb-2"></div> {/* Padding at the end of scroll area */}
+          <div className="pb-2"></div>
         </form>
 
         <DialogFooter className="p-6 pt-2 border-t">
@@ -265,7 +355,7 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
               Cancel
             </Button>
           </DialogClose>
-          <Button type="submit" form="submit-cultivar-form-in-modal" disabled={isSubmitting} onClick={handleSubmit(handleCultivarSubmit)}>
+          <Button type="submit" form="submit-cultivar-modal-form" disabled={isSubmitting}>
             {isSubmitting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -279,28 +369,3 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
   );
 }
 
-// We need to give the form an ID to link the external submit button in DialogFooter
-// So, change form onSubmit to use this ID.
-// <form id="submit-cultivar-form-in-modal" onSubmit={handleSubmit(handleCultivarSubmit)} ...>
-
-// The button in footer will be:
-// <Button type="submit" form="submit-cultivar-form-in-modal" ...>
-
-// Corrected form tag:
-// <form id="submit-cultivar-form-in-modal" onSubmit={handleSubmit(handleCultivarSubmit)} className="flex-grow overflow-y-auto px-6 space-y-4">
-// And the button:
-// <Button type="submit" form="submit-cultivar-form-in-modal" ... onClick={handleSubmit(handleCultivarSubmit)}> seems redundant.
-// Just needs form="id"
-
-// Final Check on form and button:
-// <form id="theFormId" onSubmit={handleSubmit(handleCultivarSubmit)}>
-// <Button type="submit" form="theFormId">Submit</Button> -- This is not how it works. The button type="submit" automatically submits its parent form.
-// The DialogFooter is outside the form. So it should be:
-// <form id="modal-form" onSubmit={handleSubmit(handleCultivarSubmit)} ... >
-// <Button type="submit" form="modal-form" ... >Submit</Button> in the DialogFooter.
-
-// The current structure: DialogFooter is outside the form element.
-// The fix: wrap the `handleSubmit` directly in the button's onClick.
-// Or, ensure the Button is actually of type submit and the form has an ID.
-// The `handleSubmit` passed to `<form onSubmit={...}>` is correct. The button in footer should trigger this.
-// Let's stick to the direct `onClick={handleSubmit(handleCultivarSubmit)}` on the footer button.
