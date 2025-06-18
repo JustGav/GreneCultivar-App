@@ -98,7 +98,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
   return (
     <Card 
         className={cn(
-            "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn group", // Added group here
+            "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn group", 
             isArchived && "opacity-60 bg-muted/50",
             isPublicView && "cursor-pointer"
         )}
