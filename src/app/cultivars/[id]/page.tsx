@@ -275,9 +275,9 @@ export default function CultivarDetailsPage() {
                     Estimated Pricing (per gram)
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-                    <p>Min: {cultivar.pricing.min !== undefined ? `$${cultivar.pricing.min.toFixed(2)}` : 'N/A'}</p>
-                    <p>Max: {cultivar.pricing.max !== undefined ? `$${cultivar.pricing.max.toFixed(2)}` : 'N/A'}</p>
-                    <p>Avg: {cultivar.pricing.avg !== undefined ? `$${cultivar.pricing.avg.toFixed(2)}` : 'N/A'}</p>
+                    <p>Min: {cultivar.pricing.min !== undefined ? `€${cultivar.pricing.min.toFixed(2)}` : 'N/A'}</p>
+                    <p>Max: {cultivar.pricing.max !== undefined ? `€${cultivar.pricing.max.toFixed(2)}` : 'N/A'}</p>
+                    <p>Avg: {cultivar.pricing.avg !== undefined ? `€${cultivar.pricing.avg.toFixed(2)}` : 'N/A'}</p>
                   </div>
                 </div>
               )}
@@ -428,3 +428,4 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
+

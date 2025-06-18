@@ -616,18 +616,18 @@ export default function AddCultivarPage() {
             <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <div>
-                    <Label htmlFor="pricing.min">Min Price ($)</Label>
-                    <Input id="pricing.min" type="number" step="0.01" {...register("pricing.min")} placeholder="e.g., 8.00" />
+                    <Label htmlFor="pricing.min">Min Price (€)</Label>
+                    <Input id="pricing.min" type="number" step="0.01" {...register("pricing.min")} placeholder="e.g., 7.50" />
                     {errors.pricing?.min && <p className="text-sm text-destructive mt-1">{errors.pricing.min.message}</p>}
                 </div>
                 <div>
-                    <Label htmlFor="pricing.max">Max Price ($)</Label>
-                    <Input id="pricing.max" type="number" step="0.01" {...register("pricing.max")} placeholder="e.g., 12.50" />
+                    <Label htmlFor="pricing.max">Max Price (€)</Label>
+                    <Input id="pricing.max" type="number" step="0.01" {...register("pricing.max")} placeholder="e.g., 11.50" />
                     {errors.pricing?.max && <p className="text-sm text-destructive mt-1">{errors.pricing.max.message}</p>}
                 </div>
                 <div>
-                    <Label htmlFor="pricing.avg">Average Price ($)</Label>
-                    <Input id="pricing.avg" type="number" step="0.01" {...register("pricing.avg")} placeholder="e.g., 10.25" />
+                    <Label htmlFor="pricing.avg">Average Price (€)</Label>
+                    <Input id="pricing.avg" type="number" step="0.01" {...register("pricing.avg")} placeholder="e.g., 9.75" />
                     {errors.pricing?.avg && <p className="text-sm text-destructive mt-1">{errors.pricing.avg.message}</p>}
                 </div>
                 </div>
@@ -780,3 +780,4 @@ export default function AddCultivarPage() {
     </div>
   );
 }
+
