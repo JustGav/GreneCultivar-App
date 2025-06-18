@@ -205,8 +205,14 @@ export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id'
     }
 
     const { userId, details: userDetails } = getCurrentUserHistoryDetails();
-    const eventType = cultivarDataInput.status === 'User Submitted' ? "Cultivar Submitted by User" : "Cultivar Created";
+    let eventType = cultivarDataInput.status === 'User Submitted' ? "Cultivar Submitted by User" : "Cultivar Created";
+    const sourceInfo = cultivarDataInput.source || (userId ? 'Authenticated User Submission' : 'System Generated');
     
+    // If 'source' is an email, we treat it as a user submission even if status isn't 'User Submitted' yet
+    if (cultivarDataInput.source && cultivarDataInput.source.includes('@')) {
+        eventType = "Cultivar Submitted by User";
+    }
+
     const initialHistoryEntry: CultivarHistoryEntry = {
         timestamp: new Date().toISOString(),
         event: eventType,
@@ -214,7 +220,7 @@ export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id'
         details: { 
           ...userDetails,
           status: cultivarDataInput.status || 'recentlyAdded', 
-          source: cultivarDataInput.source || (userId ? 'Authenticated User' : 'System')
+          source: sourceInfo // Use the passed source, which could be an email
         }
     };
 
@@ -250,7 +256,6 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
   try {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
     
-    // Fetch the current document to compare
     const currentDocSnap = await getDoc(cultivarDocRef);
     if (!currentDocSnap.exists()) {
       throw new Error(`Cultivar with ID ${id} not found for update.`);
@@ -264,23 +269,23 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
         const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
         expectedAICategories.forEach(catKey => {
             if (ai[catKey] === undefined) {
-                (ai[catKey] as any) = [];
+                (ai[catKey] as any) = []; // Ensure all AI categories are arrays if parent exists
             }
         });
     }
 
     const changedFields: string[] = [];
+    const fieldChangesDetails: Record<string, {old: any, new: any}> = {};
+
     for (const key in dataToUpdate) {
-      if (key === 'updatedAt' || key === 'history') continue; // Firestore handles updatedAt, history is appended
+      if (key === 'updatedAt' || key === 'history' || key === 'reviews' || key === 'createdAt') continue;
 
       const oldValue = currentCultivarData[key];
       const newValue = dataToUpdate[key];
 
-      // Simple direct comparison for primitive types might be insufficient for objects/arrays.
-      // Using JSON.stringify for a pragmatic check if complex structures have changed.
-      // This won't tell *what* inside the object/array changed, just *that* it changed.
       if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
         changedFields.push(key);
+        fieldChangesDetails[key] = { old: oldValue, new: newValue };
       }
     }
 
@@ -290,27 +295,22 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
     const detailsForHistory: Record<string, any> = { ...userDetails };
 
     if (changedFields.length > 0) {
-      detailsForHistory.updatedFields = changedFields.join(', ');
+      detailsForHistory.updatedFields = changedFields; 
+      detailsForHistory.changes = fieldChangesDetails; 
     } else {
-      // If no fields were technically changed according to the diff, but an update was triggered
-      // (e.g., form was dirty due to re-selection of same values, or just a "save" click)
-      // we can log it as a "Re-save" or similar, or just proceed with a generic update.
-      // For now, if changedFields is empty, we'll just note "No explicit field changes detected".
       detailsForHistory.updatedFields = 'No explicit field changes detected by diff.';
     }
     
-    // Handle status change specifically within the history if it's part of this update
     if (dataToUpdate.status && dataToUpdate.status !== currentCultivarData.status) {
-        eventMessage = `Status changed to ${dataToUpdate.status}`;
-        detailsForHistory.newStatus = dataToUpdate.status;
-        detailsForHistory.oldStatus = currentCultivarData.status;
-        // Remove 'status' from updatedFields if it's already covered by the event message
-        if(detailsForHistory.updatedFields && typeof detailsForHistory.updatedFields === 'string'){
-            detailsForHistory.updatedFields = detailsForHistory.updatedFields.split(', ').filter((f: string) => f !== 'status').join(', ');
-            if (!detailsForHistory.updatedFields) delete detailsForHistory.updatedFields;
+        eventMessage = `Status changed from ${currentCultivarData.status || 'unknown'} to ${dataToUpdate.status}`;
+        // Add specific status change to details, but don't overwrite other field changes
+        detailsForHistory.statusChange = { old: currentCultivarData.status, new: dataToUpdate.status };
+        // Remove 'status' from generic updatedFields if it's now part of the event message
+        if (Array.isArray(detailsForHistory.updatedFields)) {
+           detailsForHistory.updatedFields = detailsForHistory.updatedFields.filter((f: string) => f !== 'status');
+           if (detailsForHistory.updatedFields.length === 0) delete detailsForHistory.updatedFields;
         }
     }
-
 
     const historyEntry: CultivarHistoryEntry = {
         timestamp: new Date().toISOString(),
@@ -340,7 +340,7 @@ export const updateCultivarStatus = async (id: string, status: CultivarStatus): 
 
     const historyEntry: CultivarHistoryEntry = {
         timestamp: new Date().toISOString(),
-        event: `Status changed to ${status}`,
+        event: `Status changed from ${oldStatus || 'unknown'} to ${status}`,
         userId: userId,
         details: { ...userDetails, newStatus: status, oldStatus: oldStatus }
     };
@@ -361,22 +361,27 @@ export const updateMultipleCultivarStatuses = async (cultivarIds: string[], newS
   const timestamp = new Date().toISOString();
   const { userId, details: userDetails } = getCurrentUserHistoryDetails();
 
-  // To get oldStatus for each, we'd need to fetch them first. For simplicity, we'll omit oldStatus for mass updates.
-  // Or, add a detail that this was a mass update.
-  cultivarIds.forEach(id => {
+  // To get oldStatus for each, we'd need to fetch them first. 
+  // For now, we'll mark oldStatus as 'batch-updated' or fetch if critical.
+  // For simplicity, let's just indicate it's a batch update.
+  for (const id of cultivarIds) {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
+     // Fetching old status for each item in batch for more accurate logging
+    const docSnap = await getDoc(cultivarDocRef);
+    const oldStatus = docSnap.exists() ? docSnap.data().status : 'unknown';
+
     const historyEntry: CultivarHistoryEntry = {
       timestamp,
-      event: `Status mass-changed to ${newStatus}`,
+      event: `Status mass-changed from ${oldStatus || 'unknown'} to ${newStatus}`,
       userId: userId,
-      details: { ...userDetails, newStatus: newStatus, operation: 'batch update' }
+      details: { ...userDetails, newStatus: newStatus, oldStatus: oldStatus, operation: 'batch update' }
     };
     batchWrite.update(cultivarDocRef, {
       status: newStatus,
       updatedAt: serverTimestamp(),
       history: arrayUnion(historyEntry)
     });
-  });
+  }
 
   try {
     await batchWrite.commit();
