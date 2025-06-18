@@ -1,6 +1,70 @@
 
 import type { Cultivar, Terpene } from '@/types';
 
+export const TERPENE_CATEGORIES = {
+  PRIMARY: "Primary (Major) Terpenes",
+  SECONDARY: "Secondary (Minor) Terpenes",
+  ADDITIONAL: "Additional Terpenes (often at trace levels)",
+};
+
+export const TERPENE_OPTIONS: { name: string; category: string }[] = [
+  { name: "Myrcene", category: TERPENE_CATEGORIES.PRIMARY },
+  { name: "Beta-Caryophyllene", category: TERPENE_CATEGORIES.PRIMARY },
+  { name: "Limonene", category: TERPENE_CATEGORIES.PRIMARY },
+  { name: "Alpha-Pinene", category: TERPENE_CATEGORIES.PRIMARY },
+  { name: "Beta-Pinene", category: TERPENE_CATEGORIES.PRIMARY },
+  { name: "Linalool", category: TERPENE_CATEGORIES.PRIMARY },
+  { name: "Humulene", category: TERPENE_CATEGORIES.PRIMARY },
+  { name: "Terpinolene", category: TERPENE_CATEGORIES.PRIMARY },
+  { name: "Ocimene", category: TERPENE_CATEGORIES.PRIMARY },
+
+  { name: "Nerolidol", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Valencene", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Camphene", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Sabinene", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Alpha-Terpineol", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Geraniol", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Guaiol", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Camphor", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Bisabolol", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Farnesene", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Phellandrene", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Isopulegol", category: TERPENE_CATEGORIES.SECONDARY },
+  { name: "Eucalyptol (1,8-Cineole)", category: TERPENE_CATEGORIES.SECONDARY },
+
+  { name: "Borneol", category: TERPENE_CATEGORIES.ADDITIONAL },
+  { name: "Cedrene", category: TERPENE_CATEGORIES.ADDITIONAL },
+  { name: "Fenchol", category: TERPENE_CATEGORIES.ADDITIONAL },
+  { name: "Terpineol", category: TERPENE_CATEGORIES.ADDITIONAL },
+  { name: "Bergamotene", category: TERPENE_CATEGORIES.ADDITIONAL },
+];
+
+export const groupTerpenesByCategory = () => {
+  const grouped = TERPENE_OPTIONS.reduce((acc, terpene) => {
+    const category = terpene.category;
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(terpene.name);
+    return acc;
+  }, {} as Record<string, string[]>);
+  
+  // Ensure consistent order of categories
+  const orderedCategories = [
+    TERPENE_CATEGORIES.PRIMARY,
+    TERPENE_CATEGORIES.SECONDARY,
+    TERPENE_CATEGORIES.ADDITIONAL,
+  ];
+
+  return orderedCategories
+    .filter(categoryLabel => grouped[categoryLabel]) // Only include categories that have terpenes
+    .map(categoryLabel => ({
+      label: categoryLabel,
+      options: grouped[categoryLabel].sort(),
+  }));
+};
+
+
 export const mockCultivars: Cultivar[] = [
   {
     id: '1',
@@ -34,9 +98,9 @@ export const mockCultivars: Cultivar[] = [
       maxHeight: 100,
       minMoisture: 10,
       maxMoisture: 12,
-      yieldPerPlant: { min: 30, max: 60 }, // g
-      yieldPerWatt: { min: 0.5, max: 1.0 }, // g/W
-      yieldPerM2: { min: 300, max: 500 } // g/m²
+      yieldPerPlant: { min: 30, max: 60 }, 
+      yieldPerWatt: { min: 0.5, max: 1.0 }, 
+      yieldPerM2: { min: 300, max: 500 } 
     },
     additionalInfo: {
       geneticCertificate: [
@@ -55,7 +119,7 @@ export const mockCultivars: Cultivar[] = [
     },
     terpeneProfile: [
       { id: 'tp1-1-gls', name: 'Myrcene', description: 'Earthy, musky, herbal', percentage: 0.8 },
-      { id: 'tp1-2-gls', name: 'Caryophyllene', description: 'Spicy, peppery, woody', percentage: 0.5 },
+      { id: 'tp1-2-gls', name: 'Beta-Caryophyllene', description: 'Spicy, peppery, woody', percentage: 0.5 },
       { id: 'tp1-3-gls', name: 'Limonene', description: 'Citrus, lemon, fresh', percentage: 0.3 },
     ]
   },
@@ -89,8 +153,8 @@ export const mockCultivars: Cultivar[] = [
       maxHeight: 180,
       minMoisture: 9,
       maxMoisture: 11,
-      yieldPerWatt: { min: 0.8, max: 1.2 }, // g/W
-      yieldPerM2: { min: 400, max: 600 } // g/m²
+      yieldPerWatt: { min: 0.8, max: 1.2 }, 
+      yieldPerM2: { min: 400, max: 600 } 
     },
     additionalInfo: {
       plantPicture: [
@@ -133,11 +197,13 @@ export const mockCultivars: Cultivar[] = [
     },
     plantCharacteristics: {
       minHeight: 80,
+      maxHeight: 150,
       minMoisture: 10,
-      yieldPerPlant: { min: 25, max: 50 } //g
+      maxMoisture: 12,
+      yieldPerPlant: { min: 25, max: 50 } 
     },
     terpeneProfile: [
-      { id: 'tp3-1-mhb', name: 'Pinene', description: 'Pine, woody, sharp', percentage: 0.7 },
+      { id: 'tp3-1-mhb', name: 'Alpha-Pinene', description: 'Pine, woody, sharp', percentage: 0.7 },
       { id: 'tp3-2-mhb', name: 'Humulene', description: 'Earthy, woody, spicy', percentage: 0.4 },
     ]
   },
@@ -160,6 +226,8 @@ export const mockCultivars: Cultivar[] = [
       harvest: "After 10-12 weeks of flowering"
     },
     plantCharacteristics: {
+        minHeight: 120,
+        maxHeight: 200,
         yieldPerPlant: { min: 50, max: 90 }, 
         yieldPerWatt: { min: 0.7, max: 1.1 }, 
     },
@@ -167,8 +235,8 @@ export const mockCultivars: Cultivar[] = [
       geneticCertificate: [
         { id: 'gc4-1', name: 'CPP_Genetics_Official.pdf', url: 'https://placehold.co/200x100.png?text=CPP_Genetics.pdf', fileType: 'pdf', category: 'geneticCertificate' },
       ]
-    }
-    // No terpene profile for this one to test empty state
+    },
+    terpeneProfile: []
   },
   {
     id: '5',
@@ -193,6 +261,8 @@ export const mockCultivars: Cultivar[] = [
     plantCharacteristics: {
       minHeight: 30,
       maxHeight: 70,
+      minMoisture: 10,
+      maxMoisture: 13,
       yieldPerPlant: { min: 15, max: 30 },
     },
     terpeneProfile: [

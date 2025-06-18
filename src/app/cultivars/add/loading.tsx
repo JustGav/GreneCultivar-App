@@ -57,7 +57,7 @@ export default function AddCultivarLoading() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <Skeleton className="h-4 w-1/3 mb-1" /> {/* Label Name */}
-                    <Skeleton className="h-10 w-full" /> {/* Name Input */}
+                    <Skeleton className="h-10 w-full" /> {/* Name Select/Input */}
                 </div>
                 <div>
                     <Skeleton className="h-4 w-1/2 mb-1" /> {/* Label Description */}

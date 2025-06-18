@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { mockCultivars } from '@/lib/mock-data';
+import { mockCultivars, groupTerpenesByCategory } from '@/lib/mock-data';
 import type { Cultivar, Genetics, CannabinoidProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, YieldProfile, Terpene } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette } from 'lucide-react';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
@@ -57,7 +58,7 @@ const cultivarFormSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }),
   genetics: z.enum(GENETIC_OPTIONS, { required_error: "Genetics type is required." }),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
-  effects: z.string().optional(), // Comma-separated
+  effects: z.string().optional(), 
   
   thc: numberRangeSchema,
   cbd: numberRangeSchema,
@@ -96,6 +97,8 @@ const cultivarFormSchema = z.object({
 });
 
 type CultivarFormData = z.infer<typeof cultivarFormSchema>;
+
+const categorizedTerpenes = groupTerpenesByCategory();
 
 export default function AddCultivarPage() {
   const router = useRouter();
@@ -232,7 +235,7 @@ export default function AddCultivarPage() {
         <Input id={`${String(fieldPrefix)}.min`} type="number" step="0.1" {...register(`${String(fieldPrefix)}.min` as any)} placeholder="e.g., 18.0" />
         {/* @ts-ignore */}
         {errors[fieldPrefix as keyof CultivarFormData]?.min && <p className="text-sm text-destructive mt-1">{errors[fieldPrefix as keyof CultivarFormData]?.min?.message}</p>}
-        {/* @ts-ignore Handle path errors for nested objects */}
+        {/* @ts-ignore */}
         {fieldPrefix.includes('.') && errors[fieldPrefix.split('.')[0] as keyof CultivarFormData]?.[fieldPrefix.split('.')[1] as any]?.min && <p className="text-sm text-destructive mt-1">{errors[fieldPrefix.split('.')[0]as keyof CultivarFormData]?.[fieldPrefix.split('.')[1]as any]?.min?.message}</p>}
         {/* @ts-ignore */}
         {errors[fieldPrefix as keyof CultivarFormData]?.message && <p className="text-sm text-destructive mt-1">{errors[fieldPrefix as keyof CultivarFormData]?.message}</p>}
@@ -361,11 +364,34 @@ export default function AddCultivarPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {terpeneProfileFields.map((field, index) => (
-              <div key={field.id} className="space-y-2 p-4 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
+              <div key={field.id} className="space-y-3 p-4 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                   <div>
                     <Label htmlFor={`terpeneProfile.${index}.name`}>Terpene Name *</Label>
-                    <Input {...register(`terpeneProfile.${index}.name`)} placeholder="e.g., Myrcene" />
+                    <Controller
+                      name={`terpeneProfile.${index}.name`}
+                      control={control}
+                      defaultValue="" 
+                      render={({ field: controllerField }) => (
+                        <Select onValueChange={controllerField.onChange} value={controllerField.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a terpene" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categorizedTerpenes.map(category => (
+                              <SelectGroup key={category.label}>
+                                <SelectLabel>{category.label}</SelectLabel>
+                                {category.options.map(terpeneName => (
+                                  <SelectItem key={terpeneName} value={terpeneName}>
+                                    {terpeneName}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                     {/* @ts-ignore */}
                     {errors.terpeneProfile?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile?.[index]?.name?.message}</p>}
                   </div>
@@ -435,7 +461,7 @@ export default function AddCultivarPage() {
                         {getNestedError("plantCharacteristics.minHeight")?.message && <p className="text-sm text-destructive mt-1">{getNestedError("plantCharacteristics.minHeight")?.message}</p>}
                     </div>
                      <div>
-                        <Label className="font-medium mb-1 block">Max Height (cm)</Label> {/* Changed Label for clarity */}
+                        <Label className="font-medium mb-1 block">Max Height (cm)</Label> 
                         <Input id="plantCharacteristics.maxHeight" type="number" step="0.1" {...register("plantCharacteristics.maxHeight")} placeholder="e.g., 120" />
                          {/* @ts-ignore */}
                         {getNestedError("plantCharacteristics.maxHeight")?.message && <p className="text-sm text-destructive mt-1">{getNestedError("plantCharacteristics.maxHeight")?.message}</p>}
@@ -450,7 +476,7 @@ export default function AddCultivarPage() {
                          {getNestedError("plantCharacteristics.minMoisture")?.message && <p className="text-sm text-destructive mt-1">{getNestedError("plantCharacteristics.minMoisture")?.message}</p>}
                     </div>
                      <div>
-                        <Label className="font-medium mb-1 block">Max Moisture (%)</Label> {/* Changed Label for clarity */}
+                        <Label className="font-medium mb-1 block">Max Moisture (%)</Label> 
                          <Input id="plantCharacteristics.maxMoisture" type="number" step="0.1" {...register("plantCharacteristics.maxMoisture")} placeholder="e.g., 12" />
                           {/* @ts-ignore */}
                          {getNestedError("plantCharacteristics.maxMoisture")?.message && <p className="text-sm text-destructive mt-1">{getNestedError("plantCharacteristics.maxMoisture")?.message}</p>}
