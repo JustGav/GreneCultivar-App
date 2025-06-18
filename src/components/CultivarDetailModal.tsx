@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import StarRating from './StarRating';
 import { Leaf, Percent, Smile, ThermometerSun, ThermometerSnowflake, Utensils, ImageOff, Network } from 'lucide-react';
 import { Separator } from './ui/separator';
+import { cn } from '@/lib/utils';
 
 interface CultivarDetailModalProps {
   cultivar: Cultivar | null;
@@ -31,6 +32,9 @@ const calculateAverageRating = (reviews: Cultivar['reviews'] = []): number => {
   const total = reviews.reduce((acc, review) => acc + review.rating, 0);
   return Math.round((total / reviews.length) * 10) / 10;
 };
+
+const NEGATIVE_EFFECTS_MODAL = ['Dry Mouth', 'Dry Eyes', 'Paranoid', 'Anxious', 'Dizzy'];
+
 
 export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cultivarNameMap }: CultivarDetailModalProps) {
   if (!cultivar) {
@@ -109,9 +113,22 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                 <div>
                   <h3 className="font-semibold text-lg flex items-center mb-2"><Smile size={20} className="mr-2 text-accent"/>Effects</h3>
                   <div className="flex flex-wrap gap-1">
-                    {cultivar.effects.slice(0, 5).map(effect => (
-                      <Badge key={effect} variant="outline" className="bg-accent/10 border-accent/30 text-black">{effect}</Badge>
-                    ))}
+                    {cultivar.effects.slice(0, 5).map(effect => {
+                      const isNegative = NEGATIVE_EFFECTS_MODAL.includes(effect);
+                      return (
+                        <Badge 
+                          key={effect} 
+                          className={cn(
+                            "text-black", // Ensure text is black
+                            isNegative 
+                              ? 'bg-destructive/10 border-destructive/30' // Red-ish for negative
+                              : 'bg-primary/10 border-primary/30'      // Green-ish for positive
+                          )}
+                        >
+                          {effect}
+                        </Badge>
+                      );
+                    })}
                     {cultivar.effects.length > 5 && <Badge variant="outline">...</Badge>}
                   </div>
                 </div>
