@@ -8,6 +8,7 @@ import type { Cultivar, CultivarHistoryEntry, DisplayLogEntry } from '@/types';
 import { getCultivars } from '@/services/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label'; // Added import
 import {
   Table,
   TableBody,
