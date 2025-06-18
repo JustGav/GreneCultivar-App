@@ -8,7 +8,7 @@ import type { Cultivar, CultivarHistoryEntry, DisplayLogEntry } from '@/types';
 import { getCultivars } from '@/services/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Added import
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -45,7 +45,7 @@ const EVENT_TYPE_OPTIONS = [
   "Cultivar Created",
   "Cultivar Submitted by User",
   "Cultivar Details Updated",
-  "Status changed", // Generic, specific status changes will be detailed
+  "Status changed", 
   "Review Added",
   "Cultivar Seeded",
 ];
@@ -59,11 +59,11 @@ export default function LogsPage() {
   const [allLogs, setAllLogs] = useState<DisplayLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [cultivarNameFilter, setCultivarNameFilter] = useState('');
-  const [userFilter, setUserFilter] = useState(''); // Searches userId or email/name in details
+  const [userFilter, setUserFilter] = useState(''); 
   const [eventTypeFilters, setEventTypeFilters] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortAscending, setSortAscending] = useState(false); // false = newest first
+  const [sortAscending, setSortAscending] = useState(false); 
 
 
   useEffect(() => {
@@ -80,12 +80,12 @@ export default function LogsPage() {
       cultivars.forEach(cultivar => {
         (cultivar.history || []).forEach(entry => {
           let userDisplay = 'System/Unknown';
-          if (entry.userId) {
+          if (entry.details?.seededBy === 'system') {
+            userDisplay = 'System (Seed)';
+          } else if (entry.userId) {
             userDisplay = entry.details?.userEmail || entry.details?.userName || entry.userId;
           } else if (entry.details?.userSource) {
             userDisplay = entry.details.userSource;
-          } else if (entry.details?.seededBy === 'system') {
-            userDisplay = 'System (Seed)';
           }
           
           logs.push({
@@ -96,7 +96,7 @@ export default function LogsPage() {
           });
         });
       });
-      // Initial sort: newest first
+      
       logs.sort((a, b) => parseISO(b.timestamp).getTime() - parseISO(a.timestamp).getTime());
       setAllLogs(logs);
     } catch (error) {
@@ -125,7 +125,10 @@ export default function LogsPage() {
 
         const nameMatch = cultivarNameFilter ? log.cultivarName.toLowerCase().includes(cultivarNameFilter.toLowerCase()) : true;
         const userMatch = userFilter ? log.userDisplay.toLowerCase().includes(userFilter.toLowerCase()) || (log.userId && log.userId.toLowerCase().includes(userFilter.toLowerCase())) : true;
-        const eventTypeMatch = eventTypeFilters.length > 0 ? eventTypeFilters.some(filterEvent => log.event && log.event.includes(filterEvent)) : true;
+        
+        const eventTypeMatch = eventTypeFilters.length > 0 
+          ? eventTypeFilters.some(filterEvent => log.event && log.event.includes(filterEvent)) 
+          : true;
         
         let dateMatch = true;
         if (dateRange?.from && dateRange?.to) {
@@ -169,7 +172,7 @@ export default function LogsPage() {
   };
   
   useEffect(() => {
-    setCurrentPage(1); // Reset to first page whenever filters change
+    setCurrentPage(1); 
   }, [cultivarNameFilter, userFilter, eventTypeFilters, dateRange, sortAscending]);
 
 
@@ -319,7 +322,7 @@ export default function LogsPage() {
               {paginatedLogs.map((log, index) => (
                 <TableRow key={`${log.cultivarId}-${log.timestamp}-${index}`}>
                   <TableCell>{format(parseISO(log.timestamp), "MMM dd, yyyy, HH:mm:ss")}</TableCell>
-                  <TableCell>{log.event}</TableCell>
+                  <TableCell>{log.event || '(No Event Logged)'}</TableCell>
                   <TableCell>
                      <Link href={`/cultivars/${log.cultivarId}`} className="text-primary hover:underline" target="_blank">
                         {log.cultivarName}
@@ -327,11 +330,21 @@ export default function LogsPage() {
                   </TableCell>
                   <TableCell>{log.userDisplay}</TableCell>
                   <TableCell className="text-xs max-w-xs truncate">
-                    {log.details && Object.keys(log.details).length > 0 
-                      ? Object.entries(log.details)
-                          .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
-                          .join('; ')
-                      : 'N/A'}
+                    {
+                      (log.event === 'Cultivar Seeded' && log.userDisplay === 'System (Seed)')
+                      ? 'System Action'
+                      : (log.details && Object.keys(log.details).length > 0)
+                        ? Object.entries(log.details)
+                            .filter(([key]) => !(log.event === 'Cultivar Seeded' && key === 'seededBy')) // Hide 'seededBy' if event already states it
+                            .map(([key, value]) => {
+                              if (key === 'changes' && typeof value === 'object' && value !== null) {
+                                return `Changes: ${Object.keys(value).join(', ')}`;
+                              }
+                              return `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`;
+                            })
+                            .join('; ') || 'N/A'
+                        : 'N/A'
+                    }
                   </TableCell>
                 </TableRow>
               ))}
