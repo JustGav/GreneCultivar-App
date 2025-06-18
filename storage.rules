@@ -1,41 +1,36 @@
-
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Cultivar images directly added by admin
-    match /cultivar-images/{imageId} {
-      allow read: if true; // Publicly readable
+    // User submitted images (public write with validation)
+    // This path is specifically for images uploaded via the "Submit Cultivar" modal by any user.
+    match /cultivar-images/user-submitted/{fileName} {
+      allow read: if request.auth != null; // Admins can read these for moderation
+      allow write: if request.resource.size < 5 * 1024 * 1024 // Max 5MB
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Main cultivar images and additional images (admin-only uploads)
+    // This covers:
+    // - cultivar-images/your-image-id.jpg
+    // - cultivar-images/additional/your-image-id.jpg
+    // - etc.
+    match /cultivar-images/{path=**} {
+      allow read: if true; // All images here are publicly readable once uploaded
       allow write: if request.auth != null; // Only authenticated users (admins) can write
     }
 
-    // Additional cultivar images directly added by admin (e.g., plantPicture, etc.)
-    match /cultivar-images/additional/{imageId} {
-      allow read: if true; // Publicly readable
+    // Cultivar documents (admin-only uploads)
+    // This covers:
+    // - cultivar-docs/certificates/your-doc-id.pdf
+    // - cultivar-docs/cannabinoid-info/your-doc-id.pdf
+    // - etc.
+    match /cultivar-docs/{path=**} {
+      allow read: if true; // Documents are publicly readable (adjust if some are sensitive)
       allow write: if request.auth != null; // Only authenticated users (admins) can write
     }
 
-    // Cultivar documents (certificates, info sheets) directly added by admin
-    match /cultivar-docs/{category}/{docId} {
-      allow read: if true; // Publicly readable (adjust if some docs should be private)
-      allow write: if request.auth != null; // Only authenticated users (admins) can write
-    }
-
-    // User submitted images (go to a specific path for review)
-    match /cultivar-images/user-submitted/{submissionImageId} {
-      // Allow anyone to write (submit an image) with size and type validation
-      allow write: if request.resource.size < 5 * 1024 * 1024 && // Max 5MB
-                      request.resource.contentType.matches('image/.*'); // Only images
-
-      // Only authenticated users (admins) can read or delete these submitted images
-      allow read, delete: if request.auth != null;
-    }
-
-    // Default deny all other paths for security
-    match /{allPaths=**} {
-      allow read, write: if false;
-    }
+    // By default, all other paths are denied if not explicitly matched above.
   }
 }
-
-    
