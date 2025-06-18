@@ -44,7 +44,7 @@ const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
 
 export interface CultivarInfoForMap {
   id: string;
-  name: string; // Added name here for easier access if needed, though key is name.toLowerCase()
+  name: string; 
   status: CultivarStatus;
   parents: string[];
   children: string[];
@@ -53,7 +53,7 @@ export interface CultivarInfoForMap {
 export default function CultivarBrowserPage() {
   const [allCultivars, setAllCultivars] = useState<Cultivar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  // searchTerm and handleSearchTermChange are removed as search is now in header
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
   const [showArchived, setShowArchived] = useState(false);
@@ -119,7 +119,7 @@ export default function CultivarBrowserPage() {
   }, []);
 
   const resetFilters = () => {
-    setSearchTerm('');
+    // setSearchTerm(''); // No longer needed here
     setSelectedEffects([]);
     setSelectedFlavors([]);
     setCurrentPage(1);
@@ -128,20 +128,22 @@ export default function CultivarBrowserPage() {
   const filteredAndSortedCultivars = useMemo(() => {
     let baseFilteredCultivars: Cultivar[];
 
-    if (!user) { // Not logged in - public view rules
+    if (!user && !authLoading) { 
       baseFilteredCultivars = allCultivars.filter(c => c.status === 'Live' || c.status === 'featured');
-    } else { // Logged in - admin/user view rules
+    } else if (user) { 
       if (!showArchived) {
         baseFilteredCultivars = allCultivars.filter(c => c.status !== 'archived');
       } else {
         baseFilteredCultivars = [...allCultivars];
       }
+    } else { // Still authLoading, or some other indeterminate state, show nothing or loading
+        baseFilteredCultivars = [];
     }
 
+
     let furtherFilteredCultivars = baseFilteredCultivars;
-    if (searchTerm) {
-      furtherFilteredCultivars = furtherFilteredCultivars.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
+    // Search term filtering is removed from here; will be handled by header/global search if implemented
+    
     if (selectedEffects.length > 0) {
       furtherFilteredCultivars = furtherFilteredCultivars.filter(c => c.effects && selectedEffects.every(eff => c.effects.includes(eff)));
     }
@@ -150,7 +152,8 @@ export default function CultivarBrowserPage() {
     }
 
     return [...furtherFilteredCultivars].sort((a, b) => {
-      if (!user) { // Public view specific sorting for featured
+      const isPublic = !user; // Simplified check for public view sorting
+      if (isPublic) {
         const isAFeatured = a.status === 'featured';
         const isBFeatured = b.status === 'featured';
         if (isAFeatured && !isBFeatured) return -1;
@@ -176,7 +179,7 @@ export default function CultivarBrowserPage() {
         default: return 0;
       }
     });
-  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived, user]);
+  }, [allCultivars, selectedEffects, selectedFlavors, sortOption, showArchived, user, authLoading]);
 
 
   const totalPages = Math.ceil(filteredAndSortedCultivars.length / ITEMS_PER_PAGE);
@@ -195,10 +198,7 @@ export default function CultivarBrowserPage() {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
 
-  const handleSearchTermChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    setCurrentPage(1);
-  };
+  // handleSearchTermChange is removed
 
   const handleSortChange = (value: string) => {
     setSortOption(value as SortOption);
@@ -239,18 +239,9 @@ export default function CultivarBrowserPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 items-end pt-4">
-          <div className="relative lg:col-span-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search by name..."
-              value={searchTerm}
-              onChange={handleSearchTermChange}
-              className="pl-10"
-              aria-label="Search by cultivar name"
-            />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 items-end pt-4">
+          {/* Search input removed from here */}
+          <div></div> {/* Placeholder for layout if needed */}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -269,14 +260,11 @@ export default function CultivarBrowserPage() {
           </DropdownMenu>
           
           {(!authLoading && user) && (
-            <Button onClick={handleShowArchivedToggle} variant="outline" className="w-full">
+            <Button onClick={handleShowArchivedToggle} variant="outline" className="w-full md:w-auto">
               {showArchived ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
               {showArchived ? 'Hide Archived' : 'Show Archived'}
             </Button>
           )}
-          {(authLoading || !user) && <div className="lg:col-span-1"></div>}
-
-
         </div>
 
         <Accordion type="single" collapsible className="w-full">
@@ -344,7 +332,7 @@ export default function CultivarBrowserPage() {
       {isLoading || authLoading ? (
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-          <p className="text-lg text-muted-foreground">{authLoading ? 'Checking authentication...' : 'Loading cultivars...'}</p>
+          <p className="text-lg text-muted-foreground">{authLoading && !user ? 'Checking authentication...' : 'Loading cultivars...'}</p>
         </div>
       ) : paginatedCultivars.length > 0 ? (
         <>
