@@ -9,17 +9,18 @@ import { EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data';
 import { getCultivars, updateCultivarStatus, updateMultipleCultivarStatuses } from '@/services/firebase';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, Archive, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown, AlertTriangle, Edit, ImageOff, ShieldCheck, Hourglass, Info as InfoIcon, Star as StarIcon, CheckSquare, Square } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, Archive, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown, AlertTriangle, Edit, ImageOff, ShieldCheck, Hourglass, Info as InfoIcon, Star as StarIcon, CheckSquare, Square, Users, ChevronDown } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuTrigger,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from '@/components/ui/label';
@@ -46,6 +47,7 @@ import { cn } from '@/lib/utils';
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
 const ITEMS_PER_PAGE = 10;
+const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Hybrid', 'Ruderalis'];
 
 const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
   if (!reviews || reviews.length === 0) return 0;
@@ -53,22 +55,25 @@ const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
   return total / reviews.length;
 };
 
-const STATUS_OPTIONS_ORDERED: CultivarStatus[] = ['Live', 'Featured', 'recentlyAdded', 'archived'];
-
+const STATUS_OPTIONS_ORDERED: CultivarStatus[] = ['Live', 'featured', 'User Submitted', 'recentlyAdded', 'Hide', 'archived'];
 
 const STATUS_LABELS: Record<CultivarStatus, string> = {
-  recentlyAdded: 'Recently Added',
   Live: 'Live',
-  archived: 'Archived',
   featured: 'Featured',
+  recentlyAdded: 'Recently Added',
+  'User Submitted': 'User Submitted',
+  Hide: 'Hidden',
+  archived: 'Archived',
 };
 
 const getStatusBadgeVariant = (status?: CultivarStatus): "default" | "secondary" | "destructive" | "outline" => {
   if (!status) return 'outline';
   switch (status) {
     case 'Live': return 'default';
-    case 'featured': return 'default'; // Using default for featured for now, can be customized
+    case 'featured': return 'default';
+    case 'User Submitted': return 'secondary';
     case 'recentlyAdded': return 'secondary';
+    case 'Hide': return 'destructive';
     case 'archived': return 'destructive';
     default: return 'outline';
   }
@@ -79,7 +84,9 @@ const getStatusIcon = (status?: CultivarStatus) => {
   switch (status) {
     case 'Live': return <ShieldCheck size={14} className="mr-1 text-green-500" />;
     case 'featured': return <StarIcon size={14} className="mr-1 text-yellow-500 fill-yellow-500" />;
+    case 'User Submitted': return <Users size={14} className="mr-1" />;
     case 'recentlyAdded': return <Hourglass size={14} className="mr-1" />;
+    case 'Hide': return <EyeOff size={14} className="mr-1" />;
     case 'archived': return <Archive size={14} className="mr-1" />;
     default: return <InfoIcon size={14} className="mr-1" />;
   }
@@ -94,7 +101,8 @@ export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
-  const [showArchived, setShowArchived] = useState(false);
+  const [selectedGenetics, setSelectedGenetics] = useState<Genetics[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<CultivarStatus[]>([]);
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCultivarIds, setSelectedCultivarIds] = useState<string[]>([]);
@@ -148,6 +156,20 @@ export default function DashboardPage() {
     setCurrentPage(1);
   };
 
+  const handleGeneticToggle = (genetic: Genetics) => {
+    setSelectedGenetics(prev =>
+      prev.includes(genetic) ? prev.filter(g => g !== genetic) : [...prev, genetic]
+    );
+    setCurrentPage(1);
+  };
+
+  const handleStatusToggle = (status: CultivarStatus) => {
+    setSelectedStatuses(prev =>
+      prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+    );
+    setCurrentPage(1);
+  };
+
   const handleCultivarStatusChange = useCallback((cultivarId: string, newStatus: CultivarStatus) => {
     setAllCultivars(prevCultivars =>
       prevCultivars.map(c =>
@@ -160,14 +182,20 @@ export default function DashboardPage() {
     setSearchTerm('');
     setSelectedEffects([]);
     setSelectedFlavors([]);
+    setSelectedGenetics([]);
+    setSelectedStatuses([]);
     setCurrentPage(1);
   };
 
   const filteredAndSortedCultivars = useMemo(() => {
     let filtered = allCultivars;
 
-    if (!showArchived) {
-      filtered = filtered.filter(c => c.status !== 'archived');
+    if (selectedStatuses.length > 0) {
+      filtered = filtered.filter(c => selectedStatuses.includes(c.status));
+    }
+    
+    if (selectedGenetics.length > 0) {
+      filtered = filtered.filter(c => selectedGenetics.includes(c.genetics));
     }
 
     if (searchTerm) {
@@ -202,7 +230,7 @@ export default function DashboardPage() {
         default: return 0;
       }
     });
-  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived]);
+  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, selectedGenetics, selectedStatuses, sortOption]);
 
   const totalPages = Math.ceil(filteredAndSortedCultivars.length / ITEMS_PER_PAGE);
 
@@ -227,11 +255,6 @@ export default function DashboardPage() {
 
   const handleSortChange = (value: string) => {
     setSortOption(value as SortOption);
-    setCurrentPage(1);
-  }
-
-  const handleShowArchivedToggle = () => {
-    setShowArchived(prev => !prev);
     setCurrentPage(1);
   }
   
@@ -280,7 +303,6 @@ export default function DashboardPage() {
         title: "Status Update Successful",
         description: `${selectedCultivarIds.length} cultivar(s) updated to ${STATUS_LABELS[newStatus]}.`,
       });
-      // Update local state
       setAllCultivars(prev =>
         prev.map(c =>
           selectedCultivarIds.includes(c.id) ? { ...c, status: newStatus, updatedAt: new Date().toISOString() } : c
@@ -386,11 +408,7 @@ export default function DashboardPage() {
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <Button onClick={handleShowArchivedToggle} variant="outline" className="w-full">
-            {showArchived ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-            {showArchived ? 'Hide Archived' : 'Show Archived'}
-          </Button>
+          <div></div>
         </div>
 
         <Accordion type="single" collapsible className="w-full">
@@ -402,53 +420,123 @@ export default function DashboardPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-8">
                 <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <Leaf className="mr-2 h-5 w-5 text-primary" />
+                    Filter by Genetics:
+                  </h3>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between">
+                        {selectedGenetics.length > 0 ? `${selectedGenetics.length} selected` : "Select Genetics"}
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-full">
+                      <DropdownMenuLabel>Genetics</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {GENETIC_OPTIONS.map(genetic => (
+                        <DropdownMenuCheckboxItem
+                          key={genetic}
+                          checked={selectedGenetics.includes(genetic)}
+                          onCheckedChange={() => handleGeneticToggle(genetic)}
+                          onSelect={(e) => e.preventDefault()} 
+                        >
+                          {genetic}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div>
+                   <h3 className="text-lg font-semibold mb-3 flex items-center">
+                    <ShieldCheck className="mr-2 h-5 w-5 text-primary" />
+                    Filter by Status:
+                  </h3>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between">
+                        {selectedStatuses.length > 0 ? `${selectedStatuses.length} selected` : "Select Statuses"}
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-full">
+                      <DropdownMenuLabel>Status</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {STATUS_OPTIONS_ORDERED.map(status => (
+                        <DropdownMenuCheckboxItem
+                          key={status}
+                          checked={selectedStatuses.includes(status)}
+                          onCheckedChange={() => handleStatusToggle(status)}
+                          onSelect={(e) => e.preventDefault()}
+                        >
+                          {STATUS_LABELS[status]}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                 <div>
                   <h3 className="text-lg font-semibold mb-3 flex items-center">
                     <Utensils className="mr-2 h-5 w-5 text-primary" />
                     Filter by Flavors:
                   </h3>
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
-                      {allAvailableFlavors.map(flavor => (
-                        <div key={flavor} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`flavor-${flavor}`}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                        {selectedFlavors.length > 0 ? `${selectedFlavors.length} selected` : "Select Flavors"}
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-full max-h-60 overflow-y-auto">
+                        <DropdownMenuLabel>Flavors</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {allAvailableFlavors.map(flavor => (
+                        <DropdownMenuCheckboxItem
+                            key={flavor}
                             checked={selectedFlavors.includes(flavor)}
                             onCheckedChange={(checked) => handleFlavorToggle(flavor, !!checked)}
-                            aria-label={`Filter by ${flavor}`}
-                          />
-                          <Label htmlFor={`flavor-${flavor}`} className="font-normal text-sm">{flavor}</Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                            onSelect={(e) => e.preventDefault()}
+                        >
+                            {flavor}
+                        </DropdownMenuCheckboxItem>
+                        ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-
                 <div>
                   <h3 className="text-lg font-semibold mb-3 flex items-center">
                     <ChevronsUpDown className="mr-2 h-5 w-5 text-primary" />
                     Filter by Effects:
                   </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {allAvailableEffects.map(effect => (
-                      <Button
-                        key={effect}
-                        variant={selectedEffects.includes(effect) ? "default" : "outline"}
-                        onClick={() => handleEffectToggle(effect)}
-                        className={`transition-all duration-200 ease-in-out text-sm rounded-full px-4 py-1.5 ${selectedEffects.includes(effect) ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-accent/10'}`}
-                        aria-pressed={selectedEffects.includes(effect)}
-                      >
-                        {effect}
-                        {selectedEffects.includes(effect) && <X className="ml-2 h-3 w-3" />}
-                      </Button>
-                    ))}
-                  </div>
+                   <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                        {selectedEffects.length > 0 ? `${selectedEffects.length} selected` : "Select Effects"}
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-full max-h-60 overflow-y-auto">
+                        <DropdownMenuLabel>Effects</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {allAvailableEffects.map(effect => (
+                        <DropdownMenuCheckboxItem
+                            key={effect}
+                            checked={selectedEffects.includes(effect)}
+                            onCheckedChange={() => handleEffectToggle(effect)}
+                            onSelect={(e) => e.preventDefault()}
+                        >
+                            {effect}
+                        </DropdownMenuCheckboxItem>
+                        ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
               <Separator className="my-6" />
               <Button onClick={resetFilters} variant="outline" className="w-full sm:w-auto">
-                <ListRestart className="mr-2 h-4 w-4" /> Reset Flavor/Effect Filters
+                <ListRestart className="mr-2 h-4 w-4" /> Reset All Filters
               </Button>
             </AccordionContent>
           </AccordionItem>
@@ -510,7 +598,10 @@ export default function DashboardPage() {
               </TableHeader>
               <TableBody>
                 {paginatedCultivars.map(cultivar => {
-                  const isArchived = cultivar.status === 'archived';
+                  const isArchivedStatus = cultivar.status === 'archived'; 
+                  const isHiddenStatus = cultivar.status === 'Hide';
+                  const isDisabledActions = isArchivedStatus || isHiddenStatus;
+
                   const thcMin = cultivar.thc?.min ?? 'N/A';
                   const thcMax = cultivar.thc?.max ?? 'N/A';
                   const cbdMin = cultivar.cbd?.min ?? 'N/A';
@@ -521,7 +612,7 @@ export default function DashboardPage() {
                     <TableRow 
                       key={cultivar.id} 
                       className={cn(
-                        isArchived && "opacity-60 bg-muted/30",
+                        (isArchivedStatus || isHiddenStatus) && "opacity-60 bg-muted/30",
                         isSelected && "bg-primary/5"
                       )}
                       data-state={isSelected ? "selected" : ""}
@@ -561,7 +652,11 @@ export default function DashboardPage() {
                         {cultivar.status && (
                           <Badge 
                             variant={getStatusBadgeVariant(cultivar.status)} 
-                            className={cn("capitalize text-xs flex items-center w-fit", cultivar.status === 'featured' && "bg-yellow-400/20 border-yellow-500/50 text-yellow-700 dark:text-yellow-300")}
+                            className={cn(
+                              "capitalize text-xs flex items-center w-fit", 
+                              cultivar.status === 'featured' && "bg-yellow-400/20 border-yellow-500/50 text-yellow-700 dark:text-yellow-300",
+                              cultivar.status === 'Hide' && "bg-gray-400/20 border-gray-500/50 text-gray-700 dark:text-gray-300"
+                            )}
                           >
                             {getStatusIcon(cultivar.status)}
                             {STATUS_LABELS[cultivar.status]}
@@ -577,7 +672,7 @@ export default function DashboardPage() {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Link href={`/cultivars/edit/${cultivar.id}`}>
-                            <Button variant="outline" size="sm" disabled={isArchived} aria-label={`Edit ${cultivar.name}`}>
+                            <Button variant="outline" size="sm" disabled={isDisabledActions} aria-label={`Edit ${cultivar.name}`}>
                               <Edit size={14} />
                             </Button>
                           </Link>
@@ -586,7 +681,7 @@ export default function DashboardPage() {
                             size="sm"
                             className="text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
                             onClick={(e) => handleArchive(e, cultivar.id, cultivar.name)}
-                            disabled={isArchived}
+                            disabled={isArchivedStatus} 
                             aria-label={`Archive ${cultivar.name}`}
                           >
                             <Archive size={14} />
@@ -633,3 +728,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

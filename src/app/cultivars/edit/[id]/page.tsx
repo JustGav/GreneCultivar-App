@@ -19,16 +19,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2, Upload, AlertCircle, Database, ShieldCheck, ArchiveIcon, Utensils, Star as StarIcon, Hourglass } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2, Upload, AlertCircle, Database, ShieldCheck, ArchiveIcon, Utensils, Star as StarIcon, Hourglass, EyeOff } from 'lucide-react';
 import EditCultivarLoading from './loading';
 import NextImage from 'next/image';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
-const STATUS_OPTIONS: CultivarStatus[] = ['Live', 'Featured', 'recentlyAdded', 'archived'];
+const STATUS_OPTIONS: CultivarStatus[] = ['Live', 'featured', 'User Submitted', 'recentlyAdded', 'Hide', 'archived'];
 const STATUS_LABELS: Record<CultivarStatus, string> = {
   Live: 'Live',
-  Featured: 'Featured',
+  featured: 'Featured',
   recentlyAdded: 'Recently Added',
+  'User Submitted': 'User Submitted',
+  Hide: 'Hidden',
   archived: 'Archived',
 };
 
@@ -195,7 +197,7 @@ type CultivarFormData = z.infer<typeof cultivarFormSchema>;
 const defaultFormValues: CultivarFormData = {
   name: '',
   genetics: undefined, 
-  status: 'Live', // Default to Live
+  status: 'Live', 
   source: '',
   description: '',
   supplierUrl: '',
@@ -1175,3 +1177,4 @@ export default function EditCultivarPage() {
     </div>
   );
 }
+

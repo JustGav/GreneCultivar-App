@@ -42,7 +42,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
   {
     name: 'Cosmic Haze',
     genetics: 'Sativa',
-    status: 'Live', // Changed from 'verified'
+    status: 'Live', 
     source: 'Internal Lab Test CH-001',
     description: 'An uplifting Sativa known for its cerebral effects and citrus aroma. Perfect for daytime use and creative endeavors.',
     supplierUrl: 'https://example.com/cosmic-haze',
@@ -94,7 +94,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
   {
     name: 'Indica Dream',
     genetics: 'Indica',
-    status: 'featured', // Example of new status
+    status: 'featured', 
     source: 'Community Submission ID-002',
     description: 'A deeply relaxing Indica, perfect for unwinding at the end of the day. Features earthy and sweet notes.',
     supplierUrl: 'https://example.com/indica-dream',
@@ -132,9 +132,41 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
     history: [{ timestamp: oneDayAgo.toISOString(), event: 'Cultivar Seeded' }],
   },
   {
+    name: 'User Submitted Kush',
+    genetics: 'Hybrid',
+    status: 'User Submitted',
+    description: 'A user-submitted strain with unknown full effects. Potentially potent.',
+    thc: { min: 15, max: 28 },
+    cbd: { min: 0, max: 1 },
+    images: [
+        { id: 'img-usk-1', url: 'https://placehold.co/600x400.png', alt: 'User Submitted Kush', 'data-ai-hint': 'mystery bud' },
+    ],
+    effects: ['Potent', 'Varies'],
+    flavors: ['Unknown'],
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    history: [{ timestamp: now.toISOString(), event: 'Cultivar Seeded (User Submitted)' }],
+  },
+  {
+    name: 'Hidden Gem',
+    genetics: 'Sativa',
+    status: 'Hide',
+    description: 'A rare find, currently hidden from public view for exclusivity or review.',
+    thc: { min: 22, max: 26 },
+    cbd: { min: 0.2, max: 0.8 },
+    images: [
+        { id: 'img-hg-1', url: 'https://placehold.co/600x400.png', alt: 'Hidden Gem', 'data-ai-hint': 'sparkling bud' },
+    ],
+    effects: ['Uplifting', 'Rare'],
+    flavors: ['Exotic', 'Fruity'],
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    history: [{ timestamp: now.toISOString(), event: 'Cultivar Seeded (Hidden)' }],
+  },
+  {
     name: 'Hybrid Harmony',
     genetics: 'Hybrid',
-    status: 'Live', // Changed from 'verified'
+    status: 'Live', 
     description: 'A balanced hybrid offering the best of both worlds. Provides a gentle euphoria and relaxation without heavy sedation.',
     thc: { min: 19, max: 23 },
     cbd: { min: 0.5, max: 1.5 },
@@ -284,3 +316,4 @@ seedDatabase().catch(error => {
   console.error('Error during database seeding process:', error);
   process.exit(1);
 });
+

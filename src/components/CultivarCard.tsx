@@ -6,7 +6,7 @@ import type { Cultivar, CultivarStatus } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import StarRating from './StarRating';
-import { Leaf, ThermometerSnowflake, ThermometerSun, Edit, Archive, CheckCheck, ShieldCheck, Hourglass, Info, Utensils, Palette, Star as StarIcon } from 'lucide-react';
+import { Leaf, ThermometerSnowflake, ThermometerSun, Edit, Archive, CheckCheck, ShieldCheck, Hourglass, Info, Utensils, Palette, Star as StarIcon, Users, EyeOff } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateCultivarStatus } from '@/services/firebase';
@@ -26,18 +26,22 @@ function calculateAverageRating(reviews: Cultivar['reviews']): number {
 }
 
 const STATUS_LABELS: Record<CultivarStatus, string> = {
-  recentlyAdded: 'Recently Added',
   Live: 'Live',
-  archived: 'Archived',
   featured: 'Featured',
+  recentlyAdded: 'Recently Added',
+  'User Submitted': 'User Submitted',
+  Hide: 'Hidden',
+  archived: 'Archived',
 };
 
 const getStatusBadgeVariant = (status?: CultivarStatus): "default" | "secondary" | "destructive" | "outline" => {
   if (!status) return 'outline';
   switch (status) {
     case 'Live': return 'default';
-    case 'featured': return 'default'; 
+    case 'featured': return 'default';
+    case 'User Submitted': return 'secondary';
     case 'recentlyAdded': return 'secondary';
+    case 'Hide': return 'destructive';
     case 'archived': return 'destructive';
     default: return 'outline';
   }
@@ -48,7 +52,9 @@ const getStatusIcon = (status?: CultivarStatus) => {
   switch (status) {
     case 'Live': return <ShieldCheck size={14} className="mr-1 text-green-500" />;
     case 'featured': return <StarIcon size={14} className="mr-1 text-yellow-500 fill-yellow-500" />;
+    case 'User Submitted': return <Users size={14} className="mr-1" />;
     case 'recentlyAdded': return <Hourglass size={14} className="mr-1" />;
+    case 'Hide': return <EyeOff size={14} className="mr-1" />;
     case 'archived': return <Archive size={14} className="mr-1" />;
     default: return <Info size={14} className="mr-1" />;
   }
@@ -84,6 +90,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
   };
   
   const isArchived = cultivar.status === 'archived';
+  const isHidden = cultivar.status === 'Hide';
 
   const thcMin = cultivar.thc?.min ?? 'N/A';
   const thcMax = cultivar.thc?.max ?? 'N/A';
@@ -94,7 +101,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
     <Card 
         className={cn(
             "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn group", 
-            isArchived && "opacity-60 bg-muted/50",
+            (isArchived || isHidden) && "opacity-60 bg-muted/50",
             isPublicView && "cursor-pointer"
         )}
         onClick={isPublicView && onViewInModal ? () => onViewInModal(cultivar) : undefined}
@@ -114,7 +121,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
               className="transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
-            {(cultivar.status === 'recentlyAdded' || cultivar.status === 'featured') && (
+            {(cultivar.status === 'recentlyAdded' || cultivar.status === 'featured' || cultivar.status === 'User Submitted') && (
               <Badge 
                 variant={getStatusBadgeVariant(cultivar.status)} 
                 className={cn(
@@ -130,10 +137,13 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
         )}
         <div className="flex justify-between items-start">
             <CardTitle className="font-headline text-2xl text-primary">{cultivar.name}</CardTitle>
-            {cultivar.status && cultivar.status !== 'recentlyAdded' && cultivar.status !== 'featured' && (
+            {cultivar.status && cultivar.status !== 'recentlyAdded' && cultivar.status !== 'featured' && cultivar.status !== 'User Submitted' && (
                 <Badge 
                   variant={getStatusBadgeVariant(cultivar.status)} 
-                  className="capitalize flex items-center text-xs h-fit"
+                  className={cn(
+                      "capitalize flex items-center text-xs h-fit",
+                      cultivar.status === 'Hide' && "bg-gray-400/20 border-gray-500/50 text-gray-700 dark:text-gray-300"
+                    )}
                 >
                     {getStatusIcon(cultivar.status)}
                     {STATUS_LABELS[cultivar.status]}
@@ -182,9 +192,9 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
                 {cultivar.terpeneProfile.slice(0, 3).map(terpene => (
                   <Badge key={terpene.id} variant="outline" className="bg-blue-500/10 border-blue-500/30 text-foreground">
                     {terpene.name}
-                    {terpene.percentage && terpene.percentage > 0 && (
+                    {terpene.percentage && terpene.percentage > 0 ? (
                       <span className="ml-1 text-xs opacity-75">({terpene.percentage}%)</span>
-                    )}
+                    ) : null}
                   </Badge>
                 ))}
                 {cultivar.terpeneProfile.length > 3 && <Badge variant="outline">...</Badge>}
@@ -204,12 +214,12 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
           ) : (
             <>
               <Link href={`/cultivars/${cultivar.id}`} className="w-full" aria-label={`View full details for ${cultivar.name}`}>
-                <Button variant="default" className="w-full text-sm" disabled={isArchived}>
+                <Button variant="default" className="w-full text-sm" disabled={isArchived || isHidden}>
                   View Details
                 </Button>
               </Link>
               <Link href={`/cultivars/edit/${cultivar.id}`} className="w-full" aria-label={`Edit ${cultivar.name}`}>
-                <Button variant="outline" className="w-full text-sm" disabled={isArchived}>
+                <Button variant="outline" className="w-full text-sm" disabled={isArchived || isHidden}>
                   <Edit size={16} className="mr-2" /> Edit
                 </Button>
               </Link>
@@ -229,3 +239,4 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
     </Card>
   );
 }
+

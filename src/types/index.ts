@@ -18,7 +18,7 @@ export interface Review {
 }
 
 export type Genetics = 'Indica' | 'Sativa' | 'Hybrid' | 'Ruderalis';
-export type CultivarStatus = 'recentlyAdded' | 'Live' | 'archived' | 'featured';
+export type CultivarStatus = 'recentlyAdded' | 'Live' | 'featured' | 'archived' | 'User Submitted' | 'Hide';
 
 export interface CannabinoidProfile {
   min?: number;
@@ -113,3 +113,4 @@ export interface Cultivar {
   updatedAt: string; // ISO date string
   history?: CultivarHistoryEntry[];
 }
+
