@@ -4,8 +4,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
-import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics, YieldProfile } from '@/types';
+import NextImage from 'next/image'; // Aliased to avoid conflict with Lucide's Image
+import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey } from '@/types';
 import { mockCultivars } from '@/lib/mock-data';
 import ImageGallery from '@/components/ImageGallery';
 import ReviewForm from '@/components/ReviewForm';
@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +49,13 @@ const YieldRangeDisplay: React.FC<{ label: string; profile?: YieldProfile; unitS
   return (
     <p className="text-sm">{label}: {profile.min} - {profile.max} {unitSuffix}</p>
   );
+};
+
+const additionalInfoCategoriesConfig: Record<AdditionalInfoCategoryKey, { title: string; icon: React.ElementType }> = {
+  geneticCertificate: { title: 'Genetic Certificate', icon: Award },
+  plantPicture: { title: 'Plant Pictures', icon: LucideImage },
+  cannabinoidInfo: { title: 'Cannabinoid Information', icon: FileText },
+  terpeneInfo: { title: 'Terpene Information', icon: FlaskConical },
 };
 
 
@@ -108,6 +115,8 @@ export default function CultivarDetailsPage() {
     cultivar.plantCharacteristics.yieldPerWatt !== undefined ||
     cultivar.plantCharacteristics.yieldPerM2 !== undefined
   );
+
+  const hasAdditionalInfo = cultivar.additionalInfo && Object.values(cultivar.additionalInfo).some(files => files && files.length > 0);
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -219,6 +228,61 @@ export default function CultivarDetailsPage() {
               )}
             </CardContent>
           </Card>
+          
+          {hasAdditionalInfo && cultivar.additionalInfo && (
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="font-headline text-2xl text-primary flex items-center">
+                  <Paperclip size={28} className="mr-3 text-primary/80" /> Additional Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {(Object.keys(additionalInfoCategoriesConfig) as AdditionalInfoCategoryKey[]).map((key) => {
+                  const categoryConfig = additionalInfoCategoriesConfig[key];
+                  const files = cultivar.additionalInfo![key];
+                  if (files && files.length > 0) {
+                    const IconComponent = categoryConfig.icon;
+                    return (
+                      <div key={key} className="pt-4 border-t first:border-t-0 first:pt-0">
+                        <h4 className="font-semibold text-lg flex items-center mb-3">
+                          <IconComponent size={20} className="mr-2 text-accent" />
+                          {categoryConfig.title}
+                        </h4>
+                        <ul className="space-y-2 pl-1">
+                          {files.map(file => (
+                            <li key={file.id} className="text-sm">
+                              {file.fileType === 'image' && file.url ? (
+                                <div className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
+                                  <NextImage
+                                    src={file.url}
+                                    alt={file.name}
+                                    data-ai-hint={file['data-ai-hint'] as string}
+                                    width={80}
+                                    height={60}
+                                    className="rounded-md object-cover border"
+                                  />
+                                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                                    {file.name}
+                                  </a>
+                                </div>
+                              ) : (
+                                <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center p-2 rounded-md hover:bg-muted/50 transition-colors">
+                                  <FileText size={18} className="mr-2 text-muted-foreground" />
+                                  <span className="font-medium">{file.name}</span>
+                                </a>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+              </CardContent>
+            </Card>
+          )}
+
         </div>
 
         <div className="lg:col-span-1 space-y-6">
@@ -274,4 +338,3 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
-

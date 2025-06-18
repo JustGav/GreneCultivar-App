@@ -44,6 +44,17 @@ export interface PlantCharacteristics {
   yieldPerM2?: YieldProfile; // g/m²
 }
 
+export type AdditionalInfoCategoryKey = 'geneticCertificate' | 'plantPicture' | 'cannabinoidInfo' | 'terpeneInfo';
+
+export interface AdditionalFileInfo {
+  id: string;
+  name: string;
+  url: string; // Placeholder URL
+  fileType: 'image' | 'pdf' | 'document';
+  category: AdditionalInfoCategoryKey;
+  'data-ai-hint'?: string; // For images
+}
+
 export interface Cultivar {
   id: string;
   name: string;
@@ -60,5 +71,10 @@ export interface Cultivar {
   reviews: Review[];
   cultivationPhases?: CultivationPhases;
   plantCharacteristics?: PlantCharacteristics;
+  additionalInfo?: {
+    geneticCertificate?: AdditionalFileInfo[];
+    plantPicture?: AdditionalFileInfo[];
+    cannabinoidInfo?: AdditionalFileInfo[];
+    terpeneInfo?: AdditionalFileInfo[];
+  };
 }
-

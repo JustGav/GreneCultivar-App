@@ -1,5 +1,5 @@
 
-import type { Cultivar, PlantCharacteristics, YieldProfile } from '@/types';
+import type { Cultivar, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey } from '@/types';
 
 export const mockCultivars: Cultivar[] = [
   {
@@ -37,6 +37,21 @@ export const mockCultivars: Cultivar[] = [
       yieldPerPlant: { min: 30, max: 60 }, // g
       yieldPerWatt: { min: 0.5, max: 1.0 }, // g/W
       yieldPerM2: { min: 300, max: 500 } // g/m²
+    },
+    additionalInfo: {
+      geneticCertificate: [
+        { id: 'gc1-1', name: 'GreenLeaf_GC_Auth.pdf', url: 'https://placehold.co/200x100.png?text=GeneticCert.pdf', fileType: 'pdf', category: 'geneticCertificate' },
+      ],
+      plantPicture: [ 
+        { id: 'pp1-1', name: 'Mother_Plant_GLS.jpg', url: 'https://placehold.co/120x90.png', fileType: 'image', category: 'plantPicture', 'data-ai-hint': 'cannabis motherPlant' },
+      ],
+      cannabinoidInfo: [
+        { id: 'ci1-1', name: 'Lab_Report_Cannabinoids_GLS.pdf', url: 'https://placehold.co/200x100.png?text=CannabinoidData.pdf', fileType: 'pdf', category: 'cannabinoidInfo' },
+      ],
+      terpeneInfo: [
+        { id: 'ti1-1', name: 'Terpene_Profile_GLS.jpg', url: 'https://placehold.co/120x90.png', fileType: 'image', category: 'terpeneInfo', 'data-ai-hint': 'terpene chart' },
+        { id: 'ti1-2', name: 'Detailed_Terpenes_GLS.pdf', url: 'https://placehold.co/200x100.png?text=TerpeneReport.pdf', fileType: 'pdf', category: 'terpeneInfo' },
+      ],
     }
   },
   {
@@ -69,9 +84,16 @@ export const mockCultivars: Cultivar[] = [
       maxHeight: 180,
       minMoisture: 9,
       maxMoisture: 11,
-      // No yieldPerPlant
       yieldPerWatt: { min: 0.8, max: 1.2 }, // g/W
       yieldPerM2: { min: 400, max: 600 } // g/m²
+    },
+    additionalInfo: {
+      plantPicture: [
+        { id: 'pp2-1', name: 'GoldenAura_Seedling.jpg', url: 'https://placehold.co/120x90.png', fileType: 'image', category: 'plantPicture', 'data-ai-hint': 'cannabis seedling' },
+      ],
+      terpeneInfo: [
+        { id: 'ti2-1', name: 'GAU_Terpene_Analysis.pdf', url: 'https://placehold.co/200x100.png?text=GAU_Terpenes.pdf', fileType: 'pdf', category: 'terpeneInfo' },
+      ]
     }
   },
   {
@@ -82,7 +104,6 @@ export const mockCultivars: Cultivar[] = [
     cbd: { min: 1, max: 2 },
     cbc: { min: 0.3, max: 0.6 },
     cbg: { min: 0.4, max: 0.8 },
-    // cbn: undefined (will show as N/A)
     thcv: { min: 0.2, max: 0.5 },
     effects: ['Balanced', 'Happy', 'Relaxed', 'Euphoric'],
     description: 'A well-balanced hybrid that offers the best of both worlds. It starts with a gentle euphoric lift, gradually easing into a comfortable state of relaxation without heavy sedation. Notes of pine and berry.',
@@ -103,12 +124,10 @@ export const mockCultivars: Cultivar[] = [
     },
     plantCharacteristics: {
       minHeight: 80,
-      // maxHeight: undefined (will show N/A for max)
       minMoisture: 10,
-      // maxMoisture: undefined (will show N/A for max)
       yieldPerPlant: { min: 25, max: 50 } //g
-      // yieldPerWatt & yieldPerM2 undefined
     }
+    // No additionalInfo for this one to test empty state
   },
   {
     id: '4',
@@ -116,7 +135,6 @@ export const mockCultivars: Cultivar[] = [
     genetics: 'Sativa',
     thc: { min: 22, max: 28 },
     cbd: { min: 0.1, max: 0.5 },
-    // cbc, cbg, cbn, thcv will be undefined (will show as N/A)
     effects: ['Energetic', 'Euphoric', 'Talkative'],
     description: 'A potent Sativa known for its strong cerebral effects and energizing buzz. Not for the faint of heart, Crimson Peak Power delivers a rush of euphoria and creativity. It has a spicy, peppery aroma.',
     images: [
@@ -130,10 +148,13 @@ export const mockCultivars: Cultivar[] = [
       harvest: "After 10-12 weeks of flowering"
     },
     plantCharacteristics: {
-        // No height, no moisture
-        yieldPerPlant: { min: 50, max: 90 }, // g
-        yieldPerWatt: { min: 0.7, max: 1.1 }, // g/W
-        // No yieldPerM2
+        yieldPerPlant: { min: 50, max: 90 }, 
+        yieldPerWatt: { min: 0.7, max: 1.1 }, 
+    },
+    additionalInfo: {
+      geneticCertificate: [
+        { id: 'gc4-1', name: 'CPP_Genetics_Official.pdf', url: 'https://placehold.co/200x100.png?text=CPP_Genetics.pdf', fileType: 'pdf', category: 'geneticCertificate' },
+      ]
     }
   },
 ];
@@ -145,4 +166,3 @@ export const getAllEffects = (): string[] => {
   });
   return Array.from(allEffects).sort();
 };
-
