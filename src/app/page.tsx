@@ -48,7 +48,7 @@ export default function CultivarBrowserPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived, setShowArchived] = useState(false); // Used for logged-in users
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
@@ -112,37 +112,39 @@ export default function CultivarBrowserPage() {
   };
 
   const filteredAndSortedCultivars = useMemo(() => {
-    let processedCultivars = allCultivars;
+    let baseFilteredCultivars: Cultivar[];
 
-    // Apply view-specific base filtering
-    if (!user && !authLoading) { // Public, non-logged-in view
-      processedCultivars = allCultivars.filter(c => c.status === 'Live' || c.status === 'Featured');
-    } else { // Logged-in user view OR auth is loading
+    if (!user) { // Handles both non-logged-in state and initial auth loading where user is null
+      baseFilteredCultivars = allCultivars.filter(c => c.status === 'Live' || c.status === 'featured');
+    } else { // User is definitively logged in
       if (!showArchived) {
-        processedCultivars = processedCultivars.filter(c => c.status !== 'archived');
+        baseFilteredCultivars = allCultivars.filter(c => c.status !== 'archived');
+      } else {
+        baseFilteredCultivars = [...allCultivars]; // Show all including archived if showArchived is true for logged-in user
       }
     }
 
-    // Apply common filters
+    // Apply common filters (search, effects, flavors)
+    let furtherFilteredCultivars = baseFilteredCultivars;
     if (searchTerm) {
-      processedCultivars = processedCultivars.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      furtherFilteredCultivars = furtherFilteredCultivars.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }
     if (selectedEffects.length > 0) {
-      processedCultivars = processedCultivars.filter(c => c.effects && selectedEffects.every(eff => c.effects.includes(eff)));
+      furtherFilteredCultivars = furtherFilteredCultivars.filter(c => c.effects && selectedEffects.every(eff => c.effects.includes(eff)));
     }
     if (selectedFlavors.length > 0) {
-      processedCultivars = processedCultivars.filter(c => c.flavors && selectedFlavors.every(flav => c.flavors.includes(flav)));
+      furtherFilteredCultivars = furtherFilteredCultivars.filter(c => c.flavors && selectedFlavors.every(flav => c.flavors.includes(flav)));
     }
     
     // Apply sorting
-    return [...processedCultivars].sort((a, b) => {
-      // Public, non-logged-in view: Prioritize 'featured' status
-      if (!user && !authLoading) {
+    return [...furtherFilteredCultivars].sort((a, b) => {
+      // For public view (user is null), prioritize 'featured' status
+      if (!user) {
         const isAFeatured = a.status === 'featured';
         const isBFeatured = b.status === 'featured';
         if (isAFeatured && !isBFeatured) return -1;
         if (!isAFeatured && isBFeatured) return 1;
-        // If both are 'featured' or both are 'Live', fall through to secondary sort
+        // If both are 'featured' or both are 'Live' (or other non-featured statuses if logic changes), fall through to secondary sort
       }
 
       // Common secondary sort logic
@@ -166,6 +168,7 @@ export default function CultivarBrowserPage() {
       }
     });
   }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived, user, authLoading]);
+
 
   const totalPages = Math.ceil(filteredAndSortedCultivars.length / ITEMS_PER_PAGE);
 
@@ -342,7 +345,7 @@ export default function CultivarBrowserPage() {
               <CultivarCard 
                 key={cultivar.id} 
                 cultivar={cultivar} 
-                isPublicView={true} 
+                isPublicView={!user} // Pass true if user is not logged in
                 onViewInModal={handleOpenCultivarModal}
               />
             ))}
@@ -388,3 +391,4 @@ export default function CultivarBrowserPage() {
   );
 }
 
+    
