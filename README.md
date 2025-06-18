@@ -9,9 +9,21 @@ To get started, take a look at src/app/page.tsx.
 This application uses Firebase Firestore to store and manage cultivar data, and Firebase Storage for image/document uploads. To run the application with Firebase integration, you need to:
 
 1.  **Create a Firebase Project:** If you haven't already, create a project at [https://console.firebase.google.com/](https://console.firebase.google.com/).
-2.  **Enable Firestore:** In your Firebase project, enable Firestore. Start in "test mode" for easy initial setup, but remember to configure proper security rules for production.
+2.  **Enable Firestore:** In your Firebase project, enable Firestore.
+    *   **Firestore Rules (Development):** For initial development, you can use permissive rules. Go to Firestore Database > Rules tab in the Firebase console and paste the following (or use the `firestore.rules` file from the project root if deploying via Firebase CLI):
+        ```
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+            match /{document=**} {
+              allow read, write: if true; // For development ONLY
+            }
+          }
+        }
+        ```
+        **Important:** For production, replace `if true;` with appropriate security rules that enforce authentication and authorization (e.g., `allow read; allow write: if request.auth != null;`).
 3.  **Enable Firebase Storage:** In your Firebase project, navigate to Storage and click "Get started". Follow the prompts to enable it.
-    *   **Storage Rules:** For initial development, you can set permissive rules. Go to Storage > Rules tab and use:
+    *   **Storage Rules (Development):** For initial development, you can set permissive rules. Go to Storage > Rules tab in the Firebase console and paste the following (or use the `storage.rules` file from the project root if deploying via Firebase CLI):
         ```
         rules_version = '2';
         service firebase.storage {
@@ -22,7 +34,7 @@ This application uses Firebase Firestore to store and manage cultivar data, and 
           }
         }
         ```
-        **Important:** For production, replace `if true;` with appropriate security rules, e.g., `if request.auth != null;` to allow authenticated users to write.
+        **Important:** For production, replace `if true;` with appropriate security rules, e.g., `allow read; allow write: if request.auth != null;` to allow authenticated users to write.
 4.  **Get Firebase Configuration (for Client-Side):**
     *   Go to your Firebase project settings.
     *   Under "Your apps", click on the "Web" icon (`</>`) to add a web app (if you haven't already).
@@ -43,8 +55,8 @@ This application uses Firebase Firestore to store and manage cultivar data, and 
     *   Go to your Firebase project settings > Service accounts.
     *   Click "Generate new private key" and download the JSON file.
     *   **Security Note:** This file contains sensitive credentials. Keep it secure and do not commit it to your repository.
-    *   Place this JSON file somewhere accessible by the seed script (e.g., create a `config` folder in your project root, add `config/your-service-account-key.json` to `.gitignore`, and place the key file there).
-    *   Update the `SERVICE_ACCOUNT_KEY_PATH` variable in `scripts/seed-firestore.ts` to point to this file.
+    *   Place this JSON file somewhere accessible by the seed script (e.g., the `scripts` folder is a common place, make sure `scripts/your-service-account-key.json` is added to `.gitignore`).
+    *   Update the `SERVICE_ACCOUNT_KEY_PATH` variable in `scripts/seed-firestore.ts` to point to this file (e.g., `./your-service-account-key.json` if placed in the `scripts` folder).
     *   Also, ensure the `FIREBASE_PROJECT_ID` in `scripts/seed-firestore.ts` matches your project ID, or set `NEXT_PUBLIC_FIREBASE_PROJECT_ID` in your `.env.local` file.
 
 7.  **Install Firebase Admin SDK (for Seeding Script):**
@@ -63,6 +75,5 @@ This application uses Firebase Firestore to store and manage cultivar data, and 
         yarn seed:firestore
         ```
     *   This will populate your `cultivars` collection in Firestore with sample data. You can customize the data in `scripts/seed-firestore.ts` before running.
-    *   **Note:** The script currently adds new data. If you want to clear existing data before seeding, uncomment the relevant lines in the `seedDatabase` function within the script.
 
 Once these steps are completed, the application should be able to connect to your Firebase project, manage cultivar data in Firestore, and upload images/documents to Firebase Storage.
