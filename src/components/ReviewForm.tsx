@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -13,7 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import StarRating from './StarRating';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Send, Sparkles } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
 interface ReviewFormProps {
   cultivarName: string;
@@ -32,6 +34,7 @@ export default function ReviewForm({ cultivarName, cultivarId, onReviewSubmit }:
   const [isLoading, setIsLoading] = useState(false);
   const [aiGeneratedReview, setAiGeneratedReview] = useState<{ text: string; sentiment: number } | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth(); // Get the authenticated user
 
   const { control, handleSubmit, getValues, formState: { errors }, watch } = useForm<ReviewFormData>({
     resolver: zodResolver(reviewSchema),
@@ -56,8 +59,8 @@ export default function ReviewForm({ cultivarName, cultivarId, onReviewSubmit }:
         setAiGeneratedReview({ text: aiResult.review, sentiment: aiResult.sentimentScore });
         
         const newReview: ReviewType = {
-          id: new Date().toISOString() + Math.random().toString(36).substring(2,7), // more unique ID
-          user: 'CannaConnoisseur', // Placeholder user
+          id: new Date().toISOString() + Math.random().toString(36).substring(2,7),
+          user: user?.displayName || user?.email || 'Anonymous User', // Use authenticated user's name or email
           rating: data.rating,
           text: aiResult.review,
           sentimentScore: aiResult.sentimentScore,

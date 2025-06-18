@@ -2,13 +2,14 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Cultivar, Genetics, CultivarStatus } from '@/types';
 import { EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data';
 import { getCultivars, updateCultivarStatus } from '@/services/firebase';
 import CultivarCard from '@/components/CultivarCard';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown, AlertTriangle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -21,7 +22,6 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Slider } from "@/components/ui/slider";
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +31,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useAuth } from '@/contexts/AuthContext';
 
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
@@ -43,8 +44,10 @@ const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
 };
 
 export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [allCultivars, setAllCultivars] = useState<Cultivar[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
@@ -56,8 +59,19 @@ export default function DashboardPage() {
   const allAvailableEffects = EFFECT_OPTIONS;
   const allAvailableFlavors = FLAVOR_OPTIONS;
 
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.push('/'); // Redirect to home if not logged in
+      } else {
+        fetchCultivars();
+      }
+    }
+  }, [user, authLoading, router]);
+
+
   const fetchCultivars = useCallback(async () => {
-    setIsLoading(true);
+    setIsLoadingData(true);
     try {
       const fetchedCultivars = await getCultivars();
       setAllCultivars(fetchedCultivars);
@@ -70,13 +84,10 @@ export default function DashboardPage() {
       });
       setAllCultivars([]);
     } finally {
-      setIsLoading(false);
+      setIsLoadingData(false);
     }
   }, [toast]);
 
-  useEffect(() => {
-    fetchCultivars();
-  }, [fetchCultivars]);
 
   const handleEffectToggle = (effect: string) => {
     setSelectedEffects(prev =>
@@ -98,16 +109,12 @@ export default function DashboardPage() {
         c.id === cultivarId ? { ...c, status: newStatus } : c
       )
     );
-    // Optionally, re-filter or re-sort if status change affects visibility (e.g., if not showing archived)
-    // For now, just updating the local state. A full re-fetch might be better in a complex app.
   }, []);
 
   const resetFilters = () => {
     setSearchTerm('');
     setSelectedEffects([]);
     setSelectedFlavors([]);
-    // setShowArchived(false); // User might want to keep this persisted
-    // setSortOption('name-asc'); // User might want to keep sort persisted
     setCurrentPage(1);
   };
 
@@ -193,6 +200,30 @@ export default function DashboardPage() {
     { value: 'rating-asc', label: 'Rating (Low to High)'},
     { value: 'rating-desc', label: 'Rating (High to Low)'},
   ];
+
+  if (authLoading || (!user && !authLoading)) { // Show loading if auth is loading OR if user is null and auth is done (pre-redirect)
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+        <p className="text-lg text-muted-foreground">Checking authentication...</p>
+      </div>
+    );
+  }
+  
+  if (!user) { // This case should ideally be caught by the redirect, but as a fallback
+    return (
+       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-4">
+        <AlertTriangle size={64} className="text-destructive mb-4" />
+        <h1 className="text-3xl font-headline text-destructive mb-2">Access Denied</h1>
+        <p className="text-muted-foreground font-body mb-6">
+          You must be logged in to view the dashboard.
+        </p>
+        <Link href="/">
+          <Button variant="default">Go to Homepage</Button>
+        </Link>
+      </div>
+    );
+  }
 
 
   return (
@@ -310,7 +341,7 @@ export default function DashboardPage() {
         </Accordion>
       </section>
 
-      {isLoading ? (
+      {isLoadingData ? (
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
           <p className="text-lg text-muted-foreground">Loading cultivars...</p>
