@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2, Upload, Database } from 'lucide-react';
+import NextImage from 'next/image';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
 
@@ -833,7 +834,7 @@ export default function AddCultivarPage() {
                                     <NextImage src={field.url} alt={field.name || "Plant picture"} width={100} height={75} className="rounded-md border object-cover mt-1"/>
                                 </div>
                             )}
-                            {watch(`additionalInfo_plantPictures.${index}.file`) && (
+                            {watch(`additionalInfo_plantPictures.${index}.file`) instanceof File && (
                                  <div className="mb-2">
                                     <p className="text-xs text-muted-foreground">New Preview:</p>
                                     <NextImage src={URL.createObjectURL(watch(`additionalInfo_plantPictures.${index}.file`)!)} alt="New plant picture preview" width={100} height={75} className="rounded-md border object-cover mt-1"/>
@@ -930,7 +931,7 @@ export default function AddCultivarPage() {
 
         <CardFooter className="pt-6 border-t">
           <Button type="submit" className="w-full md:w-auto" size="lg" disabled={isSubmitting || !isDirty || !isValid}>
-            {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding Cultivar...</>) : 'Add Cultivar'}
+            {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Changes...</>) : 'Save Changes'}
           </Button>
         </CardFooter>
       </form>

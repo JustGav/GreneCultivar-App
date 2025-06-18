@@ -592,7 +592,7 @@ export default function EditCultivarPage() {
                         <NextImage src={watch('existingPrimaryImageUrl')!} alt={watch('primaryImageAlt') || "Current primary image"} width={200} height={150} className="rounded-md border object-cover mt-1" />
                     </div>
                 )}
-                 {watchedPrimaryImageFile && (
+                 {watchedPrimaryImageFile instanceof File && (
                     <div className="mb-4">
                         <Label>New Primary Image Preview:</Label>
                         <NextImage src={URL.createObjectURL(watchedPrimaryImageFile)} alt="New primary image preview" width={200} height={150} className="rounded-md border object-cover mt-1" />
@@ -929,7 +929,7 @@ export default function EditCultivarPage() {
                                     <NextImage src={field.url} alt={field.name || "Plant picture"} width={100} height={75} className="rounded-md border object-cover mt-1"/>
                                 </div>
                             )}
-                            {watch(`additionalInfo_plantPictures.${index}.file`) && (
+                            {watch(`additionalInfo_plantPictures.${index}.file`) instanceof File && (
                                  <div className="mb-2">
                                     <p className="text-xs text-muted-foreground">New Preview:</p>
                                     <NextImage src={URL.createObjectURL(watch(`additionalInfo_plantPictures.${index}.file`)!)} alt="New plant picture preview" width={100} height={75} className="rounded-md border object-cover mt-1"/>
