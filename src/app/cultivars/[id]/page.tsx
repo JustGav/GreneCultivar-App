@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import NextImage from 'next/image';
 import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, CultivarStatus } from '@/types';
-import { getCultivarById, addReviewToCultivar } from '@/services/firebase';
+import { getCultivarById, addReviewToCultivar, getCultivars } from '@/services/firebase';
 import ImageGallery from '@/components/ImageGallery';
 import ReviewForm from '@/components/ReviewForm';
 import StarRating from '@/components/StarRating';
@@ -105,6 +105,7 @@ export default function CultivarDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const [cultivarNameMap, setCultivarNameMap] = useState<Map<string, string>>(new Map());
 
   const fetchCultivarData = useCallback(async () => {
     if (!id) return;
@@ -118,6 +119,20 @@ export default function CultivarDetailsPage() {
       } else {
         setError("Cultivar not found.");
       }
+
+      // Fetch all cultivars for lineage linking (names and IDs)
+      try {
+        const allCultivarsData = await getCultivars();
+        const nameMap = new Map<string, string>();
+        allCultivarsData.forEach(c => {
+            nameMap.set(c.name.toLowerCase(), c.id); // Store lowercase name for case-insensitive lookup
+        });
+        setCultivarNameMap(nameMap);
+      } catch (err) {
+        console.warn("Failed to fetch all cultivars for lineage linking:", err);
+        // Non-critical error, page can still function
+      }
+
     } catch (err) {
       console.error("Failed to fetch cultivar:", err);
       setError("Failed to load cultivar data. Please try again.");
@@ -139,7 +154,12 @@ export default function CultivarDetailsPage() {
     if (!cultivar) return;
     try {
       await addReviewToCultivar(cultivar.id, newReview);
-      await fetchCultivarData();
+      // Re-fetch current cultivar to update reviews, no need to re-fetch all cultivars
+      const updatedCultivar = await getCultivarById(cultivar.id);
+      if (updatedCultivar) {
+        setCultivar(updatedCultivar);
+        setAverageRating(calculateAverageRating(updatedCultivar.reviews || []));
+      }
       toast({
         title: "Review Added",
         description: "Your review has been successfully submitted.",
@@ -153,7 +173,7 @@ export default function CultivarDetailsPage() {
         variant: "destructive",
       });
     }
-  }, [cultivar, toast, fetchCultivarData]);
+  }, [cultivar, toast]);
 
   if (isLoading) {
     return <CultivarDetailLoading />;
@@ -424,10 +444,10 @@ export default function CultivarDetailsPage() {
                         key={effect}
                         variant="outline"
                         className={cn(
-                          "text-black", // Ensures black text for all effect badges
+                          "text-black",
                           isNegative
                             ? 'bg-destructive/10 border-destructive/30'
-                            : 'bg-primary/10 border-primary/30' // Use primary (green) for positive effects
+                            : 'bg-primary/10 border-primary/30'
                         )}
                       >
                         {effect}
@@ -481,16 +501,22 @@ export default function CultivarDetailsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-center space-y-3">
-                {/* Parents Section */}
                 {cultivar.parents && cultivar.parents.length > 0 && (
                   <div className="mb-3">
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">Parents</h4>
-                    <div className="flex justify-center items-center space-x-3 flex-wrap">
-                      {cultivar.parents.map((parent, index) => (
-                        <div key={`parent-${index}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm">
-                          {parent}
-                        </div>
-                      ))}
+                    <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
+                      {cultivar.parents.map((parentName, index) => {
+                        const parentId = cultivarNameMap.get(parentName.toLowerCase());
+                        return parentId ? (
+                          <Link key={`parent-${index}`} href={`/cultivars/${parentId}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm text-primary hover:underline hover:bg-muted/60 transition-colors">
+                            {parentName}
+                          </Link>
+                        ) : (
+                          <div key={`parent-${index}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm">
+                            {parentName}
+                          </div>
+                        );
+                      })}
                     </div>
                     <div className="flex justify-center mt-2">
                       <div className="w-px h-4 bg-border"></div>
@@ -498,25 +524,30 @@ export default function CultivarDetailsPage() {
                   </div>
                 )}
 
-                {/* Current Cultivar */}
                 <div className="p-3 border-2 border-primary rounded-lg shadow-md bg-primary/10 inline-block">
                   <h3 className="text-lg font-semibold text-primary">{cultivar.name}</h3>
                   <p className="text-xs text-muted-foreground">Current Cultivar</p>
                 </div>
 
-                {/* Children Section */}
                 {cultivar.children && cultivar.children.length > 0 && (
                   <div className="mt-3">
                     <div className="flex justify-center mb-2">
                       <div className="w-px h-4 bg-border"></div>
                     </div>
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">Children</h4>
-                    <div className="flex justify-center items-center space-x-3 flex-wrap">
-                      {cultivar.children.map((child, index) => (
-                        <div key={`child-${index}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm">
-                          {child}
-                        </div>
-                      ))}
+                    <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
+                      {cultivar.children.map((childName, index) => {
+                        const childId = cultivarNameMap.get(childName.toLowerCase());
+                        return childId ? (
+                          <Link key={`child-${index}`} href={`/cultivars/${childId}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm text-primary hover:underline hover:bg-muted/60 transition-colors">
+                            {childName}
+                          </Link>
+                        ) : (
+                          <div key={`child-${index}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm">
+                            {childName}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
