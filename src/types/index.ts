@@ -1,4 +1,6 @@
 
+import type { Timestamp } from 'firebase/firestore';
+
 export interface CultivarImage {
   id: string;
   url: string;
@@ -12,37 +14,37 @@ export interface Review {
   rating: number; // 1-5
   text: string;
   sentimentScore?: number;
-  createdAt: string; // ISO date string
+  createdAt: string; // ISO date string (or Timestamp from Firestore, converted to string in service)
 }
 
 export type Genetics = 'Indica' | 'Sativa' | 'Hybrid' | 'Ruderalis';
 
 export interface CannabinoidProfile {
-  min: number;
-  max: number;
+  min?: number; // Made optional to align with zod schema
+  max?: number; // Made optional to align with zod schema
 }
 
 export interface YieldProfile {
-  min: number;
-  max: number;
+  min?: number; // Made optional
+  max?: number; // Made optional
 }
 
 export interface CultivationPhases {
-  germination?: string; // e.g., "3-7 days"
-  rooting?: string; // e.g., "1-2 weeks"
-  vegetative?: string; // e.g., "4-8 weeks"
-  flowering?: string; // e.g., "8-10 weeks"
-  harvest?: string; // e.g., "After 9 weeks of flowering"
+  germination?: string; 
+  rooting?: string; 
+  vegetative?: string; 
+  flowering?: string; 
+  harvest?: string; 
 }
 
 export interface PlantCharacteristics {
-  minHeight?: number; // cm
-  maxHeight?: number; // cm
-  minMoisture?: number; // %
-  maxMoisture?: number; // %
-  yieldPerPlant?: YieldProfile; // g
-  yieldPerWatt?: YieldProfile; // g/W
-  yieldPerM2?: YieldProfile; // g/m²
+  minHeight?: number; 
+  maxHeight?: number; 
+  minMoisture?: number; 
+  maxMoisture?: number; 
+  yieldPerPlant?: YieldProfile; 
+  yieldPerWatt?: YieldProfile; 
+  yieldPerM2?: YieldProfile; 
 }
 
 export type AdditionalInfoCategoryKey = 'geneticCertificate' | 'plantPicture' | 'cannabinoidInfo' | 'terpeneInfo';
@@ -50,10 +52,10 @@ export type AdditionalInfoCategoryKey = 'geneticCertificate' | 'plantPicture' | 
 export interface AdditionalFileInfo {
   id: string;
   name: string;
-  url: string; // Placeholder URL
+  url: string; 
   fileType: 'image' | 'pdf' | 'document';
   category: AdditionalInfoCategoryKey;
-  'data-ai-hint'?: string; // For images
+  'data-ai-hint'?: string; 
 }
 
 export interface Terpene {
@@ -70,7 +72,7 @@ export interface PricingProfile {
 }
 
 export interface Cultivar {
-  id: string;
+  id: string; // Firestore document ID
   name: string;
   genetics: Genetics;
   thc: CannabinoidProfile;

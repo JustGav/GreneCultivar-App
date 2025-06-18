@@ -4,9 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import NextImage from 'next/image'; // Aliased to avoid conflict with Lucide's Image
+import NextImage from 'next/image'; 
 import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene } from '@/types';
-import { mockCultivars } from '@/lib/mock-data';
+import { getCultivarById, addReviewToCultivar } from '@/services/firebase';
 import ImageGallery from '@/components/ImageGallery';
 import ReviewForm from '@/components/ReviewForm';
 import StarRating from '@/components/StarRating';
@@ -14,9 +14,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import CultivarDetailLoading from './loading'; // Import the loading component
 
 const calculateAverageRating = (reviews: ReviewType[]): number => {
   if (!reviews || reviews.length === 0) return 0;
@@ -64,38 +66,91 @@ export default function CultivarDetailsPage() {
   const id = params.id as string;
   const [cultivar, setCultivar] = useState<Cultivar | null>(null);
   const [averageRating, setAverageRating] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (id) {
-      const foundCultivar = mockCultivars.find(c => c.id === id);
-      if (foundCultivar) {
-        setCultivar(foundCultivar);
-        setAverageRating(calculateAverageRating(foundCultivar.reviews));
-      }
+      const fetchCultivar = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+          const foundCultivar = await getCultivarById(id);
+          if (foundCultivar) {
+            setCultivar(foundCultivar);
+            setAverageRating(calculateAverageRating(foundCultivar.reviews));
+          } else {
+            setError("Cultivar not found.");
+          }
+        } catch (err) {
+          console.error("Failed to fetch cultivar:", err);
+          setError("Failed to load cultivar data. Please try again.");
+          toast({
+            title: "Error",
+            description: "Could not load cultivar details.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchCultivar();
     }
-  }, [id]);
+  }, [id, toast]);
 
-  const handleReviewSubmit = useCallback((newReview: ReviewType) => {
-    setCultivar(prevCultivar => {
-      if (!prevCultivar) return null;
-      const updatedReviews = [newReview, ...prevCultivar.reviews];
-      const updatedCultivar = { ...prevCultivar, reviews: updatedReviews };
-      const mockIndex = mockCultivars.findIndex(c => c.id === prevCultivar.id);
-      if (mockIndex !== -1) {
-        mockCultivars[mockIndex] = updatedCultivar;
-      }
-      setAverageRating(calculateAverageRating(updatedReviews));
-      return updatedCultivar;
-    });
-  }, []);
+  const handleReviewSubmit = useCallback(async (newReview: ReviewType) => {
+    if (!cultivar) return;
+    try {
+      await addReviewToCultivar(cultivar.id, newReview);
+      // Optimistically update UI or re-fetch
+      setCultivar(prevCultivar => {
+        if (!prevCultivar) return null;
+        const updatedReviews = [newReview, ...(prevCultivar.reviews || [])];
+        const updatedCultivar = { ...prevCultivar, reviews: updatedReviews };
+        setAverageRating(calculateAverageRating(updatedReviews));
+        return updatedCultivar;
+      });
+      toast({
+        title: "Review Added",
+        description: "Your review has been successfully submitted.",
+        variant: "default",
+      });
+    } catch (err) {
+      console.error("Failed to submit review:", err);
+      toast({
+        title: "Error",
+        description: "Could not submit your review. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [cultivar, toast]);
 
+  if (isLoading) {
+    return <CultivarDetailLoading />;
+  }
+
+  if (error) {
+     return (
+       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-4 animate-fadeIn">
+        <AlertCircle size={64} className="text-destructive mb-4" />
+        <h1 className="text-3xl font-headline text-destructive mb-2">{error}</h1>
+        <Link href="/">
+          <Button variant="default">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Go Back to Browser
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+  
   if (!cultivar) {
-    return (
+     return (
        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-4 animate-fadeIn">
         <AlertCircle size={64} className="text-destructive mb-4" />
         <h1 className="text-3xl font-headline text-destructive mb-2">Cultivar Not Found</h1>
         <p className="text-muted-foreground font-body mb-6">
-          Sorry, we couldn&apos;t find the cultivar you&apos;re looking for. It might have been removed or the ID is incorrect.
+          Sorry, we couldn&apos;t find the cultivar you&apos;re looking for.
         </p>
         <Link href="/">
           <Button variant="default">
@@ -152,7 +207,7 @@ export default function CultivarDetailsPage() {
                 {averageRating > 0 && (
                   <>
                     <StarRating rating={averageRating} readOnly size={22} />
-                    <span className="text-sm text-muted-foreground">({cultivar.reviews.length} reviews)</span>
+                    <span className="text-sm text-muted-foreground">({(cultivar.reviews || []).length} reviews)</span>
                   </>
                 )}
               </div>
@@ -181,14 +236,14 @@ export default function CultivarDetailsPage() {
                 </div>
               </div>
 
-              {hasTerpeneProfile && (
+              {hasTerpeneProfile && cultivar.terpeneProfile && (
                 <div className="mb-6 pt-6 border-t">
                   <h3 className="font-semibold text-lg flex items-center mb-3">
                     <Palette size={20} className="mr-2 text-accent" />
                     Terpene Profile
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
-                    {cultivar.terpeneProfile!.map(terpene => (
+                    {cultivar.terpeneProfile.map(terpene => (
                       <div key={terpene.id} className="text-sm p-3 bg-muted/50 rounded-md shadow-sm">
                         <p className="font-medium text-foreground/90">
                           {terpene.name}
@@ -293,7 +348,7 @@ export default function CultivarDetailsPage() {
             </CardContent>
           </Card>
           
-          {hasEffects && (
+          {hasEffects && cultivar.effects && (
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center">
@@ -310,7 +365,7 @@ export default function CultivarDetailsPage() {
             </Card>
           )}
 
-          {hasMedicalEffects && (
+          {hasMedicalEffects && cultivar.medicalEffects && (
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center">
@@ -319,7 +374,7 @@ export default function CultivarDetailsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {cultivar.medicalEffects!.map(effect => (
+                  {cultivar.medicalEffects.map(effect => (
                     <Badge key={effect} variant="secondary" className="bg-primary/10 border-primary/30 text-primary-foreground/90">{effect}</Badge>
                   ))}
                 </div>
@@ -427,7 +482,7 @@ export default function CultivarDetailsPage() {
         <h2 className="text-3xl font-headline text-primary mb-6 flex items-center">
           <MessageSquare size={30} className="mr-3 text-primary/80"/>User Reviews
         </h2>
-        {cultivar.reviews.length > 0 ? (
+        {cultivar.reviews && cultivar.reviews.length > 0 ? (
           <div className="space-y-6">
             {cultivar.reviews.map(review => (
               <Card key={review.id} className="shadow-md animate-slideInUp">

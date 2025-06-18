@@ -3,11 +3,12 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import type { Cultivar, Genetics } from '@/types';
-import { mockCultivars, EFFECT_OPTIONS } from '@/lib/mock-data'; // Updated to use EFFECT_OPTIONS
+import { EFFECT_OPTIONS } from '@/lib/mock-data'; 
+import { getCultivars } from '@/services/firebase';
 import CultivarCard from '@/components/CultivarCard';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -20,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
@@ -33,18 +35,36 @@ const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
 
 export default function CultivarBrowserPage() {
   const [cultivars, setCultivars] = useState<Cultivar[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [geneticFilters, setGeneticFilters] = useState<string[]>([]);
-  const [hybridRatio, setHybridRatio] = useState<number>(50); // Sativa percentage
+  const [hybridRatio, setHybridRatio] = useState<number>(50); 
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
+  const { toast } = useToast();
   
-  // allAvailableEffects will now be sourced from EFFECT_OPTIONS
   const allAvailableEffects = EFFECT_OPTIONS;
 
   useEffect(() => {
-    setCultivars(mockCultivars);
-  }, []);
+    const fetchCultivars = async () => {
+      setIsLoading(true);
+      try {
+        const fetchedCultivars = await getCultivars();
+        setCultivars(fetchedCultivars);
+      } catch (error) {
+        console.error("Failed to fetch cultivars:", error);
+        toast({
+          title: "Error fetching data",
+          description: "Could not load cultivars from the database. Please try again later.",
+          variant: "destructive",
+        });
+        setCultivars([]); // Set to empty array on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCultivars();
+  }, [toast]);
 
   const handleEffectToggle = (effect: string) => {
     setSelectedEffects(prev =>
@@ -74,23 +94,28 @@ export default function CultivarBrowserPage() {
     }
 
     if (selectedEffects.length > 0) {
-      filtered = filtered.filter(c => selectedEffects.every(eff => c.effects.includes(eff)));
+      filtered = filtered.filter(c => c.effects && selectedEffects.every(eff => c.effects.includes(eff)));
     }
 
     if (geneticFilters.length > 0) {
       filtered = filtered.filter(c => geneticFilters.includes(c.genetics));
     }
 
-    return filtered.sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const ratingA = calculateAverageRating(a.reviews);
       const ratingB = calculateAverageRating(b.reviews);
+      const thcMaxA = a.thc?.max ?? 0;
+      const thcMaxB = b.thc?.max ?? 0;
+      const cbdMaxA = a.cbd?.max ?? 0;
+      const cbdMaxB = b.cbd?.max ?? 0;
+
       switch (sortOption) {
         case 'name-asc': return a.name.localeCompare(b.name);
         case 'name-desc': return b.name.localeCompare(a.name);
-        case 'thc-asc': return (a.thc?.max || 0) - (b.thc?.max || 0);
-        case 'thc-desc': return (b.thc?.max || 0) - (a.thc?.max || 0);
-        case 'cbd-asc': return (a.cbd?.max || 0) - (b.cbd?.max || 0);
-        case 'cbd-desc': return (b.cbd?.max || 0) - (a.cbd?.max || 0);
+        case 'thc-asc': return thcMaxA - thcMaxB;
+        case 'thc-desc': return thcMaxB - thcMaxA;
+        case 'cbd-asc': return cbdMaxA - cbdMaxB;
+        case 'cbd-desc': return cbdMaxB - cbdMaxA;
         case 'rating-asc': return ratingA - ratingB;
         case 'rating-desc': return ratingB - ratingA;
         default: return 0;
@@ -228,7 +253,12 @@ export default function CultivarBrowserPage() {
         </div>
       </section>
 
-      {filteredAndSortedCultivars.length > 0 ? (
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-lg text-muted-foreground">Loading cultivars...</p>
+        </div>
+      ) : filteredAndSortedCultivars.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAndSortedCultivars.map(cultivar => (
             <CultivarCard key={cultivar.id} cultivar={cultivar} />
@@ -238,7 +268,7 @@ export default function CultivarBrowserPage() {
         <div className="text-center py-12">
           <Search className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
           <p className="text-xl text-muted-foreground font-body">No cultivars match your current filters.</p>
-          <p className="text-sm text-muted-foreground font-body mt-2">Try adjusting your search or filter criteria.</p>
+          <p className="text-sm text-muted-foreground font-body mt-2">Try adjusting your search or filter criteria, or add some cultivars to your database!</p>
         </div>
       )}
     </div>

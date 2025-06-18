@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { mockCultivars, groupTerpenesByCategory, EFFECT_OPTIONS, MEDICAL_EFFECT_OPTIONS } from '@/lib/mock-data';
+import { addCultivar } from '@/services/firebase';
+import { groupTerpenesByCategory, EFFECT_OPTIONS, MEDICAL_EFFECT_OPTIONS } from '@/lib/mock-data';
 import type { Cultivar, Genetics, CannabinoidProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, YieldProfile, Terpene, PricingProfile } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,23 +19,23 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2 } from 'lucide-react';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
 
 const numberRangeSchema = z.object({
   min: z.coerce.number().min(0, "Min must be >= 0").max(100, "Min must be <= 100").optional(),
   max: z.coerce.number().min(0, "Max must be >= 0").max(100, "Max must be <= 100").optional(),
-}).refine(data => (data.min === undefined || data.max === undefined) || data.min <= data.max, {
-  message: "Min value must be less than or equal to Max value",
+}).refine(data => (data.min === undefined && data.max === undefined) || (data.min !== undefined && data.max !== undefined && data.min <= data.max) || (data.min !== undefined && data.max === undefined) || (data.min === undefined && data.max !== undefined), {
+  message: "Min value must be less than or equal to Max value if both are provided",
   path: ["min"], 
 });
 
 const yieldRangeSchema = z.object({
   min: z.coerce.number().min(0, "Min must be >= 0").optional(),
   max: z.coerce.number().min(0, "Max must be >= 0").optional(),
-}).refine(data => (data.min === undefined || data.max === undefined) || data.min <= data.max, {
-  message: "Min value must be less than or equal to Max value",
+}).refine(data => (data.min === undefined && data.max === undefined) || (data.min !== undefined && data.max !== undefined && data.min <= data.max) || (data.min !== undefined && data.max === undefined) || (data.min === undefined && data.max !== undefined), {
+  message: "Min value must be less than or equal to Max value if both are provided",
   path: ["min"],
 });
 
@@ -84,19 +85,25 @@ const cultivarFormSchema = z.object({
   genetics: z.enum(GENETIC_OPTIONS, { required_error: "Genetics type is required." }),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
   
+  supplierUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  parents: z.array(lineageEntrySchema).optional().default([]),
+  children: z.array(lineageEntrySchema).optional().default([]),
+  
+  terpeneProfile: z.array(terpeneEntrySchema).optional(),
+  
   effects: z.array(effectEntrySchema).optional().default([]), 
   medicalEffects: z.array(effectEntrySchema).optional().default([]),
   
+  primaryImageUrl: z.string().url({ message: "Please enter a valid URL for the primary image." }).optional().or(z.literal('')),
+  primaryImageAlt: z.string().optional(),
+  primaryImageDataAiHint: z.string().optional(),
+
   thc: numberRangeSchema,
   cbd: numberRangeSchema,
   cbc: numberRangeSchema.optional(),
   cbg: numberRangeSchema.optional(),
   cbn: numberRangeSchema.optional(),
   thcv: numberRangeSchema.optional(),
-
-  primaryImageUrl: z.string().url({ message: "Please enter a valid URL for the primary image." }).optional().or(z.literal('')),
-  primaryImageAlt: z.string().optional(),
-  primaryImageDataAiHint: z.string().optional(),
 
   cultivationPhases: z.object({
     germination: z.string().optional(),
@@ -122,17 +129,12 @@ const cultivarFormSchema = z.object({
     path: ["maxMoisture"], 
   }).optional(),
   
+  pricing: pricingSchema,
+  
   additionalInfo_geneticCertificates: z.array(additionalFileSchema).optional(),
   additionalInfo_plantPictures: z.array(additionalImageFileSchema).optional(),
   additionalInfo_cannabinoidInfos: z.array(additionalFileSchema).optional(),
   additionalInfo_terpeneInfos: z.array(additionalFileSchema).optional(),
-
-  terpeneProfile: z.array(terpeneEntrySchema).optional(),
-  pricing: pricingSchema,
-
-  supplierUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
-  parents: z.array(lineageEntrySchema).optional().default([]),
-  children: z.array(lineageEntrySchema).optional().default([]),
 });
 
 type CultivarFormData = z.infer<typeof cultivarFormSchema>;
@@ -142,7 +144,7 @@ const categorizedTerpenes = groupTerpenesByCategory();
 export default function AddCultivarPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { control, handleSubmit, register, formState: { errors } } = useForm<CultivarFormData>({
     resolver: zodResolver(cultivarFormSchema),
@@ -150,13 +152,17 @@ export default function AddCultivarPage() {
       name: '',
       genetics: undefined,
       description: '',
+      supplierUrl: '',
+      parents: [],
+      children: [],
+      terpeneProfile: [],
       effects: [],
       medicalEffects: [],
-      thc: { min: undefined, max: undefined },
-      cbd: { min: undefined, max: undefined },
       primaryImageUrl: '',
       primaryImageAlt: '',
       primaryImageDataAiHint: '',
+      thc: { min: undefined, max: undefined },
+      cbd: { min: undefined, max: undefined },
       cultivationPhases: {},
       plantCharacteristics: {
         minHeight: undefined,
@@ -167,54 +173,55 @@ export default function AddCultivarPage() {
         yieldPerM2: {},
         yieldPerWatt: {}
       },
+      pricing: { min: undefined, max: undefined, avg: undefined },
       additionalInfo_geneticCertificates: [],
       additionalInfo_plantPictures: [],
       additionalInfo_cannabinoidInfos: [],
       additionalInfo_terpeneInfos: [],
-      terpeneProfile: [],
-      pricing: { min: undefined, max: undefined, avg: undefined },
-      supplierUrl: '',
-      parents: [],
-      children: [],
     },
   });
 
+  const { fields: terpeneProfileFields, append: appendTerpene, remove: removeTerpene } = useFieldArray({ control, name: "terpeneProfile" });
   const { fields: effectFields, append: appendEffect, remove: removeEffect } = useFieldArray({ control, name: "effects" });
   const { fields: medicalEffectFields, append: appendMedicalEffect, remove: removeMedicalEffect } = useFieldArray({ control, name: "medicalEffects" });
+  const { fields: parentFields, append: appendParent, remove: removeParent } = useFieldArray({ control, name: "parents" });
+  const { fields: childrenFields, append: appendChild, remove: removeChild } = useFieldArray({ control, name: "children" });
   const { fields: geneticCertificateFields, append: appendGeneticCertificate, remove: removeGeneticCertificate } = useFieldArray({ control, name: "additionalInfo_geneticCertificates" });
   const { fields: plantPictureFields, append: appendPlantPicture, remove: removePlantPicture } = useFieldArray({ control, name: "additionalInfo_plantPictures" });
   const { fields: cannabinoidInfoFields, append: appendCannabinoidInfo, remove: removeCannabinoidInfo } = useFieldArray({ control, name: "additionalInfo_cannabinoidInfos" });
   const { fields: terpeneInfoFields, append: appendTerpeneInfo, remove: removeTerpeneInfo } = useFieldArray({ control, name: "additionalInfo_terpeneInfos" });
-  const { fields: terpeneProfileFields, append: appendTerpene, remove: removeTerpene } = useFieldArray({ control, name: "terpeneProfile" });
-  const { fields: parentFields, append: appendParent, remove: removeParent } = useFieldArray({ control, name: "parents" });
-  const { fields: childrenFields, append: appendChild, remove: removeChild } = useFieldArray({ control, name: "children" });
 
 
-  const onSubmit = (data: CultivarFormData) => {
-    setIsLoading(true);
+  const onSubmit = async (data: CultivarFormData) => {
+    setIsSubmitting(true);
     try {
-      const newCultivarId = Date.now().toString() + Math.random().toString(36).substring(2,7);
-      
-      const newCultivar: Cultivar = {
-        id: newCultivarId,
+      const cultivarDataForFirebase: Omit<Cultivar, 'id' | 'reviews'> = {
         name: data.name,
         genetics: data.genetics,
-        thc: data.thc as CannabinoidProfile,
+        description: data.description,
+        supplierUrl: data.supplierUrl || undefined,
+        parents: data.parents ? data.parents.map(p => p.name).filter(name => name) : [],
+        children: data.children ? data.children.map(c => c.name).filter(name => name) : [],
+        terpeneProfile: data.terpeneProfile?.map((tp, index) => ({ 
+            id: `terp-${Date.now()}-${index}`, // Client-side temp ID, Firestore will manage overall doc ID
+            name: tp.name,
+            percentage: tp.percentage,
+            description: tp.description,
+        })) || [],
+        effects: data.effects ? data.effects.map(e => e.name).filter(e => e) : [],
+        medicalEffects: data.medicalEffects ? data.medicalEffects.map(e => e.name).filter(e => e) : [],
+        images: data.primaryImageUrl ? [{ 
+            id: `img-${Date.now()}-1`, 
+            url: data.primaryImageUrl, 
+            alt: data.primaryImageAlt || `${data.name} primary image`,
+            'data-ai-hint': data.primaryImageDataAiHint
+        }] : [],
+        thc: data.thc as CannabinoidProfile, // Assuming validation passes, these are fine
         cbd: data.cbd as CannabinoidProfile,
         cbc: data.cbc?.min !== undefined || data.cbc?.max !== undefined ? data.cbc as CannabinoidProfile : undefined,
         cbg: data.cbg?.min !== undefined || data.cbg?.max !== undefined ? data.cbg as CannabinoidProfile : undefined,
         cbn: data.cbn?.min !== undefined || data.cbn?.max !== undefined ? data.cbn as CannabinoidProfile : undefined,
         thcv: data.thcv?.min !== undefined || data.thcv?.max !== undefined ? data.thcv as CannabinoidProfile : undefined,
-        effects: data.effects ? data.effects.map(e => e.name).filter(e => e) : [],
-        medicalEffects: data.medicalEffects ? data.medicalEffects.map(e => e.name).filter(e => e) : [],
-        description: data.description,
-        images: data.primaryImageUrl ? [{ 
-            id: `img-${newCultivarId}-1`, 
-            url: data.primaryImageUrl, 
-            alt: data.primaryImageAlt || `${data.name} primary image`,
-            'data-ai-hint': data.primaryImageDataAiHint
-        }] : [],
-        reviews: [],
         cultivationPhases: data.cultivationPhases,
         plantCharacteristics: {
             minHeight: data.plantCharacteristics?.minHeight,
@@ -225,13 +232,6 @@ export default function AddCultivarPage() {
             yieldPerWatt: data.plantCharacteristics?.yieldPerWatt?.min !== undefined || data.plantCharacteristics?.yieldPerWatt?.max !== undefined ? data.plantCharacteristics.yieldPerWatt as YieldProfile : undefined,
             yieldPerM2: data.plantCharacteristics?.yieldPerM2?.min !== undefined || data.plantCharacteristics?.yieldPerM2?.max !== undefined ? data.plantCharacteristics.yieldPerM2 as YieldProfile : undefined,
         },
-        additionalInfo: {},
-        terpeneProfile: data.terpeneProfile?.map((tp, index) => ({ 
-            id: `terp-${newCultivarId}-${index}`,
-            name: tp.name,
-            percentage: tp.percentage,
-            description: tp.description,
-        })) || [],
         pricing: (data.pricing?.min !== undefined || data.pricing?.max !== undefined || data.pricing?.avg !== undefined)
           ? {
               min: data.pricing.min,
@@ -239,9 +239,7 @@ export default function AddCultivarPage() {
               avg: data.pricing.avg,
             }
           : undefined,
-        supplierUrl: data.supplierUrl || undefined,
-        parents: data.parents ? data.parents.map(p => p.name).filter(name => name) : [],
-        children: data.children ? data.children.map(c => c.name).filter(name => name) : [],
+        additionalInfo: {},
       };
       
       const processAdditionalInfoCategory = (
@@ -255,7 +253,7 @@ export default function AddCultivarPage() {
         return formDataArray
           .filter(item => item.url && item.name) 
           .map((item, index) => ({
-            id: `addinf-${categoryKey.substring(0,2)}-${newCultivarId}-${index}`,
+            id: `addinf-${categoryKey.substring(0,2)}-${Date.now()}-${index}`, // Client-side temp ID
             name: item.name,
             url: item.url,
             fileType: fileType,
@@ -264,18 +262,17 @@ export default function AddCultivarPage() {
         }));
       };
 
-      if (!newCultivar.additionalInfo) newCultivar.additionalInfo = {};
-      newCultivar.additionalInfo.geneticCertificate = processAdditionalInfoCategory(data.additionalInfo_geneticCertificates, 'geneticCertificate', 'pdf');
-      newCultivar.additionalInfo.plantPicture = processAdditionalInfoCategory(data.additionalInfo_plantPictures, 'plantPicture', 'image');
-      newCultivar.additionalInfo.cannabinoidInfo = processAdditionalInfoCategory(data.additionalInfo_cannabinoidInfos, 'cannabinoidInfo', 'pdf');
-      newCultivar.additionalInfo.terpeneInfo = processAdditionalInfoCategory(data.additionalInfo_terpeneInfos, 'terpeneInfo', 'pdf');
+      if (!cultivarDataForFirebase.additionalInfo) cultivarDataForFirebase.additionalInfo = {};
+      cultivarDataForFirebase.additionalInfo.geneticCertificate = processAdditionalInfoCategory(data.additionalInfo_geneticCertificates, 'geneticCertificate', 'pdf');
+      cultivarDataForFirebase.additionalInfo.plantPicture = processAdditionalInfoCategory(data.additionalInfo_plantPictures, 'plantPicture', 'image');
+      cultivarDataForFirebase.additionalInfo.cannabinoidInfo = processAdditionalInfoCategory(data.additionalInfo_cannabinoidInfos, 'cannabinoidInfo', 'pdf');
+      cultivarDataForFirebase.additionalInfo.terpeneInfo = processAdditionalInfoCategory(data.additionalInfo_terpeneInfos, 'terpeneInfo', 'pdf');
 
-
-      mockCultivars.unshift(newCultivar);
+      await addCultivar(cultivarDataForFirebase);
 
       toast({
         title: "Cultivar Added!",
-        description: `${data.name} has been successfully added.`,
+        description: `${data.name} has been successfully added to the database.`,
         variant: "default",
         action: <CheckCircle className="text-green-500" />,
       });
@@ -284,11 +281,11 @@ export default function AddCultivarPage() {
       console.error("Failed to add cultivar:", error);
       toast({
         title: "Error",
-        description: "Failed to add cultivar. Please try again.",
+        description: "Failed to add cultivar. Please check the console and try again.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
   
@@ -308,7 +305,6 @@ export default function AddCultivarPage() {
         maxError = errorsForPrefix?.max?.message;
         rootError = errorsForPrefix?.message; 
     }
-
 
     return (
         <div className="grid grid-cols-2 gap-4 items-start">
@@ -379,7 +375,7 @@ export default function AddCultivarPage() {
             </div>
           </CardContent>
         </Card>
-
+        
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline text-2xl text-primary flex items-center"><Palette size={24} className="mr-2" /> Terpene Profile</CardTitle>
@@ -423,6 +419,10 @@ export default function AddCultivarPage() {
                     {errors.terpeneProfile?.[index]?.percentage && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile[index]?.percentage?.message}</p>}
                   </div>
                 </div>
+                 <div>
+                    <Label htmlFor={`terpeneProfile.${index}.description`}>Aroma/Notes (Optional)</Label>
+                    <Input {...register(`terpeneProfile.${index}.description`)} placeholder="e.g., earthy, citrus" />
+                 </div>
                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeTerpene(index)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -852,8 +852,8 @@ export default function AddCultivarPage() {
 
 
         <CardFooter className="pt-6 border-t">
-          <Button type="submit" className="w-full md:w-auto" size="lg" disabled={isLoading}>
-            {isLoading ? 'Adding Cultivar...' : 'Add Cultivar'}
+          <Button type="submit" className="w-full md:w-auto" size="lg" disabled={isSubmitting}>
+            {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding Cultivar...</>) : 'Add Cultivar'}
           </Button>
         </CardFooter>
       </form>
