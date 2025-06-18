@@ -3,6 +3,7 @@
 
 import type { Cultivar } from '@/types';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import StarRating from './StarRating';
-import { Leaf, Percent, Smile, ThermometerSun, ThermometerSnowflake, Utensils, ImageOff, Network } from 'lucide-react';
+import { Leaf, Percent, Smile, ThermometerSun, ThermometerSnowflake, Utensils, ImageOff, Network, ExternalLink } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +25,7 @@ interface CultivarDetailModalProps {
   cultivar: Cultivar | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  cultivarNameMap?: Map<string, string>; // cultivarNameMap is passed but not used for lineage links in this modal version
+  cultivarNameMap?: Map<string, string>; 
 }
 
 const calculateAverageRating = (reviews: Cultivar['reviews'] = []): number => {
@@ -140,7 +141,7 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                   <h3 className="font-semibold text-lg flex items-center mb-2"><Utensils size={20} className="mr-2 text-accent"/>Flavors</h3>
                   <div className="flex flex-wrap gap-1">
                     {cultivar.flavors.slice(0, 5).map(flavor => (
-                      <Badge key={flavor} variant="outline" className="bg-primary/10 border-primary/30 text-foreground/90">{flavor}</Badge>
+                      <Badge key={flavor} variant="outline" className="bg-primary/10 border-primary/20 text-foreground/90">{flavor}</Badge>
                     ))}
                     {cultivar.flavors.length > 5 && <Badge variant="outline">...</Badge>}
                   </div>
@@ -158,11 +159,25 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                     <div>
                       <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">Parents</h4>
                       <div className="flex flex-wrap gap-1.5">
-                        {cultivar.parents.map((parentName, index) => (
-                          <Badge key={`parent-${index}`} variant="outline" className="text-xs">
-                            {parentName}
-                          </Badge>
-                        ))}
+                        {cultivar.parents.map((parentName, index) => {
+                           const parentId = cultivarNameMap?.get(parentName.toLowerCase());
+                           return parentId ? (
+                            <Link key={`parent-${index}`} href={`/cultivars/${parentId}`} passHref legacyBehavior>
+                              <Badge 
+                                as="a" 
+                                variant="outline" 
+                                className="text-xs hover:bg-accent/20 hover:border-accent/50 cursor-pointer"
+                                onClick={() => onOpenChange(false)} // Close modal on click
+                              >
+                                {parentName}
+                              </Badge>
+                            </Link>
+                           ) : (
+                            <Badge key={`parent-${index}`} variant="outline" className="text-xs">
+                              {parentName}
+                            </Badge>
+                           );
+                        })}
                       </div>
                     </div>
                   )}
@@ -178,11 +193,25 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                     <div>
                       <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">Children</h4>
                       <div className="flex flex-wrap gap-1.5">
-                        {cultivar.children.map((childName, index) => (
-                          <Badge key={`child-${index}`} variant="outline" className="text-xs">
-                            {childName}
-                          </Badge>
-                        ))}
+                        {cultivar.children.map((childName, index) => {
+                          const childId = cultivarNameMap?.get(childName.toLowerCase());
+                          return childId ? (
+                            <Link key={`child-${index}`} href={`/cultivars/${childId}`} passHref legacyBehavior>
+                               <Badge 
+                                as="a" 
+                                variant="outline" 
+                                className="text-xs hover:bg-accent/20 hover:border-accent/50 cursor-pointer"
+                                onClick={() => onOpenChange(false)} // Close modal on click
+                              >
+                                {childName}
+                              </Badge>
+                            </Link>
+                          ) : (
+                            <Badge key={`child-${index}`} variant="outline" className="text-xs">
+                              {childName}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -192,8 +221,8 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
 
             {cultivar.supplierUrl && (
                  <div className="pt-3 mt-3 border-t">
-                    <a href={cultivar.supplierUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:text-accent font-medium transition-colors">
-                        Visit Supplier Website
+                    <a href={cultivar.supplierUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-primary hover:text-accent font-medium transition-colors">
+                        <ExternalLink size={14} className="mr-1.5" /> Visit Supplier Website
                     </a>
                 </div>
             )}
