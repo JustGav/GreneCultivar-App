@@ -31,16 +31,6 @@ const STATUS_LABELS: Record<CultivarStatus, string> = {
   archived: 'Archived',
 };
 
-// Stricter schema for THC/CBD on the edit page
-const strictNumberRangeSchema = z.object({
-  min: z.coerce.number({ required_error: "Min value is required.", invalid_type_error: "Min value must be a number." }).min(0, "Min must be >= 0").max(100, "Min must be <= 100"),
-  max: z.coerce.number({ required_error: "Max value is required.", invalid_type_error: "Max value must be a number." }).min(0, "Max must be >= 0").max(100, "Max must be <= 100"),
-}).refine(data => data.min <= data.max, {
-  message: "Min value must be less than or equal to Max value if both are provided.",
-  path: ["min"],
-});
-
-// Original numberRangeSchema for other optional cannabinoid profiles
 const numberRangeSchema = z.object({
   min: z.coerce.number().min(0, "Min must be >= 0").max(100, "Min must be <= 100").optional(),
   max: z.coerce.number().min(0, "Max must be >= 0").max(100, "Max must be <= 100").optional(),
@@ -134,10 +124,10 @@ const lineageEntrySchema = z.object({
 
 const cultivarFormSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }),
-  genetics: z.enum(GENETIC_OPTIONS, { required_error: "Genetics type is required." }),
-  status: z.enum(STATUS_OPTIONS, { required_error: "Status is required." }),
+  genetics: z.enum(GENETIC_OPTIONS).optional(),
+  status: z.enum(STATUS_OPTIONS).optional(),
   source: z.string().optional(),
-  description: z.string().min(10, { message: "Description must be at least 10 characters." }),
+  description: z.string().optional(),
 
   supplierUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   parents: z.array(lineageEntrySchema).optional().default([]),
@@ -154,10 +144,9 @@ const cultivarFormSchema = z.object({
   existingPrimaryImageUrl: z.string().optional().or(z.literal('')), 
   existingPrimaryImageId: z.string().optional(),
 
-
-  thc: strictNumberRangeSchema, // Using stricter schema for edit
-  cbd: strictNumberRangeSchema, // Using stricter schema for edit
-  cbc: numberRangeSchema.optional(), // Optional cannabinoids still use the original schema
+  thc: numberRangeSchema,
+  cbd: numberRangeSchema,
+  cbc: numberRangeSchema.optional(),
   cbg: numberRangeSchema.optional(),
   cbn: numberRangeSchema.optional(),
   thcv: numberRangeSchema.optional(),
@@ -198,8 +187,8 @@ type CultivarFormData = z.infer<typeof cultivarFormSchema>;
 
 const defaultFormValues: CultivarFormData = {
   name: '',
-  genetics: 'Hybrid', 
-  status: 'recentlyAdded',
+  genetics: undefined, 
+  status: undefined,
   source: '',
   description: '',
   supplierUrl: '',
@@ -213,8 +202,8 @@ const defaultFormValues: CultivarFormData = {
   primaryImageDataAiHint: '',
   existingPrimaryImageUrl: '',
   existingPrimaryImageId: undefined,
-  thc: { min: 0, max: 0 }, // Provide default numbers for strict schema
-  cbd: { min: 0, max: 0 }, // Provide default numbers for strict schema
+  thc: { min: undefined, max: undefined }, 
+  cbd: { min: undefined, max: undefined }, 
   cbc: { min: undefined, max: undefined },
   cbg: { min: undefined, max: undefined },
   cbn: { min: undefined, max: undefined },
@@ -274,9 +263,9 @@ export default function EditCultivarPage() {
             const formData: CultivarFormData = {
               name: cultivar.name,
               genetics: cultivar.genetics,
-              status: cultivar.status || 'recentlyAdded',
+              status: cultivar.status || undefined,
               source: cultivar.source || '',
-              description: cultivar.description,
+              description: cultivar.description || '',
               supplierUrl: cultivar.supplierUrl || '',
               parents: cultivar.parents?.map(p => ({ name: p, id: `parent-${Math.random()}` })) || [],
               children: cultivar.children?.map(c => ({ name: c, id: `child-${Math.random()}` })) || [],
@@ -290,8 +279,8 @@ export default function EditCultivarPage() {
               primaryImageAlt: cultivar.images?.[0]?.alt || '',
               primaryImageDataAiHint: cultivar.images?.[0]?.['data-ai-hint'] || '',
 
-              thc: cultivar.thc || { min: 0, max: 0 }, // Ensure defaults for strict schema
-              cbd: cultivar.cbd || { min: 0, max: 0 }, // Ensure defaults for strict schema
+              thc: cultivar.thc || { min: undefined, max: undefined }, 
+              cbd: cultivar.cbd || { min: undefined, max: undefined }, 
               cbc: cultivar.cbc || { min: undefined, max: undefined },
               cbg: cultivar.cbg || { min: undefined, max: undefined },
               cbn: cultivar.cbn || { min: undefined, max: undefined },
@@ -429,7 +418,7 @@ export default function EditCultivarPage() {
         genetics: data.genetics,
         status: data.status,
         source: data.source || undefined,
-        description: data.description,
+        description: data.description || undefined,
         supplierUrl: data.supplierUrl || undefined,
         parents: data.parents ? data.parents.map(p => p.name).filter(name => name) : [],
         children: data.children ? data.children.map(c => c.name).filter(name => name) : [],
@@ -441,8 +430,8 @@ export default function EditCultivarPage() {
         effects: data.effects ? data.effects.map(e => e.name).filter(e => e) : [],
         medicalEffects: data.medicalEffects ? data.medicalEffects.map(e => e.name).filter(e => e) : [],
         images: finalPrimaryImage ? [finalPrimaryImage] : [],
-        thc: data.thc, // Will be {min: number, max: number} due to strict schema
-        cbd: data.cbd, // Will be {min: number, max: number} due to strict schema
+        thc: data.thc,
+        cbd: data.cbd,
         cbc: data.cbc,
         cbg: data.cbg,
         cbn: data.cbn,
@@ -479,7 +468,7 @@ export default function EditCultivarPage() {
     }
   };
 
-  const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string, isStrict: boolean = false) => {
+  const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string) => {
     const fieldPrefix = String(fieldPrefixKey);
 
     const errorsAny = errors as any; 
@@ -506,13 +495,13 @@ export default function EditCultivarPage() {
     return (
         <div className="grid grid-cols-2 gap-4 items-start">
             <div>
-                <Label htmlFor={minField}>{label} Min {subLabel} {isStrict ? "*" : ""}</Label>
+                <Label htmlFor={minField}>{label} Min {subLabel}</Label>
                 <Input id={minField} type="number" step="0.01" {...register(minField)} placeholder="e.g., 18.0" />
                 {minErrorMsg && <p className="text-sm text-destructive mt-1">{minErrorMsg}</p>}
                 {rootErrorMsg && !minErrorMsg && !maxErrorMsg && <p className="text-sm text-destructive mt-1">{rootErrorMsg}</p>}
             </div>
             <div>
-                <Label htmlFor={maxField}>{label} Max {subLabel} {isStrict ? "*" : ""}</Label>
+                <Label htmlFor={maxField}>{label} Max {subLabel}</Label>
                 <Input id={maxField} type="number" step="0.01" {...register(maxField)} placeholder="e.g., 22.5" />
                 {maxErrorMsg && <p className="text-sm text-destructive mt-1">{maxErrorMsg}</p>}
             </div>
@@ -560,7 +549,7 @@ export default function EditCultivarPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label>Genetics *</Label>
+                <Label>Genetics</Label>
                 <Controller
                   name="genetics"
                   control={control}
@@ -578,7 +567,7 @@ export default function EditCultivarPage() {
                 {errors.genetics && <p className="text-sm text-destructive mt-1">{errors.genetics.message}</p>}
               </div>
               <div>
-                <Label htmlFor="status">Status *</Label>
+                <Label htmlFor="status">Status</Label>
                 <Controller
                   name="status"
                   control={control}
@@ -603,7 +592,7 @@ export default function EditCultivarPage() {
 
 
             <div>
-              <Label htmlFor="description">Description *</Label>
+              <Label htmlFor="description">Description</Label>
               <Textarea id="description" {...register("description")} placeholder="Describe the cultivar..." rows={4} />
               {errors.description && <p className="text-sm text-destructive mt-1">{errors.description.message}</p>}
             </div>
@@ -720,11 +709,11 @@ export default function EditCultivarPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline text-2xl text-primary flex items-center"><Percent size={24} className="mr-2" /> Cannabinoid Profile</CardTitle>
-            <CardDescription>Enter the min/max percentages for THC and CBD (required). Other cannabinoids are optional.</CardDescription>
+            <CardDescription>Enter the min/max percentages for THC and CBD. Other cannabinoids are optional.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {renderMinMaxInput("thc", "THC", "(%)", true)}
-            {renderMinMaxInput("cbd", "CBD", "(%)", true)}
+            {renderMinMaxInput("thc", "THC", "(%)")}
+            {renderMinMaxInput("cbd", "CBD", "(%)")}
             {renderMinMaxInput("cbc", "CBC", "(%)")}
             {renderMinMaxInput("cbg", "CBG", "(%)")}
             {renderMinMaxInput("cbn", "CBN", "(%)")}
