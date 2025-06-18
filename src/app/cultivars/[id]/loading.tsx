@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton, Palette } from "lucide-react";
+import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton, Palette, DollarSign } from "lucide-react";
 
 export default function CultivarDetailLoading() {
   return (
@@ -130,6 +130,19 @@ export default function CultivarDetailLoading() {
                   </div>
                 </div>
               </div>
+
+              {/* Pricing Skeleton */}
+              <div className="pt-6 border-t">
+                <div className="flex items-center mb-3">
+                    <DollarSign size={20} className="mr-2 text-muted-foreground/50" />
+                    <Skeleton className="h-6 w-2/5" /> {/* Section Title: Pricing */}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Skeleton className="h-5 w-3/4" /> {/* Min Price */}
+                    <Skeleton className="h-5 w-3/4" /> {/* Max Price */}
+                    <Skeleton className="h-5 w-3/4" /> {/* Avg Price */}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -229,3 +242,4 @@ export default function CultivarDetailLoading() {
     </div>
   );
 }
+

@@ -62,6 +62,12 @@ export interface Terpene {
   percentage?: number; // Optional percentage value
 }
 
+export interface PricingProfile {
+  min?: number;
+  max?: number;
+  avg?: number;
+}
+
 export interface Cultivar {
   id: string;
   name: string;
@@ -85,4 +91,6 @@ export interface Cultivar {
     terpeneInfo?: AdditionalFileInfo[];
   };
   terpeneProfile?: Terpene[];
+  pricing?: PricingProfile;
 }
+

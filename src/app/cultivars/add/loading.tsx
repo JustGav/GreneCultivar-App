@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Edit3, Percent, Clock, Sprout, Paperclip, PlusCircle, Palette } from "lucide-react";
+import { ArrowLeft, Edit3, Percent, Clock, Sprout, Paperclip, PlusCircle, Palette, DollarSign } from "lucide-react";
 
 export default function AddCultivarLoading() {
   return (
@@ -115,6 +115,30 @@ export default function AddCultivarLoading() {
       <Card>
         <CardHeader>
           <div className="flex items-center">
+            <DollarSign size={24} className="mr-2 text-muted-foreground/50" />
+            <Skeleton className="h-8 w-1/2" /> {/* Section Title: Pricing */}
+          </div>
+          <Skeleton className="h-5 w-full mt-1" /> {/* Description */}
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-1/3" /> {/* Label */}
+            <Skeleton className="h-10 w-full" /> {/* Input */}
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-1/3" /> {/* Label */}
+            <Skeleton className="h-10 w-full" /> {/* Input */}
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-1/3" /> {/* Label */}
+            <Skeleton className="h-10 w-full" /> {/* Input */}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center">
             <Paperclip size={28} className="mr-3 text-muted-foreground/50" />
             <Skeleton className="h-8 w-1/2" /> {/* Section Title: Additional Info */}
           </div>
@@ -158,3 +182,4 @@ export default function AddCultivarLoading() {
     </div>
   );
 }
+

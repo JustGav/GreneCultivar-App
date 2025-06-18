@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -118,6 +118,8 @@ export default function CultivarDetailsPage() {
 
   const hasAdditionalInfo = cultivar.additionalInfo && Object.values(cultivar.additionalInfo).some(files => files && files.length > 0);
   const hasTerpeneProfile = cultivar.terpeneProfile && cultivar.terpeneProfile.length > 0;
+  const hasPricingInfo = cultivar.pricing && (cultivar.pricing.min !== undefined || cultivar.pricing.max !== undefined || cultivar.pricing.avg !== undefined);
+
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -249,6 +251,20 @@ export default function CultivarDetailsPage() {
                    </div>
                 </div>
               )}
+
+              {hasPricingInfo && cultivar.pricing && (
+                <div className="pt-6 border-t">
+                  <h3 className="font-semibold text-lg flex items-center mb-3">
+                    <DollarSign size={20} className="mr-2 text-accent" />
+                    Estimated Pricing (per gram)
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+                    <p>Min: {cultivar.pricing.min !== undefined ? `$${cultivar.pricing.min.toFixed(2)}` : 'N/A'}</p>
+                    <p>Max: {cultivar.pricing.max !== undefined ? `$${cultivar.pricing.max.toFixed(2)}` : 'N/A'}</p>
+                    <p>Avg: {cultivar.pricing.avg !== undefined ? `$${cultivar.pricing.avg.toFixed(2)}` : 'N/A'}</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
           
@@ -361,3 +377,4 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
+

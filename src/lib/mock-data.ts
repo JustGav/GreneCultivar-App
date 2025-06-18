@@ -37,6 +37,7 @@ export const TERPENE_OPTIONS: { name: string; category: string }[] = [
   { name: "Fenchol", category: TERPENE_CATEGORIES.ADDITIONAL },
   { name: "Terpineol", category: TERPENE_CATEGORIES.ADDITIONAL },
   { name: "Bergamotene", category: TERPENE_CATEGORIES.ADDITIONAL },
+  // Removed duplicate Valencene from additional
 ];
 
 export const groupTerpenesByCategory = () => {
@@ -49,7 +50,6 @@ export const groupTerpenesByCategory = () => {
     return acc;
   }, {} as Record<string, string[]>);
   
-  // Ensure consistent order of categories
   const orderedCategories = [
     TERPENE_CATEGORIES.PRIMARY,
     TERPENE_CATEGORIES.SECONDARY,
@@ -57,7 +57,7 @@ export const groupTerpenesByCategory = () => {
   ];
 
   return orderedCategories
-    .filter(categoryLabel => grouped[categoryLabel]) // Only include categories that have terpenes
+    .filter(categoryLabel => grouped[categoryLabel])
     .map(categoryLabel => ({
       label: categoryLabel,
       options: grouped[categoryLabel].sort(),
@@ -121,7 +121,8 @@ export const mockCultivars: Cultivar[] = [
       { id: 'tp1-1-gls', name: 'Myrcene', description: 'Earthy, musky, herbal', percentage: 0.8 },
       { id: 'tp1-2-gls', name: 'Beta-Caryophyllene', description: 'Spicy, peppery, woody', percentage: 0.5 },
       { id: 'tp1-3-gls', name: 'Limonene', description: 'Citrus, lemon, fresh', percentage: 0.3 },
-    ]
+    ],
+    pricing: { min: 8, max: 12, avg: 10 }
   },
   {
     id: '2',
@@ -167,7 +168,8 @@ export const mockCultivars: Cultivar[] = [
     terpeneProfile: [
       { id: 'tp2-1-gau', name: 'Terpinolene', description: 'Fruity, floral, piney', percentage: 1.2 },
       { id: 'tp2-2-gau', name: 'Ocimene', description: 'Sweet, herbal, woody', percentage: 0.6 },
-    ]
+    ],
+    pricing: { avg: 15 }
   },
   {
     id: '3',
@@ -205,7 +207,8 @@ export const mockCultivars: Cultivar[] = [
     terpeneProfile: [
       { id: 'tp3-1-mhb', name: 'Alpha-Pinene', description: 'Pine, woody, sharp', percentage: 0.7 },
       { id: 'tp3-2-mhb', name: 'Humulene', description: 'Earthy, woody, spicy', percentage: 0.4 },
-    ]
+    ],
+    pricing: { min: 9, max: 14 }
   },
   {
     id: '4',
@@ -236,7 +239,8 @@ export const mockCultivars: Cultivar[] = [
         { id: 'gc4-1', name: 'CPP_Genetics_Official.pdf', url: 'https://placehold.co/200x100.png?text=CPP_Genetics.pdf', fileType: 'pdf', category: 'geneticCertificate' },
       ]
     },
-    terpeneProfile: []
+    terpeneProfile: [],
+    // No pricing for this one
   },
   {
     id: '5',
@@ -267,7 +271,8 @@ export const mockCultivars: Cultivar[] = [
     },
     terpeneProfile: [
       { id: 'tp5-1-aab', name: 'Linalool', description: 'Floral, lavender, sweet', percentage: 0.9 },
-    ]
+    ],
+    pricing: { min: 5, max: 9, avg: 7 }
   }
 ];
 
@@ -278,3 +283,4 @@ export const getAllEffects = (): string[] => {
   });
   return Array.from(allEffects).sort();
 };
+

@@ -8,7 +8,7 @@ import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { mockCultivars, groupTerpenesByCategory } from '@/lib/mock-data';
-import type { Cultivar, Genetics, CannabinoidProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, YieldProfile, Terpene } from '@/types';
+import type { Cultivar, Genetics, CannabinoidProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, YieldProfile, Terpene, PricingProfile } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign } from 'lucide-react';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
 
@@ -52,6 +52,20 @@ const terpeneEntrySchema = z.object({
   description: z.string().min(1, "Terpene aroma/notes are required."),
   percentage: z.coerce.number().min(0, "Percentage must be >=0").max(100, "Percentage must be <=100").optional(),
 });
+
+const pricingSchema = z.object({
+    min: z.coerce.number().min(0, "Min price must be >= 0.").optional(),
+    max: z.coerce.number().min(0, "Max price must be >= 0.").optional(),
+    avg: z.coerce.number().min(0, "Avg price must be >= 0.").optional(),
+  }).refine(data => {
+    if (data.min !== undefined && data.max !== undefined) {
+      return data.min <= data.max;
+    }
+    return true;
+  }, {
+    message: "Min price must be less than or equal to Max price.",
+    path: ["max"], 
+  }).optional();
 
 
 const cultivarFormSchema = z.object({
@@ -94,6 +108,7 @@ const cultivarFormSchema = z.object({
   additionalInfo_terpeneInfos: z.array(additionalFileSchema).optional(),
 
   terpeneProfile: z.array(terpeneEntrySchema).optional(),
+  pricing: pricingSchema,
 });
 
 type CultivarFormData = z.infer<typeof cultivarFormSchema>;
@@ -127,6 +142,7 @@ export default function AddCultivarPage() {
       additionalInfo_cannabinoidInfos: [],
       additionalInfo_terpeneInfos: [],
       terpeneProfile: [],
+      pricing: { min: undefined, max: undefined, avg: undefined },
     },
   });
 
@@ -178,6 +194,13 @@ export default function AddCultivarPage() {
             description: tp.description,
             percentage: tp.percentage,
         })) || [],
+        pricing: (data.pricing?.min !== undefined || data.pricing?.max !== undefined || data.pricing?.avg !== undefined)
+          ? {
+              min: data.pricing.min,
+              max: data.pricing.max,
+              avg: data.pricing.avg,
+            }
+          : undefined,
       };
       
       const processAdditionalInfoCategory = (
@@ -493,6 +516,32 @@ export default function AddCultivarPage() {
                 </div>
             </CardContent>
         </Card>
+
+        <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="font-headline text-2xl text-primary flex items-center"><DollarSign size={24} className="mr-2" /> Pricing Information (per gram)</CardTitle>
+                <CardDescription>Enter the estimated minimum, maximum, and average price per gram.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                    <Label htmlFor="pricing.min">Min Price ($)</Label>
+                    <Input id="pricing.min" type="number" step="0.01" {...register("pricing.min")} placeholder="e.g., 8.00" />
+                    {errors.pricing?.min && <p className="text-sm text-destructive mt-1">{errors.pricing.min.message}</p>}
+                </div>
+                <div>
+                    <Label htmlFor="pricing.max">Max Price ($)</Label>
+                    <Input id="pricing.max" type="number" step="0.01" {...register("pricing.max")} placeholder="e.g., 12.50" />
+                    {errors.pricing?.max && <p className="text-sm text-destructive mt-1">{errors.pricing.max.message}</p>}
+                </div>
+                <div>
+                    <Label htmlFor="pricing.avg">Average Price ($)</Label>
+                    <Input id="pricing.avg" type="number" step="0.01" {...register("pricing.avg")} placeholder="e.g., 10.25" />
+                    {errors.pricing?.avg && <p className="text-sm text-destructive mt-1">{errors.pricing.avg.message}</p>}
+                </div>
+                </div>
+            </CardContent>
+        </Card>
         
         <Card className="shadow-lg">
             <CardHeader>
@@ -647,3 +696,4 @@ export default function AddCultivarPage() {
     </div>
   );
 }
+
