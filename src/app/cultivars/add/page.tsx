@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react'; // Added useEffect
+import { useRouter } from 'next/navigation'; // Added useRouter
 import Link from 'next/link';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,6 +21,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2, Upload, Database, Utensils } from 'lucide-react';
 import NextImage from 'next/image';
+import { useAuth } from '@/contexts/AuthContext'; // Added useAuth
+import AddCultivarLoading from './loading'; // Ensure this loading component exists
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
 
@@ -194,6 +196,7 @@ const categorizedTerpenes = groupTerpenesByCategory();
 
 export default function AddCultivarPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth(); // Get user and authLoading state
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -238,6 +241,12 @@ export default function AddCultivarPage() {
       additionalInfo_terpeneInfos: [],
     },
   });
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/'); // Redirect to home if not logged in and auth check is complete
+    }
+  }, [user, authLoading, router]);
 
   const { fields: terpeneProfileFields, append: appendTerpene, remove: removeTerpene } = useFieldArray({ control, name: "terpeneProfile" });
   const { fields: effectFields, append: appendEffect, remove: removeEffect } = useFieldArray({ control, name: "effects" });
@@ -401,6 +410,9 @@ export default function AddCultivarPage() {
     );
 };
 
+  if (authLoading || (!authLoading && !user)) {
+    return <AddCultivarLoading />; // Show loading skeleton while checking auth or if user is not logged in (before redirect)
+  }
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -1006,3 +1018,4 @@ export default function AddCultivarPage() {
     </div>
   );
 }
+

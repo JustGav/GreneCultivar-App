@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2, Upload, AlertCircle, Database, ShieldCheck, ArchiveIcon, Utensils, Star as StarIcon, Hourglass, EyeOff } from 'lucide-react';
 import EditCultivarLoading from './loading';
 import NextImage from 'next/image';
+import { useAuth } from '@/contexts/AuthContext'; // Added useAuth
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
 const STATUS_OPTIONS: CultivarStatus[] = ['Live', 'featured', 'User Submitted', 'recentlyAdded', 'Hide', 'archived'];
@@ -240,8 +241,9 @@ export default function EditCultivarPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const { user, loading: authLoading } = useAuth(); // Get user and authLoading state
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(true); // Changed initial state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [initialCultivarData, setInitialCultivarData] = useState<Cultivar | null>(null);
@@ -259,9 +261,14 @@ export default function EditCultivarPage() {
 
 
   useEffect(() => {
-    if (id) {
+    if (!authLoading && !user) {
+      router.push('/'); // Redirect to home if not logged in and auth check is complete
+      return; // Prevent further execution of the effect
+    }
+
+    if (user && id) { // Only fetch data if user is logged in and id is present
       const fetchCultivarData = async () => {
-        setIsLoading(true);
+        setIsLoadingData(true);
         setFetchError(null);
         try {
           const cultivar = await getCultivarById(id);
@@ -318,12 +325,15 @@ export default function EditCultivarPage() {
           console.error("Failed to fetch cultivar:", err);
           setFetchError("Failed to load cultivar data. Please try again.");
         } finally {
-          setIsLoading(false);
+          setIsLoadingData(false);
         }
       };
       fetchCultivarData();
+    } else if (!user && !authLoading) { // Case where user is definitely not logged in (redundant due to above but safe)
+        setIsLoadingData(false); // Ensure loading stops if we decided not to fetch
     }
-  }, [id, reset]);
+
+  }, [id, reset, user, authLoading, router]);
 
   const handleRemovePrimaryImage = () => {
     setValue('existingPrimaryImageUrl', '');
@@ -522,7 +532,7 @@ export default function EditCultivarPage() {
     );
 };
 
-  if (isLoading) {
+  if (authLoading || isLoadingData) {
     return <EditCultivarLoading />;
   }
 
