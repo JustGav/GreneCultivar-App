@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import type { Cultivar, Review as ReviewType } from '@/types';
+import type { Cultivar, Review as ReviewType, CannabinoidProfile } from '@/types';
 import { mockCultivars } from '@/lib/mock-data';
 import ImageGallery from '@/components/ImageGallery';
 import ReviewForm from '@/components/ReviewForm';
@@ -13,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, ThermometerSnowflake, ThermometerSun, UserCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const calculateAverageRating = (reviews: ReviewType[]): number => {
@@ -21,6 +22,16 @@ const calculateAverageRating = (reviews: ReviewType[]): number => {
   const total = reviews.reduce((acc, review) => acc + review.rating, 0);
   return Math.round((total / reviews.length) * 10) / 10;
 };
+
+const CannabinoidDisplay: React.FC<{ label: string; profile?: CannabinoidProfile }> = ({ label, profile }) => {
+  if (!profile) {
+    return <p className="text-sm">{label}: N/A</p>;
+  }
+  return (
+    <p className="text-sm">{label}: {profile.min}% - {profile.max}%</p>
+  );
+};
+
 
 export default function CultivarDetailsPage() {
   const params = useParams();
@@ -43,8 +54,6 @@ export default function CultivarDetailsPage() {
       if (!prevCultivar) return null;
       const updatedReviews = [newReview, ...prevCultivar.reviews];
       const updatedCultivar = { ...prevCultivar, reviews: updatedReviews };
-      // Note: In a real app, you'd update mockCultivars or your data source here
-      // For now, this only updates the local state for this page.
       const mockIndex = mockCultivars.findIndex(c => c.id === prevCultivar.id);
       if (mockIndex !== -1) {
         mockCultivars[mockIndex] = updatedCultivar;
@@ -102,9 +111,13 @@ export default function CultivarDetailsPage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-lg flex items-center"><Percent size={20} className="mr-2 text-accent"/>Potency</h3>
-                  <p className="flex items-center gap-2"><ThermometerSun size={18} className="text-red-500"/>THC: {cultivar.thc.min}% - {cultivar.thc.max}%</p>
-                  <p className="flex items-center gap-2"><ThermometerSnowflake size={18} className="text-blue-500"/>CBD: {cultivar.cbd.min}% - {cultivar.cbd.max}%</p>
+                  <h3 className="font-semibold text-lg flex items-center"><Percent size={20} className="mr-2 text-accent"/>Cannabinoid Profile</h3>
+                  <CannabinoidDisplay label="THC" profile={cultivar.thc} />
+                  <CannabinoidDisplay label="CBD" profile={cultivar.cbd} />
+                  <CannabinoidDisplay label="CBC" profile={cultivar.cbc} />
+                  <CannabinoidDisplay label="CBG" profile={cultivar.cbg} />
+                  <CannabinoidDisplay label="CBN" profile={cultivar.cbn} />
+                  <CannabinoidDisplay label="THCV" profile={cultivar.thcv} />
                 </div>
                 <div className="space-y-3">
                   <h3 className="font-semibold text-lg flex items-center"><Smile size={20} className="mr-2 text-accent"/>Effects</h3>
@@ -115,6 +128,30 @@ export default function CultivarDetailsPage() {
                   </div>
                 </div>
               </div>
+
+              {cultivar.cultivationPhases && (
+                <div className="mt-6 pt-6 border-t">
+                   <h3 className="font-semibold text-lg flex items-center mb-4"><Timer size={20} className="mr-2 text-accent"/>Estimated Cultivation Phases</h3>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center">
+                        <Sprout size={18} className="mr-2 text-primary/70" />
+                        <strong>Rooting:</strong>&nbsp;{cultivar.cultivationPhases.rooting}
+                      </div>
+                      <div className="flex items-center">
+                        <Leaf size={18} className="mr-2 text-primary/70" />
+                        <strong>Vegetative:</strong>&nbsp;{cultivar.cultivationPhases.vegetative}
+                      </div>
+                      <div className="flex items-center">
+                        <Flower size={18} className="mr-2 text-primary/70" />
+                        <strong>Flowering:</strong>&nbsp;{cultivar.cultivationPhases.flowering}
+                      </div>
+                      <div className="flex items-center">
+                        <Scissors size={18} className="mr-2 text-primary/70" />
+                        <strong>Harvest:</strong>&nbsp;{cultivar.cultivationPhases.harvest}
+                      </div>
+                   </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

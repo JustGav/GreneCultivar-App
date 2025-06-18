@@ -1,6 +1,7 @@
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Leaf, MessageSquare, Percent, Smile, ThermometerSnowflake, ThermometerSun, UserCircle } from "lucide-react";
+import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors } from "lucide-react";
 
 export default function CultivarDetailLoading() {
   return (
@@ -40,9 +41,13 @@ export default function CultivarDetailLoading() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-lg flex items-center"><Percent size={20} className="mr-2 text-muted-foreground/50"/>Potency</h3>
+                  <h3 className="font-semibold text-lg flex items-center"><Percent size={20} className="mr-2 text-muted-foreground/50"/>Cannabinoid Profile</h3>
                   <Skeleton className="h-5 w-3/4" />
                   <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-5 w-2/3" />
+                  <Skeleton className="h-5 w-2/3" />
+                  <Skeleton className="h-5 w-1/2" />
+                  <Skeleton className="h-5 w-1/2" />
                 </div>
                 <div className="space-y-3">
                   <h3 className="font-semibold text-lg flex items-center"><Smile size={20} className="mr-2 text-muted-foreground/50"/>Effects</h3>
@@ -50,6 +55,28 @@ export default function CultivarDetailLoading() {
                     <Skeleton className="h-6 w-16 rounded-full" />
                     <Skeleton className="h-6 w-20 rounded-full" />
                     <Skeleton className="h-6 w-12 rounded-full" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Cultivation Phases Skeleton */}
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="font-semibold text-lg flex items-center mb-4">
+                  <Timer size={20} className="mr-2 text-muted-foreground/50"/>
+                  <Skeleton className="h-6 w-1/2" />
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Sprout size={18} className="text-muted-foreground/50" /> <Skeleton className="h-5 w-3/4" />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Leaf size={18} className="text-muted-foreground/50" /> <Skeleton className="h-5 w-3/4" />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Flower size={18} className="text-muted-foreground/50" /> <Skeleton className="h-5 w-3/4" />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Scissors size={18} className="text-muted-foreground/50" /> <Skeleton className="h-5 w-3/4" />
                   </div>
                 </div>
               </div>
