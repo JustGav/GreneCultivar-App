@@ -191,7 +191,7 @@ export default function DashboardPage() {
     let filtered = allCultivars;
 
     if (selectedStatuses.length > 0) {
-      filtered = filtered.filter(c => selectedStatuses.includes(c.status));
+      filtered = filtered.filter(c => c.status && selectedStatuses.includes(c.status));
     }
     
     if (selectedGenetics.length > 0) {
@@ -277,9 +277,9 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSelectAll = (checked: boolean | 'indeterminate') => {
-    if (checked === true) {
-      setSelectedCultivarIds(paginatedCultivars.map(c => c.id));
+  const handleSelectAll = (isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedCultivarIds(filteredAndSortedCultivars.map(c => c.id));
     } else {
       setSelectedCultivarIds([]);
     }
@@ -308,7 +308,7 @@ export default function DashboardPage() {
           selectedCultivarIds.includes(c.id) ? { ...c, status: newStatus, updatedAt: new Date().toISOString() } : c
         )
       );
-      setSelectedCultivarIds([]);
+      setSelectedCultivarIds([]); // Deselect after action
     } catch (error) {
       console.error("Failed to mass update statuses:", error);
       toast({
@@ -358,8 +358,8 @@ export default function DashboardPage() {
   }
 
   const numSelected = selectedCultivarIds.length;
-  const isAllPaginatedSelected = numSelected > 0 && numSelected === paginatedCultivars.length;
-  const isSomePaginatedSelected = numSelected > 0 && numSelected < paginatedCultivars.length;
+  const allFilteredSelected = filteredAndSortedCultivars.length > 0 && numSelected === filteredAndSortedCultivars.length;
+  const someFilteredSelected = numSelected > 0 && numSelected < filteredAndSortedCultivars.length;
 
 
   return (
@@ -582,9 +582,9 @@ export default function DashboardPage() {
                 <TableRow>
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={isAllPaginatedSelected ? true : isSomePaginatedSelected ? "indeterminate" : false}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all cultivars on this page"
+                      checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+                      onCheckedChange={(isChecked) => handleSelectAll(isChecked as boolean)}
+                      aria-label="Select all cultivars matching current filters"
                     />
                   </TableHead>
                   <TableHead className="w-[64px]">Image</TableHead>
