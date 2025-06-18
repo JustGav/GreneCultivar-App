@@ -4,12 +4,11 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Cultivar, Genetics, CultivarStatus } from '@/types';
 import { EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data';
-import { getCultivars } from '@/services/firebase'; // Removed updateCultivarStatus
+import { getCultivars, updateCultivarStatus } from '@/services/firebase';
 import CultivarCard from '@/components/CultivarCard';
-import CultivarDetailModal from '@/components/CultivarDetailModal';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, Loader2, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -22,7 +21,9 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import {
   Accordion,
@@ -41,19 +42,16 @@ const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
   return total / reviews.length;
 };
 
-export default function CultivarBrowserPage() {
+export default function DashboardPage() {
   const [allCultivars, setAllCultivars] = useState<Cultivar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
-  const [showArchived, setShowArchived] = useState(false); // Public view probably shouldn't show archived by default
+  const [showArchived, setShowArchived] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
-
-  const [selectedCultivarForModal, setSelectedCultivarForModal] = useState<Cultivar | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const allAvailableEffects = EFFECT_OPTIONS;
   const allAvailableFlavors = FLAVOR_OPTIONS;
@@ -94,17 +92,28 @@ export default function CultivarBrowserPage() {
     setCurrentPage(1);
   };
 
+  const handleCultivarStatusChange = useCallback((cultivarId: string, newStatus: CultivarStatus) => {
+    setAllCultivars(prevCultivars =>
+      prevCultivars.map(c =>
+        c.id === cultivarId ? { ...c, status: newStatus } : c
+      )
+    );
+    // Optionally, re-filter or re-sort if status change affects visibility (e.g., if not showing archived)
+    // For now, just updating the local state. A full re-fetch might be better in a complex app.
+  }, []);
+
   const resetFilters = () => {
     setSearchTerm('');
     setSelectedEffects([]);
     setSelectedFlavors([]);
+    // setShowArchived(false); // User might want to keep this persisted
+    // setSortOption('name-asc'); // User might want to keep sort persisted
     setCurrentPage(1);
   };
 
   const filteredAndSortedCultivars = useMemo(() => {
     let filtered = allCultivars;
 
-    // For public page, default to NOT showing archived unless explicitly toggled
     if (!showArchived) {
       filtered = filtered.filter(c => c.status !== 'archived');
     }
@@ -174,11 +183,6 @@ export default function CultivarBrowserPage() {
     setCurrentPage(1);
   }
 
-  const handleOpenCultivarModal = (cultivar: Cultivar) => {
-    setSelectedCultivarForModal(cultivar);
-    setIsModalOpen(true);
-  };
-
   const sortOptions: {value: SortOption, label: string, icon?: React.ReactNode}[] = [
     { value: 'name-asc', label: 'Name (A-Z)'},
     { value: 'name-desc', label: 'Name (Z-A)'},
@@ -196,12 +200,17 @@ export default function CultivarBrowserPage() {
       <section className="bg-card p-6 rounded-lg shadow-lg">
         <div className="flex flex-col sm:flex-row justify-between items-start mb-2 gap-4">
           <div>
-            <h1 className="text-4xl font-headline text-primary">Explore Cultivars</h1>
+            <h1 className="text-4xl font-headline text-primary">Cultivar Dashboard</h1>
             <p className="text-muted-foreground font-body mt-1">
-              Discover your next favorite strain. Filter by effects, flavors, or search by name.
+              Manage and explore your cultivar collection.
             </p>
           </div>
-          {/* "Add New Cultivar" button removed for public view */}
+          <Link href="/cultivars/add" passHref>
+            <Button variant="default" className="w-full sm:w-auto">
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Add New Cultivar
+            </Button>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 items-end pt-4">
@@ -310,12 +319,7 @@ export default function CultivarBrowserPage() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {paginatedCultivars.map(cultivar => (
-              <CultivarCard 
-                key={cultivar.id} 
-                cultivar={cultivar} 
-                isPublicView={true} 
-                onViewInModal={handleOpenCultivarModal}
-              />
+              <CultivarCard key={cultivar.id} cultivar={cultivar} onStatusChange={handleCultivarStatusChange} />
             ))}
           </div>
           {totalPages > 1 && (
@@ -346,14 +350,9 @@ export default function CultivarBrowserPage() {
         <div className="text-center py-12">
           <Search className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
           <p className="text-xl text-muted-foreground font-body">No cultivars match your current filters.</p>
-          <p className="text-sm text-muted-foreground font-body mt-2">Try adjusting your search or filter criteria.</p>
+          <p className="text-sm text-muted-foreground font-body mt-2">Try adjusting your search or filter criteria, or add some cultivars to your database!</p>
         </div>
       )}
-      <CultivarDetailModal 
-        cultivar={selectedCultivarForModal} 
-        isOpen={isModalOpen} 
-        onOpenChange={setIsModalOpen} 
-      />
     </div>
   );
 }

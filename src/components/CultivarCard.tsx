@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils';
 interface CultivarCardProps {
   cultivar: Cultivar;
   onStatusChange?: (cultivarId: string, newStatus: CultivarStatus) => void;
+  isPublicView?: boolean;
+  onViewInModal?: (cultivar: Cultivar) => void;
 }
 
 function calculateAverageRating(reviews: Cultivar['reviews']): number {
@@ -27,11 +29,11 @@ const getStatusBadgeVariant = (status?: CultivarStatus): "default" | "secondary"
   if (!status) return 'outline';
   switch (status) {
     case 'verified':
-      return 'default'; // Primary color (green)
+      return 'default'; 
     case 'recentlyAdded':
-      return 'secondary'; // Secondary color
+      return 'secondary'; 
     case 'archived':
-      return 'destructive'; // Destructive color (red)
+      return 'destructive'; 
     default:
       return 'outline';
   }
@@ -58,7 +60,7 @@ const STATUS_LABELS: Record<CultivarStatus, string> = {
 };
 
 
-export default function CultivarCard({ cultivar, onStatusChange }: CultivarCardProps) {
+export default function CultivarCard({ cultivar, onStatusChange, isPublicView = false, onViewInModal }: CultivarCardProps) {
   const averageRating = calculateAverageRating(cultivar.reviews);
   const { toast } = useToast();
   const [isArchiving, setIsArchiving] = useState(false);
@@ -93,11 +95,17 @@ export default function CultivarCard({ cultivar, onStatusChange }: CultivarCardP
   const cbdMin = cultivar.cbd?.min ?? 'N/A';
   const cbdMax = cultivar.cbd?.max ?? 'N/A';
 
-  return (
-    <Card className={cn(
-        "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn",
-        isArchived && "opacity-60 bg-muted/50"
-      )}
+  const cardContent = (
+    <Card 
+        className={cn(
+            "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn",
+            isArchived && "opacity-60 bg-muted/50",
+            isPublicView && "cursor-pointer"
+        )}
+        onClick={isPublicView && onViewInModal ? () => onViewInModal(cultivar) : undefined}
+        role={isPublicView ? "button" : undefined}
+        tabIndex={isPublicView ? 0 : undefined}
+        onKeyDown={isPublicView && onViewInModal ? (e) => { if (e.key === 'Enter' || e.key === ' ') onViewInModal(cultivar) } : undefined}
     >
       <CardHeader>
         {cultivar.images && cultivar.images.length > 0 && (
@@ -164,28 +172,55 @@ export default function CultivarCard({ cultivar, onStatusChange }: CultivarCardP
            <StarRating rating={averageRating} readOnly size={20} />
            {averageRating > 0 && <span className="text-sm text-muted-foreground ml-2">({(cultivar.reviews || []).length} reviews)</span>}
         </div>
-        <div className="grid grid-cols-1 gap-2 w-full sm:grid-cols-3">
-          <Link href={`/cultivars/${cultivar.id}`} className="w-full">
-            <Button variant="default" className="w-full text-sm" disabled={isArchived}>
+        <div className={cn("grid grid-cols-1 gap-2 w-full", isPublicView ? "" : "sm:grid-cols-3")}>
+          {isPublicView ? (
+            <Button 
+                variant="default" 
+                className="w-full text-sm" 
+                onClick={(e) => { 
+                    e.stopPropagation(); // Prevent card's onClick if button is clicked
+                    if(onViewInModal) onViewInModal(cultivar); 
+                }}
+                disabled={isArchived}
+            >
               View Details
             </Button>
-          </Link>
-          <Link href={`/cultivars/edit/${cultivar.id}`} className="w-full">
-            <Button variant="outline" className="w-full text-sm" disabled={isArchived}>
-              <Edit size={16} className="mr-2" /> Edit
-            </Button>
-          </Link>
-           <Button 
-            variant="outline" 
-            className="w-full text-sm text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
-            onClick={handleArchive}
-            disabled={isArchived || isArchiving}
-          >
-            <Archive size={16} className="mr-2" /> {isArchiving ? 'Archiving...' : 'Archive'}
-          </Button>
+          ) : (
+            <>
+              <Link href={`/cultivars/${cultivar.id}`} className="w-full">
+                <Button variant="default" className="w-full text-sm" disabled={isArchived}>
+                  View Details
+                </Button>
+              </Link>
+              <Link href={`/cultivars/edit/${cultivar.id}`} className="w-full">
+                <Button variant="outline" className="w-full text-sm" disabled={isArchived}>
+                  <Edit size={16} className="mr-2" /> Edit
+                </Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                className="w-full text-sm text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                onClick={handleArchive}
+                disabled={isArchived || isArchiving}
+              >
+                <Archive size={16} className="mr-2" /> {isArchiving ? 'Archiving...' : 'Archive'}
+              </Button>
+            </>
+          )}
         </div>
       </CardFooter>
     </Card>
   );
-}
 
+  if (isPublicView) {
+    return cardContent; // The card itself is clickable
+  }
+
+  // For non-public view, retain the Link wrapping the card for full-card navigation to detail page.
+  // The "View Details" button inside will still navigate correctly due to event propagation.
+  return (
+     <Link href={`/cultivars/${cultivar.id}`} className="block h-full group" aria-label={`View details for ${cultivar.name}`}>
+        {cardContent}
+    </Link>
+  )
+}
