@@ -427,7 +427,7 @@ export default function CultivarDetailsPage() {
                           "text-black",
                           isNegative
                             ? 'bg-destructive/10 border-destructive/30'
-                            : 'bg-accent/10 border-accent/30'
+                            : 'bg-primary/10 border-primary/30'
                         )}
                       >
                         {effect}
