@@ -120,7 +120,7 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                         <Badge 
                           key={effect} 
                           className={cn(
-                            "text-black",
+                            "text-black", // Ensure text is black for readability
                             isNegative 
                               ? 'bg-destructive/10 border-destructive/30'
                               : 'bg-primary/10 border-primary/30'
@@ -162,9 +162,8 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                         {cultivar.parents.map((parentName, index) => {
                            const parentId = cultivarNameMap?.get(parentName.toLowerCase());
                            return parentId ? (
-                            <Link key={`parent-${index}`} href={`/cultivars/${parentId}`} passHref legacyBehavior>
+                            <Link key={`parent-${index}`} href={`/cultivars/${parentId}`}>
                               <Badge 
-                                as="a" 
                                 variant="outline" 
                                 className="text-xs hover:bg-accent/20 hover:border-accent/50 cursor-pointer"
                                 onClick={() => onOpenChange(false)} // Close modal on click
@@ -196,9 +195,8 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                         {cultivar.children.map((childName, index) => {
                           const childId = cultivarNameMap?.get(childName.toLowerCase());
                           return childId ? (
-                            <Link key={`child-${index}`} href={`/cultivars/${childId}`} passHref legacyBehavior>
+                            <Link key={`child-${index}`} href={`/cultivars/${childId}`}>
                                <Badge 
-                                as="a" 
                                 variant="outline" 
                                 className="text-xs hover:bg-accent/20 hover:border-accent/50 cursor-pointer"
                                 onClick={() => onOpenChange(false)} // Close modal on click
