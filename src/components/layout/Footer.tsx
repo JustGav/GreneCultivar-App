@@ -4,7 +4,7 @@ import { Shield, FileText } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="bg-muted text-muted-foreground py-3 mt-auto">
+    <footer className="fixed bottom-0 left-0 right-0 z-40 bg-muted text-muted-foreground py-3">
       <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-between text-xs">
         {/* Copyright - Left */}
         <div className="text-center sm:text-left mb-2 sm:mb-0">
@@ -31,4 +31,3 @@ export default function Footer() {
     </footer>
   );
 }
-
