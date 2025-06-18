@@ -9,7 +9,7 @@ export interface CultivarImage {
 }
 
 export interface Review {
-  id: string;
+  id:string;
   user: string;
   rating: number; // 1-5
   text: string;
@@ -18,7 +18,7 @@ export interface Review {
 }
 
 export type Genetics = 'Indica' | 'Sativa' | 'Hybrid' | 'Ruderalis';
-export type CultivarStatus = 'recentlyAdded' | 'verified' | 'archived';
+export type CultivarStatus = 'recentlyAdded' | 'Live' | 'archived' | 'featured';
 
 export interface CannabinoidProfile {
   min?: number;

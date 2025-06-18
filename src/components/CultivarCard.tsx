@@ -6,7 +6,7 @@ import type { Cultivar, CultivarStatus } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import StarRating from './StarRating';
-import { Leaf, ThermometerSnowflake, ThermometerSun, Edit, Archive, CheckCheck, ShieldCheck, Hourglass, Info, Utensils, Palette } from 'lucide-react';
+import { Leaf, ThermometerSnowflake, ThermometerSun, Edit, Archive, CheckCheck, ShieldCheck, Hourglass, Info, Utensils, Palette, Star as StarIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateCultivarStatus } from '@/services/firebase';
@@ -25,38 +25,33 @@ function calculateAverageRating(reviews: Cultivar['reviews']): number {
   return Math.round((total / reviews.length) * 10) / 10; 
 }
 
+const STATUS_LABELS: Record<CultivarStatus, string> = {
+  recentlyAdded: 'Recently Added',
+  Live: 'Live',
+  archived: 'Archived',
+  featured: 'Featured',
+};
+
 const getStatusBadgeVariant = (status?: CultivarStatus): "default" | "secondary" | "destructive" | "outline" => {
   if (!status) return 'outline';
   switch (status) {
-    case 'verified':
-      return 'default'; 
-    case 'recentlyAdded':
-      return 'secondary'; 
-    case 'archived':
-      return 'destructive'; 
-    default:
-      return 'outline';
+    case 'Live': return 'default';
+    case 'featured': return 'default'; 
+    case 'recentlyAdded': return 'secondary';
+    case 'archived': return 'destructive';
+    default: return 'outline';
   }
 };
 
 const getStatusIcon = (status?: CultivarStatus) => {
   if (!status) return <Info size={14} className="mr-1" />;
   switch (status) {
-    case 'verified':
-      return <ShieldCheck size={14} className="mr-1" />;
-    case 'recentlyAdded':
-      return <Hourglass size={14} className="mr-1" />;
-    case 'archived':
-      return <Archive size={14} className="mr-1" />;
-    default:
-      return <Info size={14} className="mr-1" />;
+    case 'Live': return <ShieldCheck size={14} className="mr-1 text-green-500" />;
+    case 'featured': return <StarIcon size={14} className="mr-1 text-yellow-500 fill-yellow-500" />;
+    case 'recentlyAdded': return <Hourglass size={14} className="mr-1" />;
+    case 'archived': return <Archive size={14} className="mr-1" />;
+    default: return <Info size={14} className="mr-1" />;
   }
-};
-
-const STATUS_LABELS: Record<CultivarStatus, string> = {
-  recentlyAdded: 'Recently Added',
-  verified: 'Verified',
-  archived: 'Archived',
 };
 
 
@@ -119,18 +114,27 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
               className="transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
-            {cultivar.status === 'recentlyAdded' && (
-              <Badge variant={getStatusBadgeVariant('recentlyAdded')} className="absolute top-2 right-2 z-10 capitalize flex items-center text-xs h-fit py-1 px-2 shadow-md">
-                {getStatusIcon('recentlyAdded')}
-                {STATUS_LABELS['recentlyAdded']}
+            {(cultivar.status === 'recentlyAdded' || cultivar.status === 'featured') && (
+              <Badge 
+                variant={getStatusBadgeVariant(cultivar.status)} 
+                className={cn(
+                  "absolute top-2 right-2 z-10 capitalize flex items-center text-xs h-fit py-1 px-2 shadow-md",
+                  cultivar.status === 'featured' && "bg-yellow-400/80 border-yellow-500/70 text-yellow-900 dark:text-yellow-900"
+                )}
+              >
+                {getStatusIcon(cultivar.status)}
+                {STATUS_LABELS[cultivar.status]}
               </Badge>
             )}
           </div>
         )}
         <div className="flex justify-between items-start">
             <CardTitle className="font-headline text-2xl text-primary">{cultivar.name}</CardTitle>
-            {cultivar.status && cultivar.status !== 'recentlyAdded' && (
-                <Badge variant={getStatusBadgeVariant(cultivar.status)} className="capitalize flex items-center text-xs h-fit">
+            {cultivar.status && cultivar.status !== 'recentlyAdded' && cultivar.status !== 'featured' && (
+                <Badge 
+                  variant={getStatusBadgeVariant(cultivar.status)} 
+                  className="capitalize flex items-center text-xs h-fit"
+                >
                     {getStatusIcon(cultivar.status)}
                     {STATUS_LABELS[cultivar.status]}
                 </Badge>
@@ -196,7 +200,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
         </div>
         <div className={cn("grid grid-cols-1 gap-2 w-full", isPublicView ? "" : "sm:grid-cols-3")}>
           {isPublicView ? (
-            null // No explicit button for public view, card is clickable
+            null 
           ) : (
             <>
               <Link href={`/cultivars/${cultivar.id}`} className="w-full" aria-label={`View full details for ${cultivar.name}`}>
@@ -225,4 +229,3 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
     </Card>
   );
 }
-

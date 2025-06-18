@@ -42,7 +42,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
   {
     name: 'Cosmic Haze',
     genetics: 'Sativa',
-    status: 'verified',
+    status: 'Live', // Changed from 'verified'
     source: 'Internal Lab Test CH-001',
     description: 'An uplifting Sativa known for its cerebral effects and citrus aroma. Perfect for daytime use and creative endeavors.',
     supplierUrl: 'https://example.com/cosmic-haze',
@@ -94,7 +94,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
   {
     name: 'Indica Dream',
     genetics: 'Indica',
-    status: 'recentlyAdded',
+    status: 'featured', // Example of new status
     source: 'Community Submission ID-002',
     description: 'A deeply relaxing Indica, perfect for unwinding at the end of the day. Features earthy and sweet notes.',
     supplierUrl: 'https://example.com/indica-dream',
@@ -134,7 +134,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
   {
     name: 'Hybrid Harmony',
     genetics: 'Hybrid',
-    status: 'verified',
+    status: 'Live', // Changed from 'verified'
     description: 'A balanced hybrid offering the best of both worlds. Provides a gentle euphoria and relaxation without heavy sedation.',
     thc: { min: 19, max: 23 },
     cbd: { min: 0.5, max: 1.5 },
@@ -207,7 +207,6 @@ const prepareDataForFirestoreSeed = (data: Record<string, any>): Record<string, 
       cleanedData[key] = data[key];
     }
   }
-  // Ensure essential array fields are present, even if empty
   const arrayFields: (keyof Omit<Cultivar, 'id' | 'reviews'>)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile', 'flavors', 'history'];
     arrayFields.forEach(field => {
       if (cleanedData[field] === undefined) {
@@ -262,7 +261,7 @@ async function seedDatabase() {
         reviews: [],
       };
       const cleanedData = prepareDataForFirestoreSeed(dataToSave);
-      const docRef = cultivarsCollection.doc(); // Auto-generate ID
+      const docRef = cultivarsCollection.doc(); 
       batch.set(docRef, cleanedData);
       console.log(`Prepared cultivar "${cultivarData.name}" (Status: ${cleanedData.status}) for batch add.`);
     } catch (error) {

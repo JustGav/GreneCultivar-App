@@ -6,17 +6,20 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import type { Cultivar, Genetics, CultivarStatus } from '@/types';
 import { EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data';
-import { getCultivars, updateCultivarStatus } from '@/services/firebase';
+import { getCultivars, updateCultivarStatus, updateMultipleCultivarStatuses } from '@/services/firebase';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, Archive, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown, AlertTriangle, Edit, ThermometerSun, ThermometerSnowflake, ImageOff, ShieldCheck, Hourglass, Info as InfoIcon } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, Archive, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown, AlertTriangle, Edit, ImageOff, ShieldCheck, Hourglass, Info as InfoIcon, Star as StarIcon, CheckSquare, Square } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from '@/components/ui/label';
@@ -50,10 +53,21 @@ const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
   return total / reviews.length;
 };
 
+const STATUS_OPTIONS_ORDERED: CultivarStatus[] = ['Live', 'Featured', 'recentlyAdded', 'archived'];
+
+
+const STATUS_LABELS: Record<CultivarStatus, string> = {
+  recentlyAdded: 'Recently Added',
+  Live: 'Live',
+  archived: 'Archived',
+  featured: 'Featured',
+};
+
 const getStatusBadgeVariant = (status?: CultivarStatus): "default" | "secondary" | "destructive" | "outline" => {
   if (!status) return 'outline';
   switch (status) {
-    case 'verified': return 'default';
+    case 'Live': return 'default';
+    case 'featured': return 'default'; // Using default for featured for now, can be customized
     case 'recentlyAdded': return 'secondary';
     case 'archived': return 'destructive';
     default: return 'outline';
@@ -63,18 +77,14 @@ const getStatusBadgeVariant = (status?: CultivarStatus): "default" | "secondary"
 const getStatusIcon = (status?: CultivarStatus) => {
   if (!status) return <InfoIcon size={14} className="mr-1" />;
   switch (status) {
-    case 'verified': return <ShieldCheck size={14} className="mr-1" />;
+    case 'Live': return <ShieldCheck size={14} className="mr-1 text-green-500" />;
+    case 'featured': return <StarIcon size={14} className="mr-1 text-yellow-500 fill-yellow-500" />;
     case 'recentlyAdded': return <Hourglass size={14} className="mr-1" />;
     case 'archived': return <Archive size={14} className="mr-1" />;
     default: return <InfoIcon size={14} className="mr-1" />;
   }
 };
 
-const STATUS_LABELS: Record<CultivarStatus, string> = {
-  recentlyAdded: 'Recently Added',
-  verified: 'Verified',
-  archived: 'Archived',
-};
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -87,6 +97,8 @@ export default function DashboardPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedCultivarIds, setSelectedCultivarIds] = useState<string[]>([]);
+  const [isMassUpdating, setIsMassUpdating] = useState(false);
   const { toast } = useToast();
 
   const allAvailableEffects = EFFECT_OPTIONS;
@@ -242,6 +254,52 @@ export default function DashboardPage() {
     }
   };
 
+  const handleSelectAll = (checked: boolean | 'indeterminate') => {
+    if (checked === true) {
+      setSelectedCultivarIds(paginatedCultivars.map(c => c.id));
+    } else {
+      setSelectedCultivarIds([]);
+    }
+  };
+
+  const handleSelectRow = (cultivarId: string, checked: boolean) => {
+    setSelectedCultivarIds(prev =>
+      checked ? [...prev, cultivarId] : prev.filter(id => id !== cultivarId)
+    );
+  };
+
+  const handleMassStatusUpdate = async (newStatus: CultivarStatus) => {
+    if (selectedCultivarIds.length === 0) {
+      toast({ title: "No Cultivars Selected", description: "Please select at least one cultivar to update.", variant: "destructive" });
+      return;
+    }
+    setIsMassUpdating(true);
+    try {
+      await updateMultipleCultivarStatuses(selectedCultivarIds, newStatus);
+      toast({
+        title: "Status Update Successful",
+        description: `${selectedCultivarIds.length} cultivar(s) updated to ${STATUS_LABELS[newStatus]}.`,
+      });
+      // Update local state
+      setAllCultivars(prev =>
+        prev.map(c =>
+          selectedCultivarIds.includes(c.id) ? { ...c, status: newStatus, updatedAt: new Date().toISOString() } : c
+        )
+      );
+      setSelectedCultivarIds([]);
+    } catch (error) {
+      console.error("Failed to mass update statuses:", error);
+      toast({
+        title: "Mass Update Failed",
+        description: "Could not update statuses. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMassUpdating(false);
+    }
+  };
+
+
   const sortOptions: {value: SortOption, label: string, icon?: React.ReactNode}[] = [
     { value: 'name-asc', label: 'Name (A-Z)'},
     { value: 'name-desc', label: 'Name (Z-A)'},
@@ -276,6 +334,10 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  const numSelected = selectedCultivarIds.length;
+  const isAllPaginatedSelected = numSelected > 0 && numSelected === paginatedCultivars.length;
+  const isSomePaginatedSelected = numSelected > 0 && numSelected < paginatedCultivars.length;
 
 
   return (
@@ -393,6 +455,32 @@ export default function DashboardPage() {
         </Accordion>
       </section>
 
+      {selectedCultivarIds.length > 0 && (
+        <div className="bg-primary/10 p-3 rounded-md shadow-md my-4 flex items-center justify-between gap-4">
+          <p className="text-sm font-medium text-primary">
+            {selectedCultivarIds.length} cultivar(s) selected
+          </p>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={isMassUpdating}>
+                {isMassUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckSquare className="mr-2 h-4 w-4" />}
+                Change Status
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Set status to:</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {STATUS_OPTIONS_ORDERED.map((statusOption) => (
+                <DropdownMenuItem key={statusOption} onClick={() => handleMassStatusUpdate(statusOption)} disabled={isMassUpdating}>
+                  {getStatusIcon(statusOption)}
+                  {STATUS_LABELS[statusOption]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
       {isLoadingData ? (
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -404,6 +492,13 @@ export default function DashboardPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={isAllPaginatedSelected ? true : isSomePaginatedSelected ? "indeterminate" : false}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all cultivars on this page"
+                    />
+                  </TableHead>
                   <TableHead className="w-[64px]">Image</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Genetics</TableHead>
@@ -420,9 +515,24 @@ export default function DashboardPage() {
                   const thcMax = cultivar.thc?.max ?? 'N/A';
                   const cbdMin = cultivar.cbd?.min ?? 'N/A';
                   const cbdMax = cultivar.cbd?.max ?? 'N/A';
+                  const isSelected = selectedCultivarIds.includes(cultivar.id);
 
                   return (
-                    <TableRow key={cultivar.id} className={cn(isArchived && "opacity-60 bg-muted/30")}>
+                    <TableRow 
+                      key={cultivar.id} 
+                      className={cn(
+                        isArchived && "opacity-60 bg-muted/30",
+                        isSelected && "bg-primary/5"
+                      )}
+                      data-state={isSelected ? "selected" : ""}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleSelectRow(cultivar.id, !!checked)}
+                          aria-label={`Select cultivar ${cultivar.name}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         {cultivar.images && cultivar.images.length > 0 ? (
                           <Image
@@ -449,7 +559,10 @@ export default function DashboardPage() {
                       </TableCell>
                       <TableCell>
                         {cultivar.status && (
-                          <Badge variant={getStatusBadgeVariant(cultivar.status)} className="capitalize text-xs flex items-center w-fit">
+                          <Badge 
+                            variant={getStatusBadgeVariant(cultivar.status)} 
+                            className={cn("capitalize text-xs flex items-center w-fit", cultivar.status === 'featured' && "bg-yellow-400/20 border-yellow-500/50 text-yellow-700 dark:text-yellow-300")}
+                          >
                             {getStatusIcon(cultivar.status)}
                             {STATUS_LABELS[cultivar.status]}
                           </Badge>

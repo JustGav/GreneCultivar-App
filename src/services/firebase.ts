@@ -227,7 +227,7 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
         const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
         expectedAICategories.forEach(catKey => {
             if (ai[catKey] === undefined) {
-                (ai[catKey] as any) = []; // Ensure array exists if additionalInfo is being updated
+                (ai[catKey] as any) = []; 
             }
         });
     }
@@ -236,6 +236,7 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
     const historyEntry: CultivarHistoryEntry = {
         timestamp: new Date().toISOString(),
         event: "Cultivar Details Updated",
+        // Consider adding more details about what changed if needed
     };
 
     await updateDoc(cultivarDocRef, {
@@ -264,6 +265,33 @@ export const updateCultivarStatus = async (id: string, status: CultivarStatus): 
     });
   } catch (error) {
     console.error(`Error updating status for cultivar with ID ${id}: `, error);
+    throw error;
+  }
+};
+
+export const updateMultipleCultivarStatuses = async (cultivarIds: string[], newStatus: CultivarStatus): Promise<void> => {
+  if (cultivarIds.length === 0) return;
+  const batch = writeBatch(db);
+  const timestamp = new Date().toISOString();
+
+  cultivarIds.forEach(id => {
+    const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
+    const historyEntry: CultivarHistoryEntry = {
+      timestamp,
+      event: `Status mass-changed to ${newStatus}`,
+      details: { newStatus }
+    };
+    batch.update(cultivarDocRef, {
+      status: newStatus,
+      updatedAt: serverTimestamp(),
+      history: arrayUnion(historyEntry)
+    });
+  });
+
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error("Error updating multiple cultivar statuses: ", error);
     throw error;
   }
 };

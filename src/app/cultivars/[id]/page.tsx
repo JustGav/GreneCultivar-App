@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Loader2, Database, ShieldCheck, Hourglass, Archive as ArchiveIconLucide, Info, Utensils } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Loader2, Database, ShieldCheck, Hourglass, Archive as ArchiveIconLucide, Info, Utensils, Star as StarIcon } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -62,35 +62,30 @@ const additionalInfoCategoriesConfig: Record<AdditionalInfoCategoryKey, { title:
 
 const STATUS_LABELS: Record<CultivarStatus, string> = {
   recentlyAdded: 'Recently Added',
-  verified: 'Verified',
+  Live: 'Live',
   archived: 'Archived',
+  featured: 'Featured',
 };
 
 const getStatusBadgeVariant = (status?: CultivarStatus): "default" | "secondary" | "destructive" | "outline" => {
   if (!status) return 'outline';
   switch (status) {
-    case 'verified':
-      return 'default';
-    case 'recentlyAdded':
-      return 'secondary';
-    case 'archived':
-      return 'destructive';
-    default:
-      return 'outline';
+    case 'Live': return 'default';
+    case 'featured': return 'default'; // Or a specific variant like 'warning' or 'success'
+    case 'recentlyAdded': return 'secondary';
+    case 'archived': return 'destructive';
+    default: return 'outline';
   }
 };
 
 const getStatusIcon = (status?: CultivarStatus) => {
   if (!status) return <Info size={16} className="mr-1.5" />;
   switch (status) {
-    case 'verified':
-      return <ShieldCheck size={16} className="mr-1.5" />;
-    case 'recentlyAdded':
-      return <Hourglass size={16} className="mr-1.5" />;
-    case 'archived':
-      return <ArchiveIconLucide size={16} className="mr-1.5" />;
-    default:
-      return <Info size={16} className="mr-1.5" />;
+    case 'Live': return <ShieldCheck size={16} className="mr-1.5 text-green-500" />;
+    case 'featured': return <StarIcon size={16} className="mr-1.5 text-yellow-500 fill-yellow-500" />;
+    case 'recentlyAdded': return <Hourglass size={16} className="mr-1.5" />;
+    case 'archived': return <ArchiveIconLucide size={16} className="mr-1.5" />;
+    default: return <Info size={16} className="mr-1.5" />;
   }
 };
 
@@ -120,17 +115,15 @@ export default function CultivarDetailsPage() {
         setError("Cultivar not found.");
       }
 
-      // Fetch all cultivars for lineage linking (names and IDs)
       try {
         const allCultivarsData = await getCultivars();
         const nameMap = new Map<string, string>();
         allCultivarsData.forEach(c => {
-            nameMap.set(c.name.toLowerCase(), c.id); // Store lowercase name for case-insensitive lookup
+            nameMap.set(c.name.toLowerCase(), c.id); 
         });
         setCultivarNameMap(nameMap);
       } catch (err) {
         console.warn("Failed to fetch all cultivars for lineage linking:", err);
-        // Non-critical error, page can still function
       }
 
     } catch (err) {
@@ -154,7 +147,6 @@ export default function CultivarDetailsPage() {
     if (!cultivar) return;
     try {
       await addReviewToCultivar(cultivar.id, newReview);
-      // Re-fetch current cultivar to update reviews, no need to re-fetch all cultivars
       const updatedCultivar = await getCultivarById(cultivar.id);
       if (updatedCultivar) {
         setCultivar(updatedCultivar);
@@ -254,7 +246,13 @@ export default function CultivarDetailsPage() {
                   <Leaf size={36} className="mr-3 text-primary/80" /> {cultivar.name}
                 </CardTitle>
                 {cultivar.status && (
-                  <Badge variant={getStatusBadgeVariant(cultivar.status)} className="capitalize text-sm h-fit flex items-center py-1.5 px-3">
+                  <Badge 
+                    variant={getStatusBadgeVariant(cultivar.status)} 
+                    className={cn(
+                        "capitalize text-sm h-fit flex items-center py-1.5 px-3",
+                        cultivar.status === 'featured' && "bg-yellow-400/20 border-yellow-500/50 text-yellow-700 dark:text-yellow-300"
+                    )}
+                  >
                       {getStatusIcon(cultivar.status)}
                       {STATUS_LABELS[cultivar.status]}
                   </Badge>
@@ -328,7 +326,7 @@ export default function CultivarDetailsPage() {
                       <div key={terpene.id} className="text-sm p-3 bg-muted/50 rounded-md shadow-sm">
                         <p className="font-medium text-foreground/90">
                           {terpene.name}
-                          {terpene.percentage !== undefined && (
+                          {terpene.percentage && terpene.percentage > 0 && (
                             <span className="text-xs text-muted-foreground ml-1">({terpene.percentage}%)</span>
                           )}
                         </p>
@@ -669,4 +667,3 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
-
