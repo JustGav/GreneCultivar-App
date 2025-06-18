@@ -94,6 +94,8 @@ const getStatusIcon = (status?: CultivarStatus) => {
   }
 };
 
+const NEGATIVE_EFFECTS = ['Dry Mouth', 'Dry Eyes', 'Paranoid', 'Anxious', 'Dizzy'];
+
 
 export default function CultivarDetailsPage() {
   const params = useParams();
@@ -415,9 +417,22 @@ export default function CultivarDetailsPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {cultivar.effects.map(effect => (
-                    <Badge key={effect} variant="outline" className="bg-accent/10 border-accent/30 text-accent-foreground/90">{effect}</Badge>
-                  ))}
+                  {cultivar.effects.map(effect => {
+                    const isNegative = NEGATIVE_EFFECTS.includes(effect);
+                    return (
+                      <Badge 
+                        key={effect} 
+                        variant="outline" 
+                        className={cn(
+                          isNegative 
+                            ? 'bg-destructive/10 border-destructive/30 text-destructive-foreground/90' 
+                            : 'bg-accent/10 border-accent/30 text-accent-foreground/90'
+                        )}
+                      >
+                        {effect}
+                      </Badge>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
