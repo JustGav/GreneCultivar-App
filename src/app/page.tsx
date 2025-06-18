@@ -7,7 +7,7 @@ import { mockCultivars, getAllEffects } from '@/lib/mock-data';
 import CultivarCard from '@/components/CultivarCard';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -19,6 +19,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
@@ -80,19 +81,16 @@ export default function CultivarBrowserPage() {
       filtered = filtered.filter(c => geneticFilters.includes(c.genetics));
     }
 
-    // Note: hybridRatio is not used for filtering mock data as it doesn't store hybrid percentages.
-    // It's available for UI and potential future data model enhancements.
-
     return filtered.sort((a, b) => {
       const ratingA = calculateAverageRating(a.reviews);
       const ratingB = calculateAverageRating(b.reviews);
       switch (sortOption) {
         case 'name-asc': return a.name.localeCompare(b.name);
         case 'name-desc': return b.name.localeCompare(a.name);
-        case 'thc-asc': return a.thc.max - b.thc.max;
-        case 'thc-desc': return b.thc.max - a.thc.max;
-        case 'cbd-asc': return a.cbd.max - b.cbd.max;
-        case 'cbd-desc': return b.cbd.max - a.cbd.max;
+        case 'thc-asc': return (a.thc?.max || 0) - (b.thc?.max || 0);
+        case 'thc-desc': return (b.thc?.max || 0) - (a.thc?.max || 0);
+        case 'cbd-asc': return (a.cbd?.max || 0) - (b.cbd?.max || 0);
+        case 'cbd-desc': return (b.cbd?.max || 0) - (a.cbd?.max || 0);
         case 'rating-asc': return ratingA - ratingB;
         case 'rating-desc': return ratingB - ratingA;
         default: return 0;
@@ -116,12 +114,22 @@ export default function CultivarBrowserPage() {
   return (
     <div className="space-y-8 animate-fadeIn">
       <section className="bg-card p-6 rounded-lg shadow-lg">
-        <h1 className="text-4xl font-headline text-primary mb-2">Explore Cultivars</h1>
-        <p className="text-muted-foreground font-body mb-6">
-          Discover your next favorite strain. Filter by effects, genetics, or search by name.
-        </p>
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <h1 className="text-4xl font-headline text-primary">Explore Cultivars</h1>
+            <p className="text-muted-foreground font-body mt-1">
+              Discover your next favorite strain. Filter by effects, genetics, or search by name.
+            </p>
+          </div>
+          <Link href="/cultivars/add" passHref>
+            <Button variant="default">
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Add New Cultivar
+            </Button>
+          </Link>
+        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 items-end pt-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
