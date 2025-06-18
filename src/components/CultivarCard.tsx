@@ -100,7 +100,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
         className={cn(
             "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn group", 
             isArchived && "opacity-60 bg-muted/50",
-            !isPublicView && "cursor-default" // Ensure dashboard cards are not appearing clickable
+            isPublicView && "cursor-pointer"
         )}
         onClick={isPublicView && onViewInModal ? () => onViewInModal(cultivar) : undefined}
         role={isPublicView ? "button" : undefined}
@@ -170,7 +170,12 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
               <h4 className="font-semibold text-muted-foreground flex items-center"><Palette size={14} className="mr-1.5 text-accent/90" />Terpenes:</h4>
               <div className="flex flex-wrap gap-1 mt-1">
                 {cultivar.terpeneProfile.slice(0, 3).map(terpene => (
-                  <Badge key={terpene.id} variant="outline" className="bg-blue-500/10 border-blue-500/30 text-foreground">{terpene.name}</Badge>
+                  <Badge key={terpene.id} variant="outline" className="bg-blue-500/10 border-blue-500/30 text-foreground">
+                    {terpene.name}
+                    {terpene.percentage !== undefined && terpene.percentage > 0 && (
+                      <span className="ml-1 text-xs opacity-75">({terpene.percentage}%)</span>
+                    )}
+                  </Badge>
                 ))}
                 {cultivar.terpeneProfile.length > 3 && <Badge variant="outline">...</Badge>}
               </div>

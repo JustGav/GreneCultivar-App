@@ -158,7 +158,7 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                   {cultivar.terpeneProfile.slice(0, 5).map(terpene => (
                     <Badge key={terpene.id} variant="outline" className="bg-blue-500/10 border-blue-500/30 text-foreground">
                       {terpene.name}
-                      {terpene.percentage !== undefined && (
+                      {terpene.percentage !== undefined && terpene.percentage > 0 && (
                         <span className="ml-1 text-xs opacity-75">({terpene.percentage}%)</span>
                       )}
                     </Badge>
