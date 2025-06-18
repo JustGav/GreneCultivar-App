@@ -6,7 +6,7 @@ import type { Cultivar, CultivarStatus } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import StarRating from './StarRating';
-import { Leaf, ThermometerSnowflake, ThermometerSun, Edit, Archive, CheckCheck, ShieldCheck, Hourglass, Info, Utensils } from 'lucide-react';
+import { Leaf, ThermometerSnowflake, ThermometerSun, Edit, Archive, CheckCheck, ShieldCheck, Hourglass, Info, Utensils, Palette } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateCultivarStatus } from '@/services/firebase';
@@ -100,7 +100,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
         className={cn(
             "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn group", 
             isArchived && "opacity-60 bg-muted/50",
-            isPublicView && "cursor-pointer"
+            !isPublicView && "cursor-default" // Ensure dashboard cards are not appearing clickable
         )}
         onClick={isPublicView && onViewInModal ? () => onViewInModal(cultivar) : undefined}
         role={isPublicView ? "button" : undefined}
@@ -156,12 +156,23 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
           </div>
           {cultivar.flavors && cultivar.flavors.length > 0 && (
             <div className="mt-2">
-              <h4 className="font-semibold text-muted-foreground">Flavors:</h4>
+              <h4 className="font-semibold text-muted-foreground flex items-center"><Utensils size={14} className="mr-1.5 text-primary/70" />Flavors:</h4>
               <div className="flex flex-wrap gap-1 mt-1">
                 {cultivar.flavors.slice(0, 3).map(flavor => (
                   <Badge key={flavor} variant="secondary" className="bg-primary/10 border-primary/20 text-foreground">{flavor}</Badge>
                 ))}
                 {cultivar.flavors.length > 3 && <Badge variant="outline">...</Badge>}
+              </div>
+            </div>
+          )}
+           {cultivar.terpeneProfile && cultivar.terpeneProfile.length > 0 && (
+            <div className="mt-2">
+              <h4 className="font-semibold text-muted-foreground flex items-center"><Palette size={14} className="mr-1.5 text-accent/90" />Terpenes:</h4>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {cultivar.terpeneProfile.slice(0, 3).map(terpene => (
+                  <Badge key={terpene.id} variant="outline" className="bg-blue-500/10 border-blue-500/30 text-foreground">{terpene.name}</Badge>
+                ))}
+                {cultivar.terpeneProfile.length > 3 && <Badge variant="outline">...</Badge>}
               </div>
             </div>
           )}
@@ -214,3 +225,4 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
     </Card>
   );
 }
+
