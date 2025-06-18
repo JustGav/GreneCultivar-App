@@ -1,33 +1,42 @@
 
 import * as admin from 'firebase-admin';
 import type { ServiceAccount } from 'firebase-admin';
-import type { Cultivar, CannabinoidProfile, CultivationPhases, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, PricingProfile, CultivarImage, Review, CultivarStatus } from '../src/types';
+import type { Cultivar, CannabinoidProfile, CultivationPhases, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, PricingProfile, CultivarImage, Review, CultivarStatus, CultivarHistoryEntry } from '../src/types';
 
-const SERVICE_ACCOUNT_KEY_PATH = './serviceAccountKey.json'; 
-const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'grenecultivar'; 
+const SERVICE_ACCOUNT_KEY_PATH = './serviceAccountKey.json';
+const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'grenecultivar';
 
-const serviceAccount = require(SERVICE_ACCOUNT_KEY_PATH) as ServiceAccount;
+let serviceAccount;
+try {
+  serviceAccount = require(SERVICE_ACCOUNT_KEY_PATH) as ServiceAccount;
+} catch (error) {
+    console.error(`\n>>> SERVICE ACCOUNT KEY NOT FOUND at "${SERVICE_ACCOUNT_KEY_PATH}" <<<`);
+    console.error("Please ensure you've downloaded your Firebase service account key JSON file and placed it correctly, or update the 'SERVICE_ACCOUNT_KEY_PATH' variable in this script.");
+    process.exit(1);
+}
+
 
 try {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: `https://${FIREBASE_PROJECT_ID}.firebaseio.com`
-  });
-  console.log('Firebase Admin SDK initialized successfully.');
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: `https://${FIREBASE_PROJECT_ID}.firebaseio.com`
+    });
+    console.log('Firebase Admin SDK initialized successfully.');
+  } else {
+     console.log('Firebase Admin SDK already initialized.');
+  }
 } catch (error) {
   console.error('Error initializing Firebase Admin SDK:', error);
-  if ((error as any).code === 'MODULE_NOT_FOUND' && (error as any).message.includes(SERVICE_ACCOUNT_KEY_PATH)) {
-    console.error(`\n>>> SERVICE ACCOUNT KEY NOT FOUND at "${SERVICE_ACCOUNT_KEY_PATH}" <<<`);
-    console.error("Please ensure you've downloaded your Firebase service account key JSON file and updated the 'SERVICE_ACCOUNT_KEY_PATH' variable in this script.");
-  } else if ((error as any).code === 'app/duplicate-app') {
-    console.warn('Firebase Admin SDK already initialized. This is normal if running script multiple times in some environments.');
-  } else {
-    process.exit(1);
-  }
+  process.exit(1);
 }
 
 const db = admin.firestore();
 const cultivarsCollection = db.collection('cultivars');
+
+const now = new Date();
+const oneDayAgo = new Date(now.valueOf() - 86400000);
+const twoDaysAgo = new Date(now.valueOf() - 2 * 86400000);
 
 const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
   {
@@ -77,6 +86,9 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
       cannabinoidInfo: [],
       terpeneInfo: [],
     },
+    createdAt: twoDaysAgo.toISOString(),
+    updatedAt: oneDayAgo.toISOString(),
+    history: [{ timestamp: twoDaysAgo.toISOString(), event: 'Cultivar Seeded' }],
   },
   {
     name: 'Indica Dream',
@@ -98,8 +110,8 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
       { id: 'tp-id-2', name: 'Beta-Caryophyllene', percentage: 0.7, description: 'Peppery, spicy' },
     ],
     cultivationPhases: {
-      flowering: '8-9 weeks',
       germination: '4-7 days',
+      flowering: '8-9 weeks',
     },
     plantCharacteristics: {
       minHeight: 60,
@@ -112,7 +124,10 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
         plantPicture: [],
         cannabinoidInfo: [],
         terpeneInfo: [],
-    }
+    },
+    createdAt: oneDayAgo.toISOString(),
+    updatedAt: oneDayAgo.toISOString(),
+    history: [{ timestamp: oneDayAgo.toISOString(), event: 'Cultivar Seeded' }],
   },
   {
     name: 'Hybrid Harmony',
@@ -133,6 +148,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
     cultivationPhases: {
         vegetative: '3-5 weeks',
         flowering: '8-10 weeks',
+        germination: '3-6 days',
     },
     plantCharacteristics: {
         minHeight: 80,
@@ -144,7 +160,10 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
         plantPicture: [],
         cannabinoidInfo: [],
         terpeneInfo: [],
-    }
+    },
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    history: [{ timestamp: now.toISOString(), event: 'Cultivar Seeded' }],
   },
   {
     name: 'Ruderalis Ranger',
@@ -170,11 +189,14 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
         plantPicture: [],
         cannabinoidInfo: [],
         terpeneInfo: [],
-    }
+    },
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    history: [{ timestamp: now.toISOString(), event: 'Cultivar Seeded' }],
   },
 ];
 
-const prepareDataForFirestore = (data: Record<string, any>): Record<string, any> => {
+const prepareDataForFirestoreSeed = (data: Record<string, any>): Record<string, any> => {
   const cleanedData: Record<string, any> = {};
   for (const key in data) {
     if (data[key] !== undefined) {
@@ -182,7 +204,7 @@ const prepareDataForFirestore = (data: Record<string, any>): Record<string, any>
     }
   }
   // Ensure essential array fields are present, even if empty
-  const arrayFields: (keyof Omit<Cultivar, 'id' | 'reviews'>)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile'];
+  const arrayFields: (keyof Omit<Cultivar, 'id' | 'reviews'>)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile', 'history'];
     arrayFields.forEach(field => {
       if (cleanedData[field] === undefined) {
         cleanedData[field] = [];
@@ -206,10 +228,19 @@ const prepareDataForFirestore = (data: Record<string, any>): Record<string, any>
       };
     }
 
-    // Ensure status is set, default to 'recentlyAdded' if not provided
     if (cleanedData.status === undefined) {
       cleanedData.status = 'recentlyAdded';
     }
+    if (cleanedData.createdAt === undefined) {
+        cleanedData.createdAt = new Date().toISOString();
+    }
+    if (cleanedData.updatedAt === undefined) {
+        cleanedData.updatedAt = new Date().toISOString();
+    }
+     if (cleanedData.history === undefined || cleanedData.history.length === 0) {
+        cleanedData.history = [{ timestamp: cleanedData.createdAt, event: 'Cultivar Seeded (default history)' }];
+    }
+
 
   return cleanedData;
 };
@@ -218,19 +249,31 @@ const prepareDataForFirestore = (data: Record<string, any>): Record<string, any>
 async function seedDatabase() {
   console.log(`Starting to seed ${mockCultivarsData.length} cultivars into Firestore...`);
 
+  const batch = db.batch();
+
   for (const cultivarData of mockCultivarsData) {
     try {
       const dataToSave = {
         ...cultivarData,
-        reviews: [], 
+        reviews: [],
       };
-      const cleanedData = prepareDataForFirestore(dataToSave);
-      const docRef = await cultivarsCollection.add(cleanedData);
-      console.log(`Added cultivar "${cultivarData.name}" (Status: ${cleanedData.status}) with ID: ${docRef.id}`);
+      const cleanedData = prepareDataForFirestoreSeed(dataToSave);
+      const docRef = cultivarsCollection.doc(); // Auto-generate ID
+      batch.set(docRef, cleanedData);
+      console.log(`Prepared cultivar "${cultivarData.name}" (Status: ${cleanedData.status}) for batch add.`);
     } catch (error) {
-      console.error(`Error adding cultivar "${cultivarData.name}":`, error);
+      console.error(`Error preparing cultivar "${cultivarData.name}" for batch:`, error);
     }
   }
+
+  try {
+    await batch.commit();
+    console.log('Database seeding batch committed successfully.');
+  } catch (error) {
+    console.error('Error committing database seeding batch:', error);
+    process.exit(1);
+  }
+
   console.log('Database seeding completed.');
 }
 

@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import NextImage from 'next/image'; 
+import NextImage from 'next/image';
 import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, CultivarStatus } from '@/types';
 import { getCultivarById, addReviewToCultivar } from '@/services/firebase';
 import ImageGallery from '@/components/ImageGallery';
@@ -15,10 +15,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Loader2, Database, ShieldCheck, Hourglass, Archive as ArchiveIconLucide, Info } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import CultivarDetailLoading from './loading'; 
+import CultivarDetailLoading from './loading';
 
 const calculateAverageRating = (reviews: ReviewType[]): number => {
   if (!reviews || reviews.length === 0) return 0;
@@ -66,10 +66,11 @@ const STATUS_LABELS: Record<CultivarStatus, string> = {
   archived: 'Archived',
 };
 
-const getStatusBadgeVariant = (status: CultivarStatus): "default" | "secondary" | "destructive" | "outline" => {
+const getStatusBadgeVariant = (status?: CultivarStatus): "default" | "secondary" | "destructive" | "outline" => {
+  if (!status) return 'outline';
   switch (status) {
     case 'verified':
-      return 'default'; 
+      return 'default';
     case 'recentlyAdded':
       return 'secondary';
     case 'archived':
@@ -79,7 +80,8 @@ const getStatusBadgeVariant = (status: CultivarStatus): "default" | "secondary" 
   }
 };
 
-const getStatusIcon = (status: CultivarStatus) => {
+const getStatusIcon = (status?: CultivarStatus) => {
+  if (!status) return <Info size={16} className="mr-1.5" />;
   switch (status) {
     case 'verified':
       return <ShieldCheck size={16} className="mr-1.5" />;
@@ -102,46 +104,41 @@ export default function CultivarDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (id) {
-      const fetchCultivar = async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
-          const foundCultivar = await getCultivarById(id);
-          if (foundCultivar) {
-            setCultivar(foundCultivar);
-            setAverageRating(calculateAverageRating(foundCultivar.reviews));
-          } else {
-            setError("Cultivar not found.");
-          }
-        } catch (err) {
-          console.error("Failed to fetch cultivar:", err);
-          setError("Failed to load cultivar data. Please try again.");
-          toast({
-            title: "Error",
-            description: "Could not load cultivar details.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchCultivar();
+  const fetchCultivarData = useCallback(async () => {
+    if (!id) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const foundCultivar = await getCultivarById(id);
+      if (foundCultivar) {
+        setCultivar(foundCultivar);
+        setAverageRating(calculateAverageRating(foundCultivar.reviews || []));
+      } else {
+        setError("Cultivar not found.");
+      }
+    } catch (err) {
+      console.error("Failed to fetch cultivar:", err);
+      setError("Failed to load cultivar data. Please try again.");
+      toast({
+        title: "Error",
+        description: "Could not load cultivar details.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   }, [id, toast]);
+
+  useEffect(() => {
+    fetchCultivarData();
+  }, [fetchCultivarData]);
 
   const handleReviewSubmit = useCallback(async (newReview: ReviewType) => {
     if (!cultivar) return;
     try {
       await addReviewToCultivar(cultivar.id, newReview);
-      setCultivar(prevCultivar => {
-        if (!prevCultivar) return null;
-        const updatedReviews = [newReview, ...(prevCultivar.reviews || [])];
-        const updatedCultivar = { ...prevCultivar, reviews: updatedReviews };
-        setAverageRating(calculateAverageRating(updatedReviews));
-        return updatedCultivar;
-      });
+      // Re-fetch cultivar data to get updated reviews and history
+      await fetchCultivarData();
       toast({
         title: "Review Added",
         description: "Your review has been successfully submitted.",
@@ -155,7 +152,7 @@ export default function CultivarDetailsPage() {
         variant: "destructive",
       });
     }
-  }, [cultivar, toast]);
+  }, [cultivar, toast, fetchCultivarData]);
 
   if (isLoading) {
     return <CultivarDetailLoading />;
@@ -174,7 +171,7 @@ export default function CultivarDetailsPage() {
       </div>
     );
   }
-  
+
   if (!cultivar) {
      return (
        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-4 animate-fadeIn">
@@ -191,7 +188,7 @@ export default function CultivarDetailsPage() {
       </div>
     );
   }
-  
+
   const hasPlantCharacteristics = cultivar.plantCharacteristics && (
     cultivar.plantCharacteristics.minHeight !== undefined ||
     cultivar.plantCharacteristics.maxHeight !== undefined ||
@@ -227,17 +224,19 @@ export default function CultivarDetailsPage() {
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           <ImageGallery images={cultivar.images} cultivarName={cultivar.name} />
-          
+
           <Card className="shadow-lg">
             <CardHeader>
               <div className="flex justify-between items-start">
                 <CardTitle className="font-headline text-4xl text-primary flex items-center">
                   <Leaf size={36} className="mr-3 text-primary/80" /> {cultivar.name}
                 </CardTitle>
-                <Badge variant={getStatusBadgeVariant(cultivar.status)} className="capitalize text-sm h-fit flex items-center py-1.5 px-3">
-                    {getStatusIcon(cultivar.status)}
-                    {STATUS_LABELS[cultivar.status]}
-                </Badge>
+                {cultivar.status && (
+                  <Badge variant={getStatusBadgeVariant(cultivar.status)} className="capitalize text-sm h-fit flex items-center py-1.5 px-3">
+                      {getStatusIcon(cultivar.status)}
+                      {STATUS_LABELS[cultivar.status]}
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center space-x-2 mt-2">
                 <Badge variant="secondary" className="text-sm">{cultivar.genetics}</Badge>
@@ -251,8 +250,8 @@ export default function CultivarDetailsPage() {
             </CardHeader>
             <CardContent>
               <p className="text-lg font-body text-foreground/90 leading-relaxed mb-6">{cultivar.description}</p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-6">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-6 text-muted-foreground">
                 {cultivar.supplierUrl && (
                     <div>
                         <a href={cultivar.supplierUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-primary hover:text-accent font-medium transition-colors">
@@ -263,9 +262,23 @@ export default function CultivarDetailsPage() {
                 )}
                 {cultivar.source && (
                     <div className="flex items-center">
-                       <Database size={16} className="mr-2 text-muted-foreground" />
-                       <span className="font-medium mr-1">Source:</span> {cultivar.source}
+                       <Database size={16} className="mr-2" />
+                       <span className="font-medium mr-1 text-foreground/80">Source:</span> {cultivar.source}
                     </div>
+                )}
+                 {cultivar.createdAt && (
+                  <div className="flex items-center">
+                    <CalendarDays size={16} className="mr-2" />
+                    <span className="font-medium mr-1 text-foreground/80">Added:</span>
+                    {formatDistanceToNow(parseISO(cultivar.createdAt), { addSuffix: true })}
+                  </div>
+                )}
+                {cultivar.updatedAt && cultivar.updatedAt !== cultivar.createdAt && (
+                  <div className="flex items-center">
+                    <CalendarDays size={16} className="mr-2" />
+                    <span className="font-medium mr-1 text-foreground/80">Updated:</span>
+                    {formatDistanceToNow(parseISO(cultivar.updatedAt), { addSuffix: true })}
+                  </div>
                 )}
               </div>
 
@@ -307,7 +320,7 @@ export default function CultivarDetailsPage() {
               {hasPlantCharacteristics && cultivar.plantCharacteristics && (
                 <div className="mb-6 pt-6 border-t">
                   <h3 className="font-semibold text-lg flex items-center mb-3"><Combine size={20} className="mr-2 text-accent"/>Plant Characteristics</h3>
-                  
+
                   {(cultivar.plantCharacteristics.minHeight !== undefined || cultivar.plantCharacteristics.maxHeight !== undefined) && (
                     <div className="pb-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
@@ -393,7 +406,7 @@ export default function CultivarDetailsPage() {
               )}
             </CardContent>
           </Card>
-          
+
           {hasEffects && cultivar.effects && (
             <Card className="shadow-lg">
               <CardHeader>
@@ -542,8 +555,8 @@ export default function CultivarDetailsPage() {
                     </div>
                     <div className="text-xs text-muted-foreground text-right">
                       <div className="flex items-center">
-                        <CalendarDays size={14} className="mr-1"/> 
-                        {formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
+                        <CalendarDays size={14} className="mr-1"/>
+                        {review.createdAt ? formatDistanceToNow(parseISO(review.createdAt), { addSuffix: true }) : 'Date N/A'}
                       </div>
                       {review.sentimentScore !== undefined && (
                         <p className="mt-1">Sentiment: <span className={review.sentimentScore >= 0.5 ? 'text-green-600' : review.sentimentScore <= -0.5 ? 'text-red-600' : 'text-yellow-600'}>{review.sentimentScore.toFixed(2)}</span></p>

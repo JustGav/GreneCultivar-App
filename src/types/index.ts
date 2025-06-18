@@ -14,38 +14,38 @@ export interface Review {
   rating: number; // 1-5
   text: string;
   sentimentScore?: number;
-  createdAt: string; // ISO date string (or Timestamp from Firestore, converted to string in service)
+  createdAt: string; // ISO date string
 }
 
 export type Genetics = 'Indica' | 'Sativa' | 'Hybrid' | 'Ruderalis';
 export type CultivarStatus = 'recentlyAdded' | 'verified' | 'archived';
 
 export interface CannabinoidProfile {
-  min?: number; 
-  max?: number; 
+  min?: number;
+  max?: number;
 }
 
 export interface YieldProfile {
-  min?: number; 
-  max?: number; 
+  min?: number;
+  max?: number;
 }
 
 export interface CultivationPhases {
-  germination?: string; 
-  rooting?: string; 
-  vegetative?: string; 
-  flowering?: string; 
-  harvest?: string; 
+  germination?: string;
+  rooting?: string;
+  vegetative?: string;
+  flowering?: string;
+  harvest?: string;
 }
 
 export interface PlantCharacteristics {
-  minHeight?: number; 
-  maxHeight?: number; 
-  minMoisture?: number; 
-  maxMoisture?: number; 
-  yieldPerPlant?: YieldProfile; 
-  yieldPerWatt?: YieldProfile; 
-  yieldPerM2?: YieldProfile; 
+  minHeight?: number;
+  maxHeight?: number;
+  minMoisture?: number;
+  maxMoisture?: number;
+  yieldPerPlant?: YieldProfile;
+  yieldPerWatt?: YieldProfile;
+  yieldPerM2?: YieldProfile;
 }
 
 export type AdditionalInfoCategoryKey = 'geneticCertificate' | 'plantPicture' | 'cannabinoidInfo' | 'terpeneInfo';
@@ -53,10 +53,10 @@ export type AdditionalInfoCategoryKey = 'geneticCertificate' | 'plantPicture' | 
 export interface AdditionalFileInfo {
   id: string;
   name: string;
-  url: string; 
+  url: string;
   fileType: 'image' | 'pdf' | 'document';
   category: AdditionalInfoCategoryKey;
-  'data-ai-hint'?: string; 
+  'data-ai-hint'?: string;
 }
 
 export interface Terpene {
@@ -70,6 +70,13 @@ export interface PricingProfile {
   min?: number;
   max?: number;
   avg?: number;
+}
+
+export interface CultivarHistoryEntry {
+  timestamp: string; // ISO date string
+  event: string; // e.g., "Cultivar Created", "Status changed to verified"
+  userId?: string; // Optional: for tracking who made the change
+  details?: Record<string, any>; // Optional: for storing specifics about the change
 }
 
 export interface Cultivar {
@@ -102,4 +109,7 @@ export interface Cultivar {
   supplierUrl?: string;
   parents?: string[];
   children?: string[];
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  history?: CultivarHistoryEntry[];
 }
