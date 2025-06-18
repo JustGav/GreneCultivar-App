@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react'; // Added React import
+import React, { useState } from 'react'; 
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Loader2, PlusCircle, Upload, Leaf, Percent, Smile, Utensils, Image as ImageIcon, Palette, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { addCultivar, uploadImage } from '@/services/firebase';
+import { submitCultivarForReview, type SubmittedCultivarData } from '@/services/firebase'; // Import new function and type
 import type { Genetics, CannabinoidProfile, CultivarStatus, Terpene } from '@/types';
 import { EFFECT_OPTIONS, FLAVOR_OPTIONS, TERPENE_OPTIONS, TERPENE_CATEGORIES } from '@/lib/mock-data';
 import NextImage from 'next/image';
@@ -57,6 +57,7 @@ const numberRangeSchemaOptional = z.object({
   path: ["min"],
 }).optional();
 
+// Matches SubmittedCultivarData interface in firebase.ts
 const submitCultivarFormSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }),
   sourceEmail: z.string().email({ message: "Please enter a valid email for the source." }),
@@ -119,33 +120,22 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
   const handleCultivarSubmit = async (data: SubmitCultivarFormData) => {
     setIsSubmitting(true);
     try {
-      let primaryImageUrlForFirebase: string | undefined = undefined;
-      if (data.primaryImageFile instanceof File) {
-        const timestamp = Date.now();
-        const uniqueFileName = `${timestamp}-${data.primaryImageFile.name}`;
-        primaryImageUrlForFirebase = await uploadImage(data.primaryImageFile, `cultivar-images/user-submitted/${uniqueFileName}`);
-      }
-
-      const cultivarDataForFirebase = {
+      // Prepare data matching SubmittedCultivarData for the service function
+      const submissionPayload: SubmittedCultivarData = {
         name: data.name,
+        sourceEmail: data.sourceEmail,
         genetics: data.genetics,
-        description: data.description || '',
-        effects: data.effects || [],
-        flavors: data.flavors || [],
-        terpeneProfile: data.terpeneProfile?.map(tp => ({...tp, id: tp.id || tp.name})) || [], 
-        images: primaryImageUrlForFirebase ? [{
-            id: `img-user-${Date.now()}`,
-            url: primaryImageUrlForFirebase,
-            alt: data.primaryImageAlt || `${data.name} - user submitted`,
-            'data-ai-hint': 'cannabis bud' 
-        }] : [],
+        description: data.description,
+        effects: data.effects,
+        flavors: data.flavors,
+        terpeneProfile: data.terpeneProfile?.map(tp => ({ name: tp.name, id: tp.id || tp.name })),
+        primaryImageFile: data.primaryImageFile instanceof File ? data.primaryImageFile : undefined,
+        primaryImageAlt: data.primaryImageAlt,
         thc: data.thc,
         cbd: data.cbd,
-        status: 'User Submitted' as CultivarStatus,
-        source: data.sourceEmail, 
       };
-
-      await addCultivar(cultivarDataForFirebase as any);
+      
+      await submitCultivarForReview(submissionPayload);
 
       toast({
         title: "Cultivar Submitted!",
@@ -335,6 +325,7 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
                           checked={field.value?.some(t => t.name === terpName)}
                           onCheckedChange={(checked) => {
                             const current = field.value || [];
+                            // Store as {id: terpName, name: terpName} as percentage isn't collected here
                             const terpObject = { id: terpName, name: terpName }; 
                             if (checked) {
                               field.onChange([...current, terpObject]);
@@ -415,3 +406,5 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
     </Dialog>
   );
 }
+
+    

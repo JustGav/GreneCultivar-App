@@ -20,6 +20,7 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 const CULTIVARS_COLLECTION = 'cultivars';
+const SUBMITTED_CULTIVARS_COLLECTION = 'submitted_cultivars';
 
 export const uploadImage = async (file: File, path: string): Promise<string> => {
   try {
@@ -56,13 +57,26 @@ const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
       return timestamp.toDate().toISOString();
     }
     if (typeof timestamp === 'string') {
-      return timestamp;
+      // Attempt to parse if it's a string that might be an ISO string already
+      const parsedDate = parseISO(timestamp);
+      if (isValidDate(parsedDate)) {
+          return parsedDate.toISOString();
+      }
     }
+    // Fallback for other Firestore Timestamp-like objects from admin SDK or older data
     if (timestamp && typeof timestamp.toDate === 'function') {
         return timestamp.toDate().toISOString();
     }
+    // If it's already a valid ISO string from a direct save (less likely with serverTimestamp)
+    if (typeof timestamp === 'string' && isValidDate(parseISO(timestamp))) {
+        return timestamp;
+    }
+    // Default to now if unparsable, though this indicates a data issue
     return new Date().toISOString();
   };
+
+  const parseISO = (dateString: string) => new Date(dateString);
+  const isValidDate = (date: Date) => !isNaN(date.getTime());
 
   const defaultCannabinoidProfile: CannabinoidProfile = { min: undefined, max: undefined };
 
@@ -85,7 +99,7 @@ const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
     images: data.images || [],
     reviews: (data.reviews || []).map((review: any) => ({
       ...review,
-      createdAt: mapTimestampToString(review.createdAt),
+      createdAt: mapTimestampToString(review.createdAt || review.timestamp), // Handle older 'timestamp' field
     })),
     cultivationPhases: data.cultivationPhases,
     plantCharacteristics: data.plantCharacteristics as PlantCharacteristics | undefined,
@@ -148,9 +162,7 @@ const prepareDataForFirestore = (data: Record<string, any>): Record<string, any>
       const profile = cleanedData[fieldName] as CannabinoidProfile;
       if (profile.min === undefined || profile.min === null || isNaN(Number(profile.min))) delete profile.min;
       if (profile.max === undefined || profile.max === null || isNaN(Number(profile.max))) delete profile.max;
-      if (Object.keys(profile).length === 0 && cleanedData[fieldName] !== undefined) {
-      }
-    } else if (cleanedData[fieldName] !== undefined) {
+      // No delete if empty, rules handle optional fields
     }
   });
   return cleanedData;
@@ -170,8 +182,8 @@ const getCurrentUserHistoryDetails = (): { userId?: string; details: Record<stri
   return { details: { userSource: 'Anonymous or System' } };
 };
 
-
-export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id' | 'reviews' | 'createdAt' | 'updatedAt' | 'history'>> & { source?: string; status?: CultivarStatus }): Promise<Cultivar> => {
+// For admin use directly into main collection
+export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id' | 'reviews' | 'createdAt' | 'updatedAt' | 'history'>>): Promise<Cultivar> => {
   try {
     const dataToSave: { [key: string]: any } = {};
     for (const key in cultivarDataInput) {
@@ -186,42 +198,26 @@ export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id'
         dataToSave[field] = [];
       }
     });
-
     if (dataToSave.additionalInfo && typeof dataToSave.additionalInfo === 'object') {
-      const ai = dataToSave.additionalInfo as NonNullable<Cultivar['additionalInfo']>;
-      const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
-      expectedAICategories.forEach(catKey => {
-        if (ai[catKey] === undefined) {
-          (ai[catKey] as any) = [];
-        }
-      });
+      // Ensure all nested array fields exist for additionalInfo
+       const ai = dataToSave.additionalInfo as NonNullable<Cultivar['additionalInfo']>;
+       const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
+       expectedAICategories.forEach(catKey => {
+         if (ai[catKey] === undefined) {
+           (ai[catKey] as any) = [];
+         }
+       });
     } else if (dataToSave.additionalInfo === undefined) {
-      dataToSave.additionalInfo = {
-        geneticCertificate: [],
-        plantPicture: [],
-        cannabinoidInfo: [],
-        terpeneInfo: [],
-      };
+      dataToSave.additionalInfo = { geneticCertificate: [], plantPicture: [], cannabinoidInfo: [], terpeneInfo: [] };
     }
+
 
     const { userId, details: userDetails } = getCurrentUserHistoryDetails();
-    let eventType = cultivarDataInput.status === 'User Submitted' ? "Cultivar Submitted by User" : "Cultivar Created";
-    const sourceInfo = cultivarDataInput.source || (userId ? 'Authenticated User Submission' : 'System Generated');
-    
-    // If 'source' is an email, we treat it as a user submission even if status isn't 'User Submitted' yet
-    if (cultivarDataInput.source && cultivarDataInput.source.includes('@')) {
-        eventType = "Cultivar Submitted by User";
-    }
-
     const initialHistoryEntry: CultivarHistoryEntry = {
-        timestamp: new Date().toISOString(),
-        event: eventType,
+        timestamp: new Date().toISOString(), // Client-side timestamp, Firestore rule expects server timestamp for createdAt/updatedAt
+        event: "Cultivar Created by Admin",
         userId: userId,
-        details: { 
-          ...userDetails,
-          status: cultivarDataInput.status || 'recentlyAdded', 
-          source: sourceInfo // Use the passed source, which could be an email
-        }
+        details: { ...userDetails, status: dataToSave.status || 'recentlyAdded', source: dataToSave.source || 'Admin Input' }
     };
 
     const finalDataForFirestore = {
@@ -229,7 +225,7 @@ export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id'
       reviews: [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      history: [initialHistoryEntry],
+      history: [initialHistoryEntry], // Firestore rules will check this structure
     };
     
     if (!finalDataForFirestore.status) {
@@ -246,7 +242,57 @@ export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id'
     return mapDocToCultivar(savedDoc.data(), savedDoc.id);
 
   } catch (error) {
-    console.error("Error adding cultivar: ", error);
+    console.error("Error adding cultivar (admin): ", error);
+    throw error;
+  }
+};
+
+// For user submissions to the 'submitted_cultivars' collection
+export interface SubmittedCultivarData {
+  name: string;
+  sourceEmail: string; // User's email, will also be used as 'source'
+  genetics?: Genetics;
+  description?: string;
+  effects?: string[];
+  flavors?: string[];
+  terpeneProfile?: { id: string; name: string; percentage?: undefined }[]; // Percentage not collected from users for simplicity
+  primaryImageFile?: File; // For upload
+  primaryImageAlt?: string;
+  thc?: CannabinoidProfile;
+  cbd?: CannabinoidProfile;
+  // primaryImageDataAiHint is not part of user submission form
+}
+
+export const submitCultivarForReview = async (submissionData: SubmittedCultivarData): Promise<string> => {
+  try {
+    let imageUrl: string | undefined = undefined;
+    if (submissionData.primaryImageFile) {
+      const timestamp = Date.now();
+      const uniqueFileName = `${timestamp}-${submissionData.primaryImageFile.name.replace(/\s+/g, '_')}`;
+      imageUrl = await uploadImage(submissionData.primaryImageFile, `cultivar-images/user-submitted/${uniqueFileName}`);
+    }
+
+    const dataForFirestore: any = {
+      name: submissionData.name,
+      sourceEmail: submissionData.sourceEmail,
+      source: submissionData.sourceEmail, // Set source field to the email
+      genetics: submissionData.genetics,
+      description: submissionData.description,
+      effects: submissionData.effects || [],
+      flavors: submissionData.flavors || [],
+      terpeneProfile: submissionData.terpeneProfile?.map(tp => ({ name: tp.name, id: tp.id || tp.name })) || [],
+      images: imageUrl ? [{ id: `img-sub-${Date.now()}`, url: imageUrl, alt: submissionData.primaryImageAlt || `${submissionData.name} submission` }] : [],
+      thc: submissionData.thc || {},
+      cbd: submissionData.cbd || {},
+      status: 'User Submitted' as CultivarStatus,
+      submittedAt: serverTimestamp(), // Firestore server-side timestamp
+    };
+    
+    const cleanedData = prepareDataForFirestore(dataForFirestore); // Use the same cleaner for consistency
+    const docRef = await addDoc(collection(db, SUBMITTED_CULTIVARS_COLLECTION), cleanedData);
+    return docRef.id;
+  } catch (error) {
+    console.error("Error submitting cultivar for review: ", error);
     throw error;
   }
 };
@@ -269,7 +315,7 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
         const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
         expectedAICategories.forEach(catKey => {
             if (ai[catKey] === undefined) {
-                (ai[catKey] as any) = []; // Ensure all AI categories are arrays if parent exists
+                (ai[catKey] as any) = []; 
             }
         });
     }
@@ -296,29 +342,17 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
 
     if (changedFields.length > 0) {
       detailsForHistory.updatedFields = changedFields; 
-      detailsForHistory.changes = fieldChangesDetails; 
-    } else {
-      // If dataToUpdate.status has changed, it would be caught above.
-      // If no *other* fields changed, and status didn't change, this block might not be hit often
-      // unless an update is triggered with identical data.
-      detailsForHistory.message = 'Update triggered, but no specific field changes detected by comparison.';
+      // fieldChangesDetails can be large, so only include if truly necessary for audit.
+      // detailsForHistory.changes = fieldChangesDetails; 
     }
     
     if (dataToUpdate.status && dataToUpdate.status !== currentCultivarData.status) {
         eventMessage = `Status changed from ${currentCultivarData.status || 'unknown'} to ${dataToUpdate.status}`;
         detailsForHistory.statusChange = { old: currentCultivarData.status, new: dataToUpdate.status };
-        if (Array.isArray(detailsForHistory.updatedFields)) {
-           detailsForHistory.updatedFields = detailsForHistory.updatedFields.filter((f: string) => f !== 'status');
-           if (detailsForHistory.updatedFields.length === 0 && Object.keys(fieldChangesDetails).filter(k => k !== 'status').length === 0) {
-             delete detailsForHistory.updatedFields;
-             // If status was the *only* change, the eventMessage covers it.
-             // We might not need to repeat it in updatedFields.
-           }
-        }
     }
 
     const historyEntry: CultivarHistoryEntry = {
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString(), // Client-side, Firestore rule expects server timestamp for updatedAt
         event: eventMessage,
         userId: userId,
         details: detailsForHistory
@@ -344,7 +378,7 @@ export const updateCultivarStatus = async (id: string, status: CultivarStatus): 
     const oldStatus = docSnap.exists() ? docSnap.data().status : 'unknown';
 
     const historyEntry: CultivarHistoryEntry = {
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString(), // Client-side
         event: `Status changed from ${oldStatus || 'unknown'} to ${status}`,
         userId: userId,
         details: { ...userDetails, newStatus: status, oldStatus: oldStatus }
@@ -363,27 +397,24 @@ export const updateCultivarStatus = async (id: string, status: CultivarStatus): 
 export const updateMultipleCultivarStatuses = async (cultivarIds: string[], newStatus: CultivarStatus): Promise<void> => {
   if (cultivarIds.length === 0) return;
   const batchWrite = writeBatch(db);
-  const timestamp = new Date().toISOString();
+  const clientTimestamp = new Date().toISOString(); // Client-side timestamp for history entry
   const { userId, details: userDetails } = getCurrentUserHistoryDetails();
 
-  // To get oldStatus for each, we'd need to fetch them first. 
-  // For now, we'll mark oldStatus as 'batch-updated' or fetch if critical.
-  // For simplicity, let's just indicate it's a batch update.
   for (const id of cultivarIds) {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
-     // Fetching old status for each item in batch for more accurate logging
-    const docSnap = await getDoc(cultivarDocRef);
+    // Fetch old status for more accurate logging
+    const docSnap = await getDoc(cultivarDocRef); // This adds reads, consider if acceptable for large batches
     const oldStatus = docSnap.exists() ? docSnap.data().status : 'unknown';
 
     const historyEntry: CultivarHistoryEntry = {
-      timestamp,
+      timestamp: clientTimestamp,
       event: `Status mass-changed from ${oldStatus || 'unknown'} to ${newStatus}`,
       userId: userId,
       details: { ...userDetails, newStatus: newStatus, oldStatus: oldStatus, operation: 'batch update' }
     };
     batchWrite.update(cultivarDocRef, {
       status: newStatus,
-      updatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(), // Firestore server-side timestamp
       history: arrayUnion(historyEntry)
     });
   }
@@ -406,7 +437,7 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
     };
     const { userId, details: userDetails } = getCurrentUserHistoryDetails();
     const historyEntry: CultivarHistoryEntry = {
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString(), // Client-side
         event: "Review Added",
         userId: userId, 
         details: { ...userDetails, reviewId: reviewToSave.id, rating: reviewToSave.rating, reviewerName: reviewData.user }
@@ -422,3 +453,5 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
   }
 };
 
+
+    

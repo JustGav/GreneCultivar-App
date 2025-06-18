@@ -54,7 +54,7 @@ export interface AdditionalFileInfo {
   id: string;
   name: string;
   url: string;
-  fileType: 'image' | 'pdf' | 'document';
+  fileType: 'image' | 'pdf' | 'document'; // Keep 'document' for flexibility
   category: AdditionalInfoCategoryKey;
   'data-ai-hint'?: string;
 }
@@ -75,7 +75,7 @@ export interface CultivarHistoryEntry {
   timestamp: string; // ISO date string
   event: string; // e.g., "Cultivar Created", "Status changed to verified"
   userId?: string; // Optional: Firebase Auth UID of the user who made the change
-  details?: Record<string, any>; // Optional: for storing specifics about the change (e.g., { newStatus: 'Live', oldStatus: 'pending', changedByEmail: 'user@example.com' })
+  details?: Record<string, any>; // Optional: for storing specifics about the change
 }
 
 export interface Cultivar {
@@ -83,7 +83,7 @@ export interface Cultivar {
   name: string;
   genetics: Genetics;
   status: CultivarStatus;
-  source?: string;
+  source?: string; // Can be lab ID, user email for submissions, etc.
   thc: CannabinoidProfile;
   cbd: CannabinoidProfile;
   cbc?: CannabinoidProfile;
@@ -111,8 +111,28 @@ export interface Cultivar {
   children?: string[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
-  history: CultivarHistoryEntry[]; // Changed to non-optional, will be initialized
+  history: CultivarHistoryEntry[];
 }
+
+// Type for data stored in 'submitted_cultivars'
+export interface SubmittedCultivar {
+  id: string; // Firestore document ID
+  name: string;
+  sourceEmail: string; // Submitter's email
+  source: string; // Will be same as sourceEmail
+  genetics?: Genetics;
+  description?: string;
+  effects?: string[];
+  flavors?: string[];
+  terpeneProfile?: { id: string, name: string, percentage?: undefined }[]; // Percentage not taken from user submission for simplicity
+  images?: CultivarImage[]; // Max 1 image
+  thc?: CannabinoidProfile;
+  cbd?: CannabinoidProfile;
+  status: 'User Submitted'; // Fixed status
+  submittedAt: string; // ISO date string of submission time (from server)
+  // No reviews, history, createdAt, updatedAt for submitted data until promoted
+}
+
 
 // For displaying logs, augmenting history entries with cultivar info
 export interface DisplayLogEntry extends CultivarHistoryEntry {
@@ -120,3 +140,5 @@ export interface DisplayLogEntry extends CultivarHistoryEntry {
   cultivarName: string;
   userDisplay: string; // e.g., "User Email (UID)" or "System"
 }
+
+    

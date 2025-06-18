@@ -3,49 +3,53 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Allow public read access to all files by default.
-    // This is common for images and public documents once uploaded.
-    match /{allPaths=**} {
+    function isAdmin() {
+      // In a real app, use custom claims: request.auth.token.admin == true
+      return request.auth != null; // For this app, any authenticated user is admin
+    }
+
+    // Cultivar main images (and additional images if under same path structure)
+    // Path: cultivar-images/{fileName}
+    // Path: cultivar-images/additional/{fileName}
+    match /cultivar-images/{pathSegment}/{fileName} {
+      allow read: if true; // Public read for main and additional images
+
+      // Admins can write to main and additional image paths
+      allow write: if isAdmin() &&
+                      request.resource.size < 5 * 1024 * 1024 && // Max 5MB
+                      request.resource.contentType.matches('image/.*');
+    }
+     match /cultivar-images/{fileName} { // Top level images directly under cultivar-images
       allow read: if true;
+      allow write: if isAdmin() &&
+                      request.resource.size < 5 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/.*');
     }
 
-    // --- Cultivar Images ---
-    // Allow writes only by authenticated users (TODO: implement auth check)
-    // Validate file type and size.
-    match /cultivar-images/{imageId} {
-      allow write: if 
-        // TODO: request.auth != null &&
-        request.resource.size < 5 * 1024 * 1024 && // Max 5MB
-        request.resource.contentType.matches('image/.*');
-    }
-    match /cultivar-images/additional/{imageId} {
-      allow write: if 
-        // TODO: request.auth != null &&
-        request.resource.size < 5 * 1024 * 1024 && // Max 5MB
-        request.resource.contentType.matches('image/.*');
+
+    // Cultivar documents (certificates, info files)
+    // Path: cultivar-docs/{category}/{fileName}
+    match /cultivar-docs/{category}/{fileName} {
+      allow read: if true; // Public read for documents
+
+      // Admins can write to document paths
+      allow write: if isAdmin() &&
+                      request.resource.size < 10 * 1024 * 1024 && // Max 10MB for docs
+                      (request.resource.contentType.matches('application/pdf') || request.resource.contentType.matches('image/.*'));
     }
 
-    // --- Cultivar Documents (PDFs) ---
-    match /cultivar-docs/certificates/{docId} {
-      allow write: if
-        // TODO: request.auth != null &&
-        request.resource.size < 5 * 1024 * 1024 && // Max 5MB
-        request.resource.contentType == 'application/pdf';
-    }
-    match /cultivar-docs/cannabinoid-info/{docId} {
-      allow write: if
-        // TODO: request.auth != null &&
-        request.resource.size < 5 * 1024 * 1024 && // Max 5MB
-        request.resource.contentType == 'application/pdf';
-    }
-    match /cultivar-docs/terpene-info/{docId} {
-      allow write: if
-        // TODO: request.auth != null &&
-        request.resource.size < 5 * 1024 * 1024 && // Max 5MB
-        request.resource.contentType == 'application/pdf';
-    }
+    // User-submitted images for moderation
+    // Path: cultivar-images/user-submitted/{fileName}
+    match /cultivar-images/user-submitted/{fileName} {
+       // Admins can read submitted images for moderation
+       allow read: if isAdmin();
 
-    // Deny writes to any other paths by default if not matched above.
-    // This is implicit if no other 'allow write' rule matches.
+       // Anyone can upload to this specific path for submissions.
+       // Client must generate unique file names to avoid overwrites.
+       allow write: if request.resource.size < 5 * 1024 * 1024 && // Max 5MB
+                       request.resource.contentType.matches('image/.*');
+    }
   }
 }
+
+    
