@@ -141,7 +141,7 @@ export default function CultivarCard({ cultivar, onStatusChange }: CultivarCardP
             <h4 className="font-semibold text-muted-foreground">Effects:</h4>
             <div className="flex flex-wrap gap-1 mt-1">
               {cultivar.effects && cultivar.effects.slice(0, 3).map(effect => (
-                <Badge key={effect} variant="secondary" className="bg-accent/20 text-accent-foreground/80">{effect}</Badge>
+                <Badge key={effect} variant="secondary" className="bg-accent/20 text-foreground">{effect}</Badge>
               ))}
               {cultivar.effects && cultivar.effects.length > 3 && <Badge variant="outline">...</Badge>}
             </div>
