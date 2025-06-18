@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -126,6 +126,8 @@ export default function CultivarDetailsPage() {
     cultivar.cultivationPhases.flowering ||
     cultivar.cultivationPhases.harvest
   );
+  const hasEffects = cultivar.effects && cultivar.effects.length > 0;
+  const hasMedicalEffects = cultivar.medicalEffects && cultivar.medicalEffects.length > 0;
 
 
   return (
@@ -167,14 +169,7 @@ export default function CultivarDetailsPage() {
                   <CannabinoidDisplay label="CBN" profile={cultivar.cbn} />
                   <CannabinoidDisplay label="THCV" profile={cultivar.thcv} />
                 </div>
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg flex items-center"><Smile size={20} className="mr-2 text-accent"/>Effects</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {cultivar.effects.map(effect => (
-                      <Badge key={effect} variant="outline" className="bg-accent/10 border-accent/30 text-accent-foreground/90">{effect}</Badge>
-                    ))}
-                  </div>
-                </div>
+                {/* Effects are now in their own card */}
               </div>
 
               {hasTerpeneProfile && (
@@ -289,6 +284,41 @@ export default function CultivarDetailsPage() {
             </CardContent>
           </Card>
           
+          {hasEffects && (
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="font-headline text-2xl text-primary flex items-center">
+                  <Smile size={28} className="mr-3 text-primary/80" /> Reported Effects
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {cultivar.effects.map(effect => (
+                    <Badge key={effect} variant="outline" className="bg-accent/10 border-accent/30 text-accent-foreground/90">{effect}</Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {hasMedicalEffects && (
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="font-headline text-2xl text-primary flex items-center">
+                  <Stethoscope size={28} className="mr-3 text-primary/80" /> Potential Medical Effects
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {cultivar.medicalEffects!.map(effect => (
+                    <Badge key={effect} variant="secondary" className="bg-primary/10 border-primary/30 text-primary-foreground/90">{effect}</Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+
           {hasAdditionalInfo && cultivar.additionalInfo && (
             <Card className="shadow-lg">
               <CardHeader>

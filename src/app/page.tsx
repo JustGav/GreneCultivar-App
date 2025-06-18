@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import type { Cultivar, Genetics } from '@/types';
-import { mockCultivars, getAllEffects } from '@/lib/mock-data';
+import { mockCultivars, EFFECT_OPTIONS } from '@/lib/mock-data'; // Updated to use EFFECT_OPTIONS
 import CultivarCard from '@/components/CultivarCard';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
@@ -39,11 +39,11 @@ export default function CultivarBrowserPage() {
   const [hybridRatio, setHybridRatio] = useState<number>(50); // Sativa percentage
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   
-  const [allAvailableEffects, setAllAvailableEffects] = useState<string[]>([]);
+  // allAvailableEffects will now be sourced from EFFECT_OPTIONS
+  const allAvailableEffects = EFFECT_OPTIONS;
 
   useEffect(() => {
     setCultivars(mockCultivars);
-    setAllAvailableEffects(getAllEffects());
   }, []);
 
   const handleEffectToggle = (effect: string) => {

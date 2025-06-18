@@ -37,7 +37,6 @@ export const TERPENE_OPTIONS: { name: string; category: string }[] = [
   { name: "Fenchol", category: TERPENE_CATEGORIES.ADDITIONAL },
   { name: "Terpineol", category: TERPENE_CATEGORIES.ADDITIONAL },
   { name: "Bergamotene", category: TERPENE_CATEGORIES.ADDITIONAL },
-  // Removed duplicate Valencene from additional
 ];
 
 export const groupTerpenesByCategory = () => {
@@ -64,6 +63,20 @@ export const groupTerpenesByCategory = () => {
   }));
 };
 
+export const EFFECT_OPTIONS: string[] = [
+  'Relaxed', 'Sleepy', 'Happy', 'Uplifted', 'Energetic', 'Creative', 'Focused', 
+  'Euphoric', 'Talkative', 'Giggly', 'Hungry', 'Tingly', 'Aroused', 'Calm', 'Inspired',
+  'Dry Mouth', 'Dry Eyes', 'Paranoid', 'Anxious', 'Dizzy' // Including some less desirable for completeness if needed
+].sort();
+
+export const MEDICAL_EFFECT_OPTIONS: string[] = [
+  'Pain Relief', 'Stress Relief', 'Anxiety Relief', 'Anti-inflammatory', 'Nausea Relief', 
+  'Appetite Stimulation', 'Sleep Aid', 'Depression Relief', 'Muscle Spasm Relief', 
+  'Seizure Reduction', 'Headache Relief', 'Migraine Relief', 'PTSD Symptom Relief', 
+  'ADHD/ADD Symptom Relief', 'Arthritis Relief', 'Cancer Symptom Relief', 'Anti-emetic',
+  'Neuroprotective', 'Glaucoma Relief', 'Fibromyalgia Relief'
+].sort();
+
 
 export const mockCultivars: Cultivar[] = [
   {
@@ -77,6 +90,7 @@ export const mockCultivars: Cultivar[] = [
     cbn: { min: 0.05, max: 0.2 },
     thcv: { min: 0.1, max: 0.4 },
     effects: ['Relaxed', 'Sleepy', 'Happy'],
+    medicalEffects: ['Sleep Aid', 'Stress Relief', 'Pain Relief'],
     description: 'A calming indica strain perfect for unwinding after a long day. Offers a sense of deep relaxation and tranquility, often leading to a restful night\'s sleep. Its earthy aroma is complemented by subtle sweet notes.',
     images: [
       { id: 'img1-1', url: 'https://placehold.co/600x400.png', alt: 'GreenLeaf Serenity Bud 1', "data-ai-hint": "cannabis bud" },
@@ -136,6 +150,7 @@ export const mockCultivars: Cultivar[] = [
     cbn: { min: 0.1, max: 0.3 },
     thcv: { min: 0.3, max: 0.8 },
     effects: ['Uplifted', 'Energetic', 'Creative', 'Focused'],
+    medicalEffects: ['Depression Relief', 'Fatigue Relief', 'ADHD/ADD Symptom Relief'],
     description: 'A vibrant sativa designed to boost creativity and energy. Ideal for daytime use, it provides a clear-headed, focused high that can help power through tasks or inspire artistic endeavors. Features a citrusy, zesty flavor profile.',
     images: [
       { id: 'img2-1', url: 'https://placehold.co/600x400.png', alt: 'Golden Aura Uplift Bud', "data-ai-hint": "cannabis flower" },
@@ -183,6 +198,7 @@ export const mockCultivars: Cultivar[] = [
     cbg: { min: 0.4, max: 0.8 },
     thcv: { min: 0.2, max: 0.5 },
     effects: ['Balanced', 'Happy', 'Relaxed', 'Euphoric'],
+    medicalEffects: ['Anxiety Relief', 'Mild Pain Relief'],
     description: 'A well-balanced hybrid that offers the best of both worlds. It starts with a gentle euphoric lift, gradually easing into a comfortable state of relaxation without heavy sedation. Notes of pine and berry.',
     images: [
       { id: 'img3-1', url: 'https://placehold.co/600x400.png', alt: 'Mystic Harmony Blend Detail', "data-ai-hint": "marijuana bud" },
@@ -220,6 +236,7 @@ export const mockCultivars: Cultivar[] = [
     thc: { min: 22, max: 28 },
     cbd: { min: 0.1, max: 0.5 },
     effects: ['Energetic', 'Euphoric', 'Talkative'],
+    // No medical effects for this one
     description: 'A potent Sativa known for its strong cerebral effects and energizing buzz. Not for the faint of heart, Crimson Peak Power delivers a rush of euphoria and creativity. It has a spicy, peppery aroma.',
     images: [
       { id: 'img4-1', url: 'https://placehold.co/600x400.png', alt: 'Crimson Peak Power Bud Structure', "data-ai-hint": "sativa bud" },
@@ -244,7 +261,6 @@ export const mockCultivars: Cultivar[] = [
       ]
     },
     terpeneProfile: [],
-    // No pricing for this one
   },
   {
     id: '5',
@@ -252,7 +268,8 @@ export const mockCultivars: Cultivar[] = [
     genetics: 'Ruderalis',
     thc: { min: 10, max: 15 },
     cbd: { min: 0.5, max: 1.0 },
-    effects: ['Mild', 'Relaxed', 'Quick Onset'],
+    effects: ['Calm', 'Relaxed'], // Simplified from 'Mild', 'Relaxed', 'Quick Onset'
+    medicalEffects: ['Stress Relief'],
     description: 'A hardy Ruderalis strain known for its autoflowering capabilities and resilience. Provides a mild, manageable effect perfect for beginners or those seeking a less intense experience. Earthy and slightly woody notes.',
     images: [
       { id: 'img5-1', url: 'https://placehold.co/600x400.png', alt: 'Arctic AutoBloom Plant', "data-ai-hint": "ruderalis plant" },
@@ -282,9 +299,6 @@ export const mockCultivars: Cultivar[] = [
 ];
 
 export const getAllEffects = (): string[] => {
-  const allEffects = new Set<string>();
-  mockCultivars.forEach(cultivar => {
-    cultivar.effects.forEach(effect => allEffects.add(effect));
-  });
-  return Array.from(allEffects).sort();
+  // Now uses the predefined EFFECT_OPTIONS for consistency in the filter
+  return EFFECT_OPTIONS;
 };

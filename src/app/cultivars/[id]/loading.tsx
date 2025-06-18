@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton, Palette, DollarSign, Sunrise } from "lucide-react";
+import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton, Palette, DollarSign, Sunrise, Stethoscope } from "lucide-react";
 
 export default function CultivarDetailLoading() {
   return (
@@ -49,14 +49,7 @@ export default function CultivarDetailLoading() {
                   <Skeleton className="h-5 w-1/2" /> {/* CBN */}
                   <Skeleton className="h-5 w-1/2" /> {/* THCV */}
                 </div>
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-lg flex items-center"><Smile size={20} className="mr-2 text-muted-foreground/50"/>Effects</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <Skeleton className="h-6 w-16 rounded-full" />
-                    <Skeleton className="h-6 w-20 rounded-full" />
-                    <Skeleton className="h-6 w-12 rounded-full" />
-                  </div>
-                </div>
+                {/* Effects are now in their own card - removed skeleton from here */}
               </div>
 
               {/* Terpene Profile Skeleton */}
@@ -148,6 +141,41 @@ export default function CultivarDetailLoading() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Reported Effects Skeleton Card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center">
+                <Smile size={28} className="mr-3 text-muted-foreground/50" />
+                <Skeleton className="h-8 w-2/5" /> {/* Title: Reported Effects */}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="h-6 w-16 rounded-full" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+                <Skeleton className="h-6 w-12 rounded-full" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Potential Medical Effects Skeleton Card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center">
+                <Stethoscope size={28} className="mr-3 text-muted-foreground/50" />
+                <Skeleton className="h-8 w-3/5" /> {/* Title: Potential Medical Effects */}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="h-6 w-24 rounded-full" />
+                <Skeleton className="h-6 w-16 rounded-full" />
+                <Skeleton className="h-6 w-28 rounded-full" />
+              </div>
+            </CardContent>
+          </Card>
+
 
           {/* Additional Information Skeleton */}
           <Card className="shadow-lg">

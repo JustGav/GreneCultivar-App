@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { mockCultivars, groupTerpenesByCategory } from '@/lib/mock-data';
+import { mockCultivars, groupTerpenesByCategory, EFFECT_OPTIONS, MEDICAL_EFFECT_OPTIONS } from '@/lib/mock-data';
 import type { Cultivar, Genetics, CannabinoidProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, YieldProfile, Terpene, PricingProfile } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope } from 'lucide-react';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
 
@@ -39,6 +39,7 @@ const yieldRangeSchema = z.object({
 });
 
 const additionalFileSchema = z.object({
+  id: z.string().optional(), // for useFieldArray key
   name: z.string().min(1, "File name is required."),
   url: z.string().url({ message: "Please enter a valid URL." }),
 });
@@ -48,8 +49,10 @@ const additionalImageFileSchema = additionalFileSchema.extend({
 });
 
 const terpeneEntrySchema = z.object({
+  id: z.string().optional(), // for useFieldArray key
   name: z.string().min(1, "Terpene name is required."),
   percentage: z.coerce.number().min(0, "Percentage must be >=0").max(100, "Percentage must be <=100").optional(),
+  description: z.string().optional(),
 });
 
 const pricingSchema = z.object({
@@ -66,12 +69,18 @@ const pricingSchema = z.object({
     path: ["max"], 
   }).optional();
 
+const effectEntrySchema = z.object({
+  id: z.string().optional(), // for useFieldArray key
+  name: z.string().min(1, "Effect name is required."),
+});
 
 const cultivarFormSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }),
   genetics: z.enum(GENETIC_OPTIONS, { required_error: "Genetics type is required." }),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
-  effects: z.string().optional(), 
+  
+  effects: z.array(effectEntrySchema).optional().default([]), 
+  medicalEffects: z.array(effectEntrySchema).optional().default([]),
   
   thc: numberRangeSchema,
   cbd: numberRangeSchema,
@@ -126,7 +135,8 @@ export default function AddCultivarPage() {
       name: '',
       genetics: undefined,
       description: '',
-      effects: '',
+      effects: [],
+      medicalEffects: [],
       thc: { min: undefined, max: undefined },
       cbd: { min: undefined, max: undefined },
       primaryImageUrl: '',
@@ -146,6 +156,8 @@ export default function AddCultivarPage() {
     },
   });
 
+  const { fields: effectFields, append: appendEffect, remove: removeEffect } = useFieldArray({ control, name: "effects" });
+  const { fields: medicalEffectFields, append: appendMedicalEffect, remove: removeMedicalEffect } = useFieldArray({ control, name: "medicalEffects" });
   const { fields: geneticCertificateFields, append: appendGeneticCertificate, remove: removeGeneticCertificate } = useFieldArray({ control, name: "additionalInfo_geneticCertificates" });
   const { fields: plantPictureFields, append: appendPlantPicture, remove: removePlantPicture } = useFieldArray({ control, name: "additionalInfo_plantPictures" });
   const { fields: cannabinoidInfoFields, append: appendCannabinoidInfo, remove: removeCannabinoidInfo } = useFieldArray({ control, name: "additionalInfo_cannabinoidInfos" });
@@ -168,7 +180,8 @@ export default function AddCultivarPage() {
         cbg: data.cbg?.min !== undefined || data.cbg?.max !== undefined ? data.cbg as CannabinoidProfile : undefined,
         cbn: data.cbn?.min !== undefined || data.cbn?.max !== undefined ? data.cbn as CannabinoidProfile : undefined,
         thcv: data.thcv?.min !== undefined || data.thcv?.max !== undefined ? data.thcv as CannabinoidProfile : undefined,
-        effects: data.effects ? data.effects.split(',').map(e => e.trim()).filter(e => e) : [],
+        effects: data.effects ? data.effects.map(e => e.name).filter(e => e) : [],
+        medicalEffects: data.medicalEffects ? data.medicalEffects.map(e => e.name).filter(e => e) : [],
         description: data.description,
         images: data.primaryImageUrl ? [{ 
             id: `img-${newCultivarId}-1`, 
@@ -192,6 +205,7 @@ export default function AddCultivarPage() {
             id: `terp-${newCultivarId}-${index}`,
             name: tp.name,
             percentage: tp.percentage,
+            description: tp.description,
         })) || [],
         pricing: (data.pricing?.min !== undefined || data.pricing?.max !== undefined || data.pricing?.avg !== undefined)
           ? {
@@ -250,7 +264,7 @@ export default function AddCultivarPage() {
     }
   };
   
-  const renderMinMaxInput = (fieldPrefix: keyof CultivarFormData | `plantCharacteristics.${string}`, label: string, subLabel?: string) => (
+  const renderMinMaxInput = (fieldPrefix: keyof CultivarFormData | `plantCharacteristics.${string}` | `pricing`, label: string, subLabel?: string) => (
     <div className="grid grid-cols-2 gap-4 items-end">
       <div>
         <Label htmlFor={`${String(fieldPrefix)}.min`}>{label} Min {subLabel}</Label>
@@ -333,14 +347,95 @@ export default function AddCultivarPage() {
               <Textarea id="description" {...register("description")} placeholder="Describe the cultivar..." rows={4} />
               {errors.description && <p className="text-sm text-destructive mt-1">{errors.description.message}</p>}
             </div>
-
-            <div>
-              <Label htmlFor="effects">Effects (comma-separated)</Label>
-              <Input id="effects" {...register("effects")} placeholder="e.g., Relaxed, Happy, Uplifted" />
-              {errors.effects && <p className="text-sm text-destructive mt-1">{errors.effects.message}</p>}
-            </div>
           </CardContent>
         </Card>
+
+        <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="font-headline text-2xl text-primary flex items-center"><Smile size={24} className="mr-2" /> Reported Effects</CardTitle>
+                <CardDescription>Select the common effects experienced with this cultivar.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {effectFields.map((field, index) => (
+                    <div key={field.id} className="flex items-end gap-2 p-3 border rounded-md relative bg-muted/30 shadow-sm">
+                        <div className="flex-grow">
+                            <Label htmlFor={`effects.${index}.name`}>Effect *</Label>
+                            <Controller
+                                name={`effects.${index}.name`}
+                                control={control}
+                                defaultValue=""
+                                render={({ field: controllerField }) => (
+                                    <Select onValueChange={controllerField.onChange} value={controllerField.value}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select an effect" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {EFFECT_OPTIONS.map(effectName => (
+                                                <SelectItem key={effectName} value={effectName}>
+                                                    {effectName}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
+                            {errors.effects?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.effects?.[index]?.name?.message}</p>}
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeEffect(index)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => appendEffect({ name: '' })}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Effect
+                </Button>
+                {effectFields.length === 0 && <p className="text-sm text-muted-foreground">No reported effects added yet.</p>}
+            </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="font-headline text-2xl text-primary flex items-center"><Stethoscope size={24} className="mr-2" /> Potential Medical Effects</CardTitle>
+                <CardDescription>Select potential medical applications or benefits.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {medicalEffectFields.map((field, index) => (
+                    <div key={field.id} className="flex items-end gap-2 p-3 border rounded-md relative bg-muted/30 shadow-sm">
+                        <div className="flex-grow">
+                            <Label htmlFor={`medicalEffects.${index}.name`}>Medical Effect *</Label>
+                            <Controller
+                                name={`medicalEffects.${index}.name`}
+                                control={control}
+                                defaultValue=""
+                                render={({ field: controllerField }) => (
+                                    <Select onValueChange={controllerField.onChange} value={controllerField.value}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a medical effect" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {MEDICAL_EFFECT_OPTIONS.map(effectName => (
+                                                <SelectItem key={effectName} value={effectName}>
+                                                    {effectName}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
+                            {errors.medicalEffects?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.medicalEffects?.[index]?.name?.message}</p>}
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeMedicalEffect(index)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => appendMedicalEffect({ name: '' })}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Medical Effect
+                </Button>
+                {medicalEffectFields.length === 0 && <p className="text-sm text-muted-foreground">No medical effects added yet.</p>}
+            </CardContent>
+        </Card>
+
 
         <Card className="shadow-lg">
           <CardHeader>
@@ -414,14 +509,12 @@ export default function AddCultivarPage() {
                         </Select>
                       )}
                     />
-                    {/* @ts-ignore */}
-                    {errors.terpeneProfile?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile?.[index]?.name?.message}</p>}
+                    {errors.terpeneProfile?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile[index]?.name?.message}</p>}
                   </div>
                   <div>
                     <Label htmlFor={`terpeneProfile.${index}.percentage`}>Percentage (%)</Label>
                     <Input type="number" step="0.01" {...register(`terpeneProfile.${index}.percentage`)} placeholder="e.g., 0.5" />
-                    {/* @ts-ignore */}
-                    {errors.terpeneProfile?.[index]?.percentage && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile?.[index]?.percentage?.message}</p>}
+                    {errors.terpeneProfile?.[index]?.percentage && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile[index]?.percentage?.message}</p>}
                   </div>
                 </div>
                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeTerpene(index)}>
@@ -429,7 +522,7 @@ export default function AddCultivarPage() {
                 </Button>
               </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', percentage: undefined })}>
+            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', percentage: undefined, description: '' })}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Terpene
             </Button>
             {terpeneProfileFields.length === 0 && <p className="text-sm text-muted-foreground">No terpenes added yet.</p>}
@@ -538,6 +631,7 @@ export default function AddCultivarPage() {
                     {errors.pricing?.avg && <p className="text-sm text-destructive mt-1">{errors.pricing.avg.message}</p>}
                 </div>
                 </div>
+                 {errors.pricing?.message && <p className="text-sm text-destructive mt-1">{errors.pricing.message}</p>}
             </CardContent>
         </Card>
         
@@ -561,13 +655,11 @@ export default function AddCultivarPage() {
                                 <div>
                                     <Label htmlFor={`additionalInfo_geneticCertificates.${index}.name`}>File Name *</Label>
                                     <Input {...register(`additionalInfo_geneticCertificates.${index}.name`)} placeholder="Certificate Name" />
-                                     {/* @ts-ignore */}
                                     {errors.additionalInfo_geneticCertificates?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_geneticCertificates?.[index]?.name?.message}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor={`additionalInfo_geneticCertificates.${index}.url`}>File URL *</Label>
                                     <Input type="url" {...register(`additionalInfo_geneticCertificates.${index}.url`)} placeholder="https://example.com/cert.pdf" />
-                                     {/* @ts-ignore */}
                                     {errors.additionalInfo_geneticCertificates?.[index]?.url && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_geneticCertificates?.[index]?.url?.message}</p>}
                                 </div>
                             </div>
@@ -594,13 +686,11 @@ export default function AddCultivarPage() {
                                 <div>
                                     <Label htmlFor={`additionalInfo_plantPictures.${index}.name`}>File Name *</Label>
                                     <Input {...register(`additionalInfo_plantPictures.${index}.name`)} placeholder="Picture Name" />
-                                    {/* @ts-ignore */}
                                     {errors.additionalInfo_plantPictures?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_plantPictures?.[index]?.name?.message}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor={`additionalInfo_plantPictures.${index}.url`}>File URL *</Label>
                                     <Input type="url" {...register(`additionalInfo_plantPictures.${index}.url`)} placeholder="https://example.com/image.jpg" />
-                                    {/* @ts-ignore */}
                                     {errors.additionalInfo_plantPictures?.[index]?.url && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_plantPictures?.[index]?.url?.message}</p>}
                                 </div>
                             </div>
@@ -631,13 +721,11 @@ export default function AddCultivarPage() {
                                 <div>
                                     <Label htmlFor={`additionalInfo_cannabinoidInfos.${index}.name`}>File Name *</Label>
                                     <Input {...register(`additionalInfo_cannabinoidInfos.${index}.name`)} placeholder="Cannabinoid Report Name" />
-                                    {/* @ts-ignore */}
                                     {errors.additionalInfo_cannabinoidInfos?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_cannabinoidInfos?.[index]?.name?.message}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor={`additionalInfo_cannabinoidInfos.${index}.url`}>File URL *</Label>
                                     <Input type="url" {...register(`additionalInfo_cannabinoidInfos.${index}.url`)} placeholder="https://example.com/cannabinoid.pdf" />
-                                    {/* @ts-ignore */}
                                     {errors.additionalInfo_cannabinoidInfos?.[index]?.url && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_cannabinoidInfos?.[index]?.url?.message}</p>}
                                 </div>
                             </div>
@@ -664,13 +752,11 @@ export default function AddCultivarPage() {
                                 <div>
                                     <Label htmlFor={`additionalInfo_terpeneInfos.${index}.name`}>File Name *</Label>
                                     <Input {...register(`additionalInfo_terpeneInfos.${index}.name`)} placeholder="Terpene Report Name" />
-                                    {/* @ts-ignore */}
                                     {errors.additionalInfo_terpeneInfos?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_terpeneInfos?.[index]?.name?.message}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor={`additionalInfo_terpeneInfos.${index}.url`}>File URL *</Label>
                                     <Input type="url" {...register(`additionalInfo_terpeneInfos.${index}.url`)} placeholder="https://example.com/terpene.pdf" />
-                                    {/* @ts-ignore */}
                                     {errors.additionalInfo_terpeneInfos?.[index]?.url && <p className="text-sm text-destructive mt-1">{errors.additionalInfo_terpeneInfos?.[index]?.url?.message}</p>}
                                 </div>
                             </div>

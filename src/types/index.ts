@@ -80,6 +80,7 @@ export interface Cultivar {
   cbn?: CannabinoidProfile;
   thcv?: CannabinoidProfile;
   effects: string[];
+  medicalEffects?: string[];
   description: string;
   images: CultivarImage[];
   reviews: Review[];
