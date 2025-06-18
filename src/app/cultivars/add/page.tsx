@@ -156,6 +156,7 @@ export default function AddCultivarPage() {
       cbd: { min: undefined, max: undefined },
       primaryImageUrl: '',
       primaryImageAlt: '',
+      primaryImageDataAiHint: '',
       cultivationPhases: {},
       plantCharacteristics: {
         minHeight: undefined,
@@ -380,6 +381,61 @@ export default function AddCultivarPage() {
         </Card>
 
         <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-2xl text-primary flex items-center"><Palette size={24} className="mr-2" /> Terpene Profile</CardTitle>
+            <CardDescription>List the prominent terpenes and their optional percentage.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {terpeneProfileFields.map((field, index) => (
+              <div key={field.id} className="space-y-3 p-4 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                  <div>
+                    <Label htmlFor={`terpeneProfile.${index}.name`}>Terpene Name *</Label>
+                    <Controller
+                      name={`terpeneProfile.${index}.name`}
+                      control={control}
+                      defaultValue="" 
+                      render={({ field: controllerField }) => (
+                        <Select onValueChange={controllerField.onChange} value={controllerField.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a terpene" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categorizedTerpenes.map(category => (
+                              <SelectGroup key={category.label}>
+                                <SelectLabel>{category.label}</SelectLabel>
+                                {category.options.map(terpeneName => (
+                                  <SelectItem key={terpeneName} value={terpeneName}>
+                                    {terpeneName}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.terpeneProfile?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile[index]?.name?.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor={`terpeneProfile.${index}.percentage`}>Percentage (%)</Label>
+                    <Input type="number" step="0.01" {...register(`terpeneProfile.${index}.percentage`)} placeholder="e.g., 0.5" />
+                    {errors.terpeneProfile?.[index]?.percentage && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile[index]?.percentage?.message}</p>}
+                  </div>
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeTerpene(index)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', percentage: undefined, description: '' })}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Terpene
+            </Button>
+            {terpeneProfileFields.length === 0 && <p className="text-sm text-muted-foreground">No terpenes added yet.</p>}
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center"><Smile size={24} className="mr-2" /> Reported Effects</CardTitle>
                 <CardDescription>Select the common effects experienced with this cultivar.</CardDescription>
@@ -465,21 +521,6 @@ export default function AddCultivarPage() {
             </CardContent>
         </Card>
 
-
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl text-primary flex items-center"><Percent size={24} className="mr-2" /> Cannabinoid Profile</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {renderMinMaxInput("thc", "THC", "(%) *")}
-            {renderMinMaxInput("cbd", "CBD", "(%) *")}
-            {renderMinMaxInput("cbc", "CBC", "(%)")}
-            {renderMinMaxInput("cbg", "CBG", "(%)")}
-            {renderMinMaxInput("cbn", "CBN", "(%)")}
-            {renderMinMaxInput("thcv", "THCV", "(%)")}
-          </CardContent>
-        </Card>
-        
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline text-2xl text-primary flex items-center"><ImageIcon size={24} className="mr-2" /> Primary Image</CardTitle>
@@ -505,59 +546,18 @@ export default function AddCultivarPage() {
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="font-headline text-2xl text-primary flex items-center"><Palette size={24} className="mr-2" /> Terpene Profile</CardTitle>
-            <CardDescription>List the prominent terpenes and their optional percentage.</CardDescription>
+            <CardTitle className="font-headline text-2xl text-primary flex items-center"><Percent size={24} className="mr-2" /> Cannabinoid Profile</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {terpeneProfileFields.map((field, index) => (
-              <div key={field.id} className="space-y-3 p-4 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                  <div>
-                    <Label htmlFor={`terpeneProfile.${index}.name`}>Terpene Name *</Label>
-                    <Controller
-                      name={`terpeneProfile.${index}.name`}
-                      control={control}
-                      defaultValue="" 
-                      render={({ field: controllerField }) => (
-                        <Select onValueChange={controllerField.onChange} value={controllerField.value}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a terpene" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categorizedTerpenes.map(category => (
-                              <SelectGroup key={category.label}>
-                                <SelectLabel>{category.label}</SelectLabel>
-                                {category.options.map(terpeneName => (
-                                  <SelectItem key={terpeneName} value={terpeneName}>
-                                    {terpeneName}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.terpeneProfile?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile[index]?.name?.message}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor={`terpeneProfile.${index}.percentage`}>Percentage (%)</Label>
-                    <Input type="number" step="0.01" {...register(`terpeneProfile.${index}.percentage`)} placeholder="e.g., 0.5" />
-                    {errors.terpeneProfile?.[index]?.percentage && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile[index]?.percentage?.message}</p>}
-                  </div>
-                </div>
-                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeTerpene(index)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', percentage: undefined, description: '' })}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Terpene
-            </Button>
-            {terpeneProfileFields.length === 0 && <p className="text-sm text-muted-foreground">No terpenes added yet.</p>}
+          <CardContent className="space-y-6">
+            {renderMinMaxInput("thc", "THC", "(%) *")}
+            {renderMinMaxInput("cbd", "CBD", "(%) *")}
+            {renderMinMaxInput("cbc", "CBC", "(%)")}
+            {renderMinMaxInput("cbg", "CBG", "(%)")}
+            {renderMinMaxInput("cbn", "CBN", "(%)")}
+            {renderMinMaxInput("thcv", "THCV", "(%)")}
           </CardContent>
         </Card>
-
+        
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline text-2xl text-primary flex items-center"><Clock size={24} className="mr-2" /> Cultivation Phases</CardTitle>
@@ -594,10 +594,8 @@ export default function AddCultivarPage() {
         <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center"><Sprout size={24} className="mr-2" /> Plant Characteristics</CardTitle>
-                 {errors.plantCharacteristics?.minHeight?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.minHeight.message}</p>}
-                 {errors.plantCharacteristics?.maxHeight?.message && !errors.plantCharacteristics.minHeight?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxHeight.message}</p>}
-                 {errors.plantCharacteristics?.minMoisture?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.minMoisture.message}</p>}
-                 {errors.plantCharacteristics?.maxMoisture?.message && !errors.plantCharacteristics.minMoisture?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxMoisture.message}</p>}
+                 {errors.plantCharacteristics?.maxHeight?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxHeight.message}</p>}
+                 {errors.plantCharacteristics?.maxMoisture?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxMoisture.message}</p>}
 
             </CardHeader>
             <CardContent className="space-y-6">
@@ -607,6 +605,7 @@ export default function AddCultivarPage() {
                         <div>
                             <Label htmlFor="plantCharacteristics.minHeight">Min Height</Label>
                             <Input id="plantCharacteristics.minHeight" type="number" step="0.1" {...register("plantCharacteristics.minHeight")} placeholder="e.g., 60" />
+                            {errors.plantCharacteristics?.minHeight && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.minHeight.message}</p>}
                         </div>
                         <div>
                             <Label htmlFor="plantCharacteristics.maxHeight">Max Height</Label>
@@ -621,6 +620,7 @@ export default function AddCultivarPage() {
                         <div>
                             <Label htmlFor="plantCharacteristics.minMoisture">Min Moisture</Label>
                             <Input id="plantCharacteristics.minMoisture" type="number" step="0.1" {...register("plantCharacteristics.minMoisture")} placeholder="e.g., 9" />
+                            {errors.plantCharacteristics?.minMoisture && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.minMoisture.message}</p>}
                         </div>
                         <div>
                             <Label htmlFor="plantCharacteristics.maxMoisture">Max Moisture</Label>
