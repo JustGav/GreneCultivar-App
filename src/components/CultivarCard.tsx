@@ -6,7 +6,7 @@ import type { Cultivar, CultivarStatus } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import StarRating from './StarRating';
-import { Leaf, ThermometerSnowflake, ThermometerSun, Edit, Archive, CheckCheck, ShieldCheck, Hourglass, Info } from 'lucide-react';
+import { Leaf, ThermometerSnowflake, ThermometerSun, Edit, Archive, CheckCheck, ShieldCheck, Hourglass, Info, Utensils } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { updateCultivarStatus } from '@/services/firebase';
@@ -128,7 +128,7 @@ export default function CultivarCard({ cultivar, onStatusChange }: CultivarCardP
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
-        <div className="space-y-2 text-sm">
+        <div className="space-y-3 text-sm">
           <div className="flex items-center gap-2">
             <ThermometerSun size={16} className="text-red-500" /> 
             <span>THC: {thcMin}{thcMin !== 'N/A' ? '%' : ''} - {thcMax}{thcMax !== 'N/A' ? '%' : ''}</span>
@@ -146,6 +146,17 @@ export default function CultivarCard({ cultivar, onStatusChange }: CultivarCardP
               {cultivar.effects && cultivar.effects.length > 3 && <Badge variant="outline">...</Badge>}
             </div>
           </div>
+          {cultivar.flavors && cultivar.flavors.length > 0 && (
+            <div className="mt-2">
+              <h4 className="font-semibold text-muted-foreground">Flavors:</h4>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {cultivar.flavors.slice(0, 3).map(flavor => (
+                  <Badge key={flavor} variant="secondary" className="bg-primary/10 border-primary/20 text-foreground">{flavor}</Badge>
+                ))}
+                {cultivar.flavors.length > 3 && <Badge variant="outline">...</Badge>}
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
       <CardFooter className="flex flex-col items-start gap-3 pt-4 border-t">
