@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Leaf, LogIn, LogOut, UserCircle, Loader2, LayoutDashboard, PlusCircleIcon } from 'lucide-react';
+import { Leaf, LogIn, LogOut, UserCircle, Loader2, LayoutDashboard, PlusCircleIcon, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -44,6 +44,12 @@ export default function Header() {
             </Button>
           ) : user ? (
             <div className="flex items-center gap-2">
+              <Link href="/" passHref>
+                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary hidden sm:flex">
+                  <Home className="mr-2 h-4 w-4" />
+                  Public Page
+                </Button>
+              </Link>
               <Link href="/dashboard" passHref>
                 <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary hidden sm:flex">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
@@ -73,6 +79,12 @@ export default function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="sm:hidden">
+                    <Link href="/" className="cursor-pointer">
+                       <Home className="mr-2 h-4 w-4" />
+                      Public Page
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem asChild className="sm:hidden">
                     <Link href="/dashboard" className="cursor-pointer">
                        <LayoutDashboard className="mr-2 h-4 w-4" />
