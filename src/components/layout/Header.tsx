@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Leaf, LogIn, LogOut, UserCircle, Loader2, LayoutDashboard, PlusCircleIcon, Home, Search, Filter as FilterIcon, SortAsc, SortDesc } from 'lucide-react';
+import { Leaf, LogIn, LogOut, UserCircle, Loader2, LayoutDashboard, PlusCircleIcon, Home, Search, Filter as FilterIcon, SortAsc, SortDesc, FileText as LogIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -144,6 +144,12 @@ export default function Header() {
                   Dashboard
                 </Button>
               </Link>
+              <Link href="/logs" passHref>
+                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary hidden sm:flex">
+                  <LogIcon className="mr-2 h-4 w-4" />
+                  Logs
+                </Button>
+              </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full hover:bg-primary/80 p-0">
@@ -177,6 +183,12 @@ export default function Header() {
                     <Link href="/dashboard">
                        <LayoutDashboard className="mr-2 h-4 w-4" />
                       Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                   <DropdownMenuItem asChild className="sm:hidden cursor-pointer">
+                    <Link href="/logs">
+                       <LogIcon className="mr-2 h-4 w-4" />
+                      Audit Logs
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="sm:hidden" />

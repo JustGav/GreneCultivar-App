@@ -74,8 +74,8 @@ export interface PricingProfile {
 export interface CultivarHistoryEntry {
   timestamp: string; // ISO date string
   event: string; // e.g., "Cultivar Created", "Status changed to verified"
-  userId?: string; // Optional: for tracking who made the change
-  details?: Record<string, any>; // Optional: for storing specifics about the change
+  userId?: string; // Optional: Firebase Auth UID of the user who made the change
+  details?: Record<string, any>; // Optional: for storing specifics about the change (e.g., { newStatus: 'Live', oldStatus: 'pending', changedByEmail: 'user@example.com' })
 }
 
 export interface Cultivar {
@@ -111,5 +111,12 @@ export interface Cultivar {
   children?: string[];
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
-  history?: CultivarHistoryEntry[];
+  history: CultivarHistoryEntry[]; // Changed to non-optional, will be initialized
+}
+
+// For displaying logs, augmenting history entries with cultivar info
+export interface DisplayLogEntry extends CultivarHistoryEntry {
+  cultivarId: string;
+  cultivarName: string;
+  userDisplay: string; // e.g., "User Email (UID)" or "System"
 }

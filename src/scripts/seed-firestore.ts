@@ -38,7 +38,11 @@ const now = new Date();
 const oneDayAgo = new Date(now.valueOf() - 86400000);
 const twoDaysAgo = new Date(now.valueOf() - 2 * 86400000);
 
-const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
+const getDefaultHistory = (timestamp?: string): CultivarHistoryEntry[] => {
+    return [{ timestamp: timestamp || new Date().toISOString(), event: 'Cultivar Seeded', details: { seededBy: 'system' } }];
+}
+
+const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews' | 'history'>[] = [
   {
     name: 'Cosmic Haze',
     genetics: 'Sativa',
@@ -89,7 +93,6 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
     },
     createdAt: twoDaysAgo.toISOString(),
     updatedAt: oneDayAgo.toISOString(),
-    history: [{ timestamp: twoDaysAgo.toISOString(), event: 'Cultivar Seeded' }],
   },
   {
     name: 'Indica Dream',
@@ -129,7 +132,6 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
     },
     createdAt: oneDayAgo.toISOString(),
     updatedAt: oneDayAgo.toISOString(),
-    history: [{ timestamp: oneDayAgo.toISOString(), event: 'Cultivar Seeded' }],
   },
   {
     name: 'User Submitted Kush',
@@ -145,7 +147,6 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
     flavors: ['Unknown'],
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
-    history: [{ timestamp: now.toISOString(), event: 'Cultivar Seeded (User Submitted)' }],
   },
   {
     name: 'Hidden Gem',
@@ -161,7 +162,6 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
     flavors: ['Exotic', 'Fruity'],
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
-    history: [{ timestamp: now.toISOString(), event: 'Cultivar Seeded (Hidden)' }],
   },
   {
     name: 'Hybrid Harmony',
@@ -198,7 +198,6 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
     },
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
-    history: [{ timestamp: now.toISOString(), event: 'Cultivar Seeded' }],
   },
   {
     name: 'Ruderalis Ranger',
@@ -228,7 +227,6 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
     },
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
-    history: [{ timestamp: now.toISOString(), event: 'Cultivar Seeded' }],
   },
 ];
 
@@ -239,7 +237,7 @@ const prepareDataForFirestoreSeed = (data: Record<string, any>): Record<string, 
       cleanedData[key] = data[key];
     }
   }
-  const arrayFields: (keyof Omit<Cultivar, 'id' | 'reviews'>)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile', 'flavors', 'history'];
+  const arrayFields: (keyof Omit<Cultivar, 'id' | 'reviews' | 'history'>)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile', 'flavors'];
     arrayFields.forEach(field => {
       if (cleanedData[field] === undefined) {
         cleanedData[field] = [];
@@ -272,11 +270,7 @@ const prepareDataForFirestoreSeed = (data: Record<string, any>): Record<string, 
     if (cleanedData.updatedAt === undefined) {
         cleanedData.updatedAt = new Date().toISOString();
     }
-     if (cleanedData.history === undefined || cleanedData.history.length === 0) {
-        cleanedData.history = [{ timestamp: cleanedData.createdAt, event: 'Cultivar Seeded (default history)' }];
-    }
-
-
+    // History is handled separately now
   return cleanedData;
 };
 
@@ -291,6 +285,7 @@ async function seedDatabase() {
       const dataToSave = {
         ...cultivarData,
         reviews: [],
+        history: getDefaultHistory(cultivarData.createdAt), // Add default history
       };
       const cleanedData = prepareDataForFirestoreSeed(dataToSave);
       const docRef = cultivarsCollection.doc(); 

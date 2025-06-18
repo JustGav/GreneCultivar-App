@@ -1,5 +1,5 @@
 
-import { db, storage } from '@/lib/firebase-config';
+import { db, storage, auth } from '@/lib/firebase-config';
 import type { Cultivar, Review, CannabinoidProfile, PlantCharacteristics, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, PricingProfile, YieldProfile, CultivarImage, CultivarStatus, CultivarHistoryEntry } from '@/types';
 import {
   collection,
@@ -149,21 +149,31 @@ const prepareDataForFirestore = (data: Record<string, any>): Record<string, any>
       if (profile.min === undefined || profile.min === null || isNaN(Number(profile.min))) delete profile.min;
       if (profile.max === undefined || profile.max === null || isNaN(Number(profile.max))) delete profile.max;
       if (Object.keys(profile).length === 0 && cleanedData[fieldName] !== undefined) {
-        // if profile becomes empty after cleaning, ensure it's removed or handled if field is optional
-        // For now, if both min/max are removed, the object might remain empty. Firestore handles empty maps.
       }
     } else if (cleanedData[fieldName] !== undefined) {
-      // If it's not an object but defined (e.g. {}), ensure it's cleaned or conforms
-      // This case should ideally not happen with strong typing but good to be aware
     }
   });
   return cleanedData;
 };
 
+const getCurrentUserHistoryDetails = (): { userId?: string; details: Record<string, any> } => {
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    return {
+      userId: currentUser.uid,
+      details: {
+        userEmail: currentUser.email,
+        userName: currentUser.displayName,
+      }
+    };
+  }
+  return { details: { userSource: 'Anonymous or System' } };
+};
+
+
 export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id' | 'reviews' | 'createdAt' | 'updatedAt' | 'history'>> & { source?: string; status?: CultivarStatus }): Promise<Cultivar> => {
   try {
     const dataToSave: { [key: string]: any } = {};
-    // Copy only defined properties from cultivarDataInput
     for (const key in cultivarDataInput) {
       if (cultivarDataInput[key as keyof typeof cultivarDataInput] !== undefined) {
         dataToSave[key] = cultivarDataInput[key as keyof typeof cultivarDataInput];
@@ -185,7 +195,7 @@ export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id'
           (ai[catKey] as any) = [];
         }
       });
-    } else if (dataToSave.additionalInfo === undefined) { // Check if additionalInfo itself is undefined
+    } else if (dataToSave.additionalInfo === undefined) {
       dataToSave.additionalInfo = {
         geneticCertificate: [],
         plantPicture: [],
@@ -194,25 +204,31 @@ export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id'
       };
     }
 
+    const { userId, details: userDetails } = getCurrentUserHistoryDetails();
+    const eventType = cultivarDataInput.status === 'User Submitted' ? "Cultivar Submitted by User" : "Cultivar Created";
+    
     const initialHistoryEntry: CultivarHistoryEntry = {
         timestamp: new Date().toISOString(),
-        event: cultivarDataInput.status === 'User Submitted' ? "Cultivar Submitted by User" : "Cultivar Created",
-        details: { status: cultivarDataInput.status || 'recentlyAdded', source: cultivarDataInput.source || 'System' }
+        event: eventType,
+        userId: userId,
+        details: { 
+          ...userDetails,
+          status: cultivarDataInput.status || 'recentlyAdded', 
+          source: cultivarDataInput.source || (userId ? 'Authenticated User' : 'System')
+        }
     };
 
     const finalDataForFirestore = {
-      ...dataToSave, // Contains properties from cultivarDataInput including potentially status and source
-      reviews: [], // Always initialize reviews as empty
+      ...dataToSave,
+      reviews: [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       history: [initialHistoryEntry],
     };
     
-    // Ensure status defaults if not provided by cultivarDataInput
     if (!finalDataForFirestore.status) {
       finalDataForFirestore.status = 'recentlyAdded' as CultivarStatus;
     }
-
 
     const cleanedData = prepareDataForFirestore(finalDataForFirestore);
     const docRef = await addDoc(collection(db, CULTIVARS_COLLECTION), cleanedData);
@@ -233,7 +249,6 @@ export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id'
 export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cultivar, 'id' | 'createdAt' | 'history'>>): Promise<void> => {
   try {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
-
     const dataToUpdate = prepareDataForFirestore(cultivarData);
 
     if (dataToUpdate.additionalInfo && typeof dataToUpdate.additionalInfo === 'object') {
@@ -246,11 +261,15 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
         });
     }
 
+    const { userId, details: userDetails } = getCurrentUserHistoryDetails();
+    // Consider fetching old cultivar to diff and specify changes in details for better logging. For now, generic update.
+    const changedFields = Object.keys(dataToUpdate).filter(key => key !== 'updatedAt' && key !== 'history');
 
     const historyEntry: CultivarHistoryEntry = {
-        timestamp: new Date().toISOString(), // Client-side timestamp for immediate use in history
+        timestamp: new Date().toISOString(),
         event: "Cultivar Details Updated",
-        // Consider adding more details about what changed if needed
+        userId: userId,
+        details: { ...userDetails, updatedFields: changedFields.join(', ') || 'N/A' }
     };
 
     await updateDoc(cultivarDocRef, {
@@ -267,10 +286,16 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
 export const updateCultivarStatus = async (id: string, status: CultivarStatus): Promise<void> => {
   try {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
+    const { userId, details: userDetails } = getCurrentUserHistoryDetails();
+
+    const docSnap = await getDoc(cultivarDocRef);
+    const oldStatus = docSnap.exists() ? docSnap.data().status : 'unknown';
+
     const historyEntry: CultivarHistoryEntry = {
         timestamp: new Date().toISOString(),
         event: `Status changed to ${status}`,
-        details: { newStatus: status }
+        userId: userId,
+        details: { ...userDetails, newStatus: status, oldStatus: oldStatus }
     };
     await updateDoc(cultivarDocRef, {
         status,
@@ -285,17 +310,21 @@ export const updateCultivarStatus = async (id: string, status: CultivarStatus): 
 
 export const updateMultipleCultivarStatuses = async (cultivarIds: string[], newStatus: CultivarStatus): Promise<void> => {
   if (cultivarIds.length === 0) return;
-  const batch = writeBatch(db);
-  const timestamp = new Date().toISOString(); // Use a consistent client-generated timestamp for history
+  const batchWrite = writeBatch(db);
+  const timestamp = new Date().toISOString();
+  const { userId, details: userDetails } = getCurrentUserHistoryDetails();
 
+  // To get oldStatus for each, we'd need to fetch them first. For simplicity, we'll omit oldStatus for mass updates.
+  // Or, add a detail that this was a mass update.
   cultivarIds.forEach(id => {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
     const historyEntry: CultivarHistoryEntry = {
       timestamp,
       event: `Status mass-changed to ${newStatus}`,
-      details: { newStatus }
+      userId: userId,
+      details: { ...userDetails, newStatus: newStatus, operation: 'batch update' }
     };
-    batch.update(cultivarDocRef, {
+    batchWrite.update(cultivarDocRef, {
       status: newStatus,
       updatedAt: serverTimestamp(),
       history: arrayUnion(historyEntry)
@@ -303,7 +332,7 @@ export const updateMultipleCultivarStatuses = async (cultivarIds: string[], newS
   });
 
   try {
-    await batch.commit();
+    await batchWrite.commit();
   } catch (error) {
     console.error("Error updating multiple cultivar statuses: ", error);
     throw error;
@@ -318,10 +347,12 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
       ...reviewData,
       createdAt: typeof reviewData.createdAt === 'string' ? reviewData.createdAt : new Date().toISOString(),
     };
-     const historyEntry: CultivarHistoryEntry = {
+    const { userId, details: userDetails } = getCurrentUserHistoryDetails();
+    const historyEntry: CultivarHistoryEntry = {
         timestamp: new Date().toISOString(),
         event: "Review Added",
-        details: { reviewId: reviewToSave.id, rating: reviewToSave.rating, user: reviewData.user }
+        userId: userId, // Assuming reviewData.user might not be the auth UID. Use auth context if possible.
+        details: { ...userDetails, reviewId: reviewToSave.id, rating: reviewToSave.rating, reviewerName: reviewData.user }
     };
     await updateDoc(cultivarDocRef, {
       reviews: arrayUnion(reviewToSave),
