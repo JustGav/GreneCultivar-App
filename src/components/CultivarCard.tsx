@@ -22,7 +22,7 @@ interface CultivarCardProps {
 function calculateAverageRating(reviews: Cultivar['reviews']): number {
   if (!reviews || reviews.length === 0) return 0;
   const total = reviews.reduce((acc, review) => acc + review.rating, 0);
-  return Math.round((total / reviews.length) * 10) / 10; 
+  return Math.round((total / reviews.length) * 10) / 10;
 }
 
 const STATUS_LABELS: Record<CultivarStatus, string> = {
@@ -88,7 +88,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
       setIsArchiving(false);
     }
   };
-  
+
   const isArchived = cultivar.status === 'archived';
   const isHidden = cultivar.status === 'Hide';
 
@@ -97,10 +97,17 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
   const cbdMin = cultivar.cbd?.min ?? 'N/A';
   const cbdMax = cultivar.cbd?.max ?? 'N/A';
 
+  // Determine if the title-adjacent status badge should be shown
+  const showTitleAdjacentBadge = cultivar.status &&
+    cultivar.status !== 'recentlyAdded' &&
+    cultivar.status !== 'featured' &&
+    cultivar.status !== 'User Submitted' &&
+    !(isPublicView && cultivar.status === 'Live');
+
   return (
-    <Card 
+    <Card
         className={cn(
-            "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn group", 
+            "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn group",
             (isArchived || isHidden) && "opacity-60 bg-muted/50",
             isPublicView && "cursor-pointer"
         )}
@@ -122,8 +129,8 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
             {(cultivar.status === 'recentlyAdded' || cultivar.status === 'featured' || cultivar.status === 'User Submitted') && (
-              <Badge 
-                variant={getStatusBadgeVariant(cultivar.status)} 
+              <Badge
+                variant={getStatusBadgeVariant(cultivar.status)}
                 className={cn(
                   "absolute top-2 right-2 z-10 capitalize flex items-center text-xs h-fit py-1 px-2 shadow-md",
                   cultivar.status === 'featured' && "bg-yellow-400/80 border-yellow-500/70 text-yellow-900 dark:text-yellow-900"
@@ -137,9 +144,9 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
         )}
         <div className="flex justify-between items-start">
             <CardTitle className="font-headline text-2xl text-primary">{cultivar.name}</CardTitle>
-            {cultivar.status && cultivar.status !== 'recentlyAdded' && cultivar.status !== 'featured' && cultivar.status !== 'User Submitted' && (
-                <Badge 
-                  variant={getStatusBadgeVariant(cultivar.status)} 
+            {showTitleAdjacentBadge && cultivar.status && (
+                <Badge
+                  variant={getStatusBadgeVariant(cultivar.status)}
                   className={cn(
                       "capitalize flex items-center text-xs h-fit",
                       cultivar.status === 'Hide' && "bg-gray-400/20 border-gray-500/50 text-gray-700 dark:text-gray-300"
@@ -158,7 +165,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
       <CardContent className="flex-grow">
         <div className="space-y-3 text-sm">
           <div className="flex items-center gap-2">
-            <ThermometerSun size={16} className="text-red-500" /> 
+            <ThermometerSun size={16} className="text-red-500" />
             <span>THC: {thcMin}{thcMin !== 'N/A' && thcMin !== undefined && thcMin !== 0 ? '%' : ''} - {thcMax}{thcMax !== 'N/A' && thcMax !== undefined && thcMax !== 0 ? '%' : ''}</span>
           </div>
           <div className="flex items-center gap-2">
@@ -210,7 +217,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
         </div>
         <div className={cn("grid grid-cols-1 gap-2 w-full", isPublicView ? "" : "sm:grid-cols-3")}>
           {isPublicView ? (
-            null 
+            null
           ) : (
             <>
               <Link href={`/cultivars/${cultivar.id}`} className="w-full" aria-label={`View full details for ${cultivar.name}`}>
@@ -223,8 +230,8 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
                   <Edit size={16} className="mr-2" /> Edit
                 </Button>
               </Link>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full text-sm text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
                 onClick={handleArchive}
                 disabled={isArchived || isArchiving}
