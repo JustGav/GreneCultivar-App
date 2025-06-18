@@ -128,7 +128,7 @@ export default function CultivarDetailsPage() {
         allCultivarsData.forEach(c => {
             infoMap.set(c.name.toLowerCase(), {
               id: c.id,
-              name: c.name, // Add name to infoMap for easier access
+              name: c.name,
               status: c.status,
               parents: c.parents || [],
               children: c.children || []
@@ -253,10 +253,10 @@ export default function CultivarDetailsPage() {
       if (typeof info.name !== 'string' || info.name.trim() === '' || info.name.toLowerCase() === currentCultivarNameForLineage.toLowerCase()) {
         continue;
       }
-      if ((info.children || []).filter(c => typeof c === 'string' && c.trim() !== '').includes(currentCultivarNameForLineage)) {
+      if ((info.children || []).filter(c => typeof c === 'string' && c.trim() !== '').map(c => c.toLowerCase()).includes(currentCultivarNameForLineage.toLowerCase())) {
         effectiveParentsSet.add(info.name);
       }
-      if ((info.parents || []).filter(p => typeof p === 'string' && p.trim() !== '').includes(currentCultivarNameForLineage)) {
+      if ((info.parents || []).filter(p => typeof p === 'string' && p.trim() !== '').map(p => p.toLowerCase()).includes(currentCultivarNameForLineage.toLowerCase())) {
         effectiveChildrenSet.add(info.name);
       }
     }
@@ -365,7 +365,7 @@ export default function CultivarDetailsPage() {
                       <div key={terpene.id} className="text-sm p-3 bg-muted/50 rounded-md shadow-sm">
                         <p className="font-medium text-foreground/90">
                           {terpene.name}
-                          {terpene.percentage && terpene.percentage > 0 ? (
+                          {terpene.percentage > 0 ? (
                             <span className="text-xs text-muted-foreground ml-1">({terpene.percentage}%)</span>
                           ) : null}
                         </p>

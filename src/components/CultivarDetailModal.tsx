@@ -47,24 +47,20 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Effect for Prop Changes (initialCultivar, isOpen)
   useEffect(() => {
     if (isOpen && initialCultivar) {
-      // Only reset if the initialCultivar.id is different from the current one,
-      // or if there's no displayed cultivar yet (initial modal open)
       if (!displayedCultivarData || displayedCultivarData.id !== initialCultivar.id) {
         setDisplayedCultivarData(initialCultivar);
         setHistoryStack([initialCultivar]);
         setIsLoadingLineage(false);
-         if (scrollAreaRef.current) {
+        if (scrollAreaRef.current) {
           scrollAreaRef.current.scrollTo({ top: 0 });
         }
       }
     }
-    // Don't reset on !isOpen here, handle that in a separate effect to avoid race conditions.
-  }, [initialCultivar, isOpen]); // Removed displayedCultivarData from dependencies
+  }, [initialCultivar, isOpen, displayedCultivarData]);
 
-  // Effect for Modal Closure
+
   useEffect(() => {
     if (!isOpen) {
       setDisplayedCultivarData(null);
@@ -74,7 +70,6 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   }, [isOpen]);
 
 
-  // Effect to auto-close modal if it's open but seems to be in an invalid state
   useEffect(() => {
     if (isOpen && !displayedCultivarData && !isLoadingLineage && historyStack.length === 0 && !initialCultivar) {
       onOpenChange(false);
@@ -110,7 +105,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
     } finally {
       setIsLoadingLineage(false);
     }
-  }, [toast]); 
+  }, [toast]);
 
   const handleBackClick = () => {
     if (historyStack.length > 1) {
@@ -124,18 +119,19 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   };
 
   const { effectiveParents, effectiveChildren } = useMemo(() => {
-    if (!displayedCultivarData || !cultivarInfoMap || typeof displayedCultivarData.name !== 'string' || !displayedCultivarData.name.trim()) {
+    const currentCultivar = displayedCultivarData;
+    if (!currentCultivar || !cultivarInfoMap || typeof currentCultivar.name !== 'string' || !currentCultivar.name.trim()) {
       return { effectiveParents: [], effectiveChildren: [] };
     }
 
-    const currentCultivarName = displayedCultivarData.name;
+    const currentCultivarName = currentCultivar.name;
     const currentCultivarNameLower = currentCultivarName.toLowerCase();
 
     const parentsSet = new Set<string>(
-      (displayedCultivarData.parents || []).filter(p => p && typeof p === 'string' && p.trim() !== '')
+      (currentCultivar.parents || []).filter(p => p && typeof p === 'string' && p.trim() !== '')
     );
     const childrenSet = new Set<string>(
-      (displayedCultivarData.children || []).filter(c => c && typeof c === 'string' && c.trim() !== '')
+      (currentCultivar.children || []).filter(c => c && typeof c === 'string' && c.trim() !== '')
     );
 
     for (const info of cultivarInfoMap.values()) {
@@ -143,17 +139,16 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
         continue;
       }
 
-      const infoChildren = (info.children || []).filter(c => c && typeof c === 'string');
-      if (infoChildren.map(c => c.toLowerCase()).includes(currentCultivarNameLower)) {
+      const infoChildrenNames = (info.children || []).filter(c => c && typeof c === 'string' && c.trim() !== '');
+      if (infoChildrenNames.map(c => c.toLowerCase()).includes(currentCultivarNameLower)) {
         parentsSet.add(info.name);
       }
 
-      const infoParents = (info.parents || []).filter(p => p && typeof p === 'string');
-      if (infoParents.map(p => p.toLowerCase()).includes(currentCultivarNameLower)) {
+      const infoParentsNames = (info.parents || []).filter(p => p && typeof p === 'string' && p.trim() !== '');
+      if (infoParentsNames.map(p => p.toLowerCase()).includes(currentCultivarNameLower)) {
         childrenSet.add(info.name);
       }
     }
-
     return {
       effectiveParents: Array.from(parentsSet),
       effectiveChildren: Array.from(childrenSet),
@@ -304,7 +299,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                       {displayedCultivarData.terpeneProfile.slice(0, 5).map(terpene => (
                         <Badge key={terpene.id} variant="outline" className="bg-blue-500/10 border-blue-500/30 text-foreground">
                           {terpene.name}
-                          {terpene.percentage && terpene.percentage > 0 && (
+                          {terpene.percentage > 0 && (
                             <span className="ml-1 text-xs opacity-75">({terpene.percentage}%)</span>
                           )}
                         </Badge>

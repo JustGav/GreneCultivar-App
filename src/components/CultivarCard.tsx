@@ -104,12 +104,14 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
 
   let showTitleAdjacentBadge = false;
   if (cultivar.status) {
-      if (cultivar.status === 'Live' && !isPublicView) {
-          showTitleAdjacentBadge = true;
-      } else if (cultivar.status === 'archived' || cultivar.status === 'Hide') { // Keep 'Archived' and 'Hide' always next to title if not public or no image
-          showTitleAdjacentBadge = true;
-      } else if (isOverlayStatusType && !hasImages) { // If it's an overlay type but no image, show next to title
-          showTitleAdjacentBadge = true;
+      if (isPublicView && cultivar.status === 'Live') { // Public view, status is 'Live'
+        showTitleAdjacentBadge = false; // Do not show 'Live' badge next to title for public
+      } else if (cultivar.status === 'Live' && !isPublicView) { // Admin view, status is 'Live'
+        showTitleAdjacentBadge = true; // Show 'Live' badge for admin
+      } else if (cultivar.status === 'archived' || cultivar.status === 'Hide') {
+        showTitleAdjacentBadge = true;
+      } else if (isOverlayStatusType && !hasImages) {
+        showTitleAdjacentBadge = true;
       }
   }
 
@@ -138,7 +140,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
               className="transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
-            {isOverlayStatusType && ( 
+            {isOverlayStatusType && (
               <Badge
                 variant={getStatusBadgeVariant(cultivar.status)}
                 className={cn(
@@ -154,13 +156,13 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
         )}
         <div className="flex justify-between items-start">
             <CardTitle className="font-headline text-2xl text-primary">{cultivar.name}</CardTitle>
-            {showTitleAdjacentBadge && cultivar.status && cultivar.status !== 'Live' && ( // Added cultivar.status !== 'Live'
+            {showTitleAdjacentBadge && cultivar.status && (
                 <Badge
                   variant={getStatusBadgeVariant(cultivar.status)}
                   className={cn(
                       "capitalize flex items-center text-xs h-fit py-1 px-1.5",
                       (cultivar.status === 'featured') && "bg-yellow-400/80 border-yellow-500/70 text-yellow-900 dark:text-yellow-900",
-                      cultivar.status === 'Hide' && "bg-gray-400/20 border-gray-500/50 text-gray-700 dark:text-gray-300"
+                       cultivar.status === 'Hide' && "bg-gray-400/20 border-gray-500/50 text-gray-700 dark:text-gray-300"
                     )}
                 >
                     {getStatusIcon(cultivar.status)}
@@ -210,7 +212,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
                 {cultivar.terpeneProfile.slice(0, 3).map(terpene => (
                   <Badge key={terpene.id} variant="outline" className="bg-blue-500/10 border-blue-500/30 text-foreground">
                     {terpene.name}
-                    {terpene.percentage && terpene.percentage > 0 ? (
+                    {terpene.percentage > 0 ? (
                       <span className="ml-1 text-xs opacity-75">({terpene.percentage}%)</span>
                     ) : null}
                   </Badge>
