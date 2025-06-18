@@ -3,53 +3,44 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    function isAdmin() {
-      // In a real app, use custom claims: request.auth.token.admin == true
-      return request.auth != null; // For this app, any authenticated user is admin
+    // Cultivar Images (Main Collection - typically admin uploads or approved submissions)
+    // Path: cultivar-images/{imageId} or cultivar-images/additional/{imageId} or cultivar-images/user-submitted (after approval and move)
+    match /cultivar-images/{allPaths=**} {
+      allow read: if true; // Publicly readable
+
+      // For PROTOTYPING: Allow write if user is authenticated.
+      // TODO: For PRODUCTION, restrict write to authenticated admins (e.g., custom claims or Firestore role check).
+      allow write: if request.auth != null;
     }
 
-    // Cultivar main images (and additional images if under same path structure)
-    // Path: cultivar-images/{fileName}
-    // Path: cultivar-images/additional/{fileName}
-    match /cultivar-images/{pathSegment}/{fileName} {
-      allow read: if true; // Public read for main and additional images
-
-      // Admins can write to main and additional image paths
-      allow write: if isAdmin() &&
+    // User Submitted Cultivar Images (Staging area - before approval)
+    // Path: cultivar-images/user-submitted/{imageId} -> This path segment is mainly for Firestore rule matching of the URL.
+    // The actual Storage rule path can be broader as above, or more specific if needed, but the key is that
+    // the Firestore rule for submitted_cultivars.images[0].url will check this specific path structure.
+    // Note: The rule above for /cultivar-images/{allPaths=**} will cover cultivar-images/user-submitted/
+    // If you want stricter rules JUST for the user-submitted staging path:
+    /*
+    match /cultivar-images/user-submitted/{imageId} {
+      // Allow anyone to write (upload) new images here, with size and type validation.
+      allow write: if (request.auth == null || request.auth != null) &&
                       request.resource.size < 5 * 1024 * 1024 && // Max 5MB
                       request.resource.contentType.matches('image/.*');
+
+      // For PROTOTYPING: Allow read if user is authenticated (simplifies admin review).
+      // TODO: For PRODUCTION, restrict read/delete to authenticated admins for moderation.
+      allow read, delete: if request.auth != null;
     }
-     match /cultivar-images/{fileName} { // Top level images directly under cultivar-images
-      allow read: if true;
-      allow write: if isAdmin() &&
-                      request.resource.size < 5 * 1024 * 1024 &&
-                      request.resource.contentType.matches('image/.*');
-    }
+    */
 
 
-    // Cultivar documents (certificates, info files)
-    // Path: cultivar-docs/{category}/{fileName}
-    match /cultivar-docs/{category}/{fileName} {
-      allow read: if true; // Public read for documents
+    // Cultivar Documents (e.g., COAs, terpene reports)
+    // Path: cultivar-docs/{category}/{docId}
+    match /cultivar-docs/{allPaths=**} {
+      allow read: if true; // Publicly readable (adjust if some docs should be private)
 
-      // Admins can write to document paths
-      allow write: if isAdmin() &&
-                      request.resource.size < 10 * 1024 * 1024 && // Max 10MB for docs
-                      (request.resource.contentType.matches('application/pdf') || request.resource.contentType.matches('image/.*'));
-    }
-
-    // User-submitted images for moderation
-    // Path: cultivar-images/user-submitted/{fileName}
-    match /cultivar-images/user-submitted/{fileName} {
-       // Admins can read submitted images for moderation
-       allow read: if isAdmin();
-
-       // Anyone can upload to this specific path for submissions.
-       // Client must generate unique file names to avoid overwrites.
-       allow write: if request.resource.size < 5 * 1024 * 1024 && // Max 5MB
-                       request.resource.contentType.matches('image/.*');
+      // For PROTOTYPING: Allow write if user is authenticated.
+      // TODO: For PRODUCTION, restrict write to authenticated admins.
+      allow write: if request.auth != null;
     }
   }
 }
-
-    

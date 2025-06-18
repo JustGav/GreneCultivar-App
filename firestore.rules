@@ -3,151 +3,67 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is an admin (placeholder)
-    // In a real app, use custom claims: request.auth.token.admin == true
-    function isAdmin() {
-      return request.auth != null; // For this app, any authenticated user is admin
-    }
-
-    // Validates common string length
-    function isValidString(str, min, max) {
-      return str is string && str.size() >= min && str.size() <= max;
-    }
-
-    // Validates cannabinoid profile (optional fields)
-    function isValidCannabinoid(profile) {
-      return profile == null || (
-        (profile.min == null || (profile.min is number && profile.min >= 0 && profile.min <= 100)) &&
-        (profile.max == null || (profile.max is number && profile.max >= 0 && profile.max <= 100)) &&
-        (profile.min == null || profile.max == null || profile.min <= profile.max)
-      );
-    }
-    
-    // Validates that a value is a list (array)
-    function isList(val) {
-      return val == null || val is list;
-    }
-
-    // Validates image structure (simplified for rule length)
-    function isValidImage(img) {
-      return img.url is string && img.alt is string && img.id is string &&
-             (img['data-ai-hint'] == null || img['data-ai-hint'] is string);
-    }
-    
-    function isValidImageList(images) {
-        return images is list && images.size() <= 10 &&
-               (images.size() == 0 || isValidImage(images[0])); // Check first image as sample
-    }
-
-    // Validates terpene structure (simplified)
-    function isValidTerpene(terp) {
-        return terp.id is string && terp.name is string &&
-               (terp.percentage == null || (terp.percentage is number && terp.percentage >=0 && terp.percentage <=100));
-    }
-
-    function isValidTerpeneList(terpenes) {
-        return terpenes is list && (terpenes.size() == 0 || isValidTerpene(terpenes[0]));
-    }
-
-    function isValidHistoryEntry(entry) {
-      return entry.timestamp is timestamp && entry.event is string &&
-             (entry.userId == null || entry.userId is string) &&
-             (entry.details == null || entry.details is map);
-    }
-
-    function isValidHistoryList(history) {
-      return history is list && history.size() >= 1 && isValidHistoryEntry(history[0]);
-    }
-
-
-    // Main Cultivars Collection
+    // Cultivars Collection
     match /cultivars/{cultivarId} {
-      allow get: if (resource.data.status == 'Live' || resource.data.status == 'featured') || isAdmin();
-      allow list: if isAdmin(); // Only admins can list all cultivars directly
+      // PUBLIC READ for 'Live' or 'featured' cultivars.
+      // AUTHENTICATED USER (for prototype, any auth user; for prod, admin) can read all.
+      allow read: if resource.data.status == 'Live' || resource.data.status == 'featured' || request.auth != null;
+      // TODO: For production, refine authenticated user read access if needed (e.g., only admins can read 'Hide' or 'archived' if not done by frontend filtering).
 
-      function isValidCultivarDataStructure(data) {
-        return
-          isValidString(data.name, 3, 100) &&
-          (data.genetics is string && data.genetics in ['Sativa', 'Indica', 'Hybrid', 'Ruderalis']) &&
-          (data.status is string && data.status in ['Live', 'featured', 'User Submitted', 'recentlyAdded', 'Hide', 'archived']) &&
-          (data.source == null || isValidString(data.source, 0, 200)) &&
-          (data.description == null || isValidString(data.description, 0, 5000)) &&
-          (data.supplierUrl == null || (data.supplierUrl is string && data.supplierUrl.matches('https?://.+'))) &&
-          isValidCannabinoid(data.thc) && // Required
-          (data.thc.min is number || data.thc.max is number) && // At least one THC value must be present
-          isValidCannabinoid(data.cbd) && // Required
-          (data.cbd.min is number || data.cbd.max is number) && // At least one CBD value must be present
-          isValidCannabinoid(data.cbc) &&
-          isValidCannabinoid(data.cbg) &&
-          isValidCannabinoid(data.cbn) &&
-          isValidCannabinoid(data.thcv) &&
-          isList(data.effects) && (data.effects == null || data.effects.size() <= 20) &&
-          isList(data.medicalEffects) && (data.medicalEffects == null || data.medicalEffects.size() <= 20) &&
-          isList(data.flavors) && (data.flavors == null || data.flavors.size() <= 20) &&
-          (data.images == null || isValidImageList(data.images)) &&
-          isList(data.parents) && (data.parents == null || data.parents.size() <= 10) &&
-          isList(data.children) && (data.children == null || data.children.size() <= 10) &&
-          (data.terpeneProfile == null || isValidTerpeneList(data.terpeneProfile)) &&
-          // cultivationPhases, plantCharacteristics, pricing are maps of optional fields
-          (data.cultivationPhases == null || data.cultivationPhases is map) &&
-          (data.plantCharacteristics == null || data.plantCharacteristics is map) &&
-          (data.pricing == null || data.pricing is map) &&
-          // additionalInfo is a map of lists of files
-          (data.additionalInfo == null || data.additionalInfo is map) &&
-          (data.createdAt is timestamp) &&
-          (data.updatedAt is timestamp) &&
-          isValidHistoryList(data.history) && // Check history list format
-          isList(data.reviews); // Reviews should be a list
-      }
-
-      allow create: if isAdmin() &&
-                       isValidCultivarDataStructure(request.resource.data) &&
-                       request.resource.data.createdAt == request.time &&
-                       request.resource.data.updatedAt == request.time &&
-                       request.resource.data.history[0].timestamp == request.time && // First history entry is server time
-                       request.resource.data.reviews.size() == 0; // Reviews must be empty on create
-
-      allow update: if isAdmin() &&
-                       isValidCultivarDataStructure(request.resource.data) &&
-                       request.resource.data.createdAt == resource.data.createdAt && // Prevent changing createdAt
-                       request.resource.data.updatedAt == request.time && // Ensure updatedAt is server time
-                       // History updates are additive
-                       (request.resource.data.history.size() >= resource.data.history.size()) &&
-                       // Reviews updates are additive (or full array replace by admin)
-                       (request.resource.data.reviews.size() >= resource.data.reviews.size() || request.resource.data.reviews.size() == 0);
-
-
-      allow delete: if isAdmin();
+      // WRITE (create, update, delete)
+      // For PROTOTYPING: Allow write if user is authenticated.
+      // TODO: For PRODUCTION, implement proper admin role check (e.g., using custom claims or a users collection with roles).
+      allow write: if request.auth != null && (
+                    (request.method == 'create' &&
+                      request.resource.data.name is string && request.resource.data.name.size() > 0 &&
+                      request.resource.data.createdAt == request.time && // Server timestamp for creation
+                      request.resource.data.updatedAt == request.time && // Server timestamp for update
+                      request.resource.data.reviews is list && request.resource.data.reviews.size() == 0 && // Reviews must be empty on create
+                      request.resource.data.history is list && request.resource.data.history.size() > 0 && // History must exist and have initial entry
+                      request.resource.data.history[0].timestamp is string &&
+                      request.resource.data.history[0].event is string &&
+                      // Ensure status is provided and valid if necessary, e.g., not allowing direct 'featured' on create by non-admin without extra checks.
+                      (request.resource.data.status is string || request.resource.data.status == null) // status can be string or not present (defaults)
+                    ) ||
+                    (request.method == 'update' &&
+                      request.resource.data.updatedAt == request.time && // Server timestamp for update
+                      // Prevent direct modification of createdAt and reviews array root by client
+                      (!(request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdAt', 'reviews'])))
+                      // Allow appending to history (arrayUnion handles this implicitly on client)
+                    ) ||
+                    request.method == 'delete' // Authenticated user (prototype admin) can delete
+                  );
     }
 
-    // Submitted Cultivars Collection (for moderation)
+    // Submitted Cultivars Collection (for user submissions)
     match /submitted_cultivars/{submissionId} {
-      allow read, list: if isAdmin(); // Only admins can view submissions
+      // ADMINS (for prototype, any auth user) can read, update (for moderation), and delete.
+      // TODO: For PRODUCTION, implement proper admin role check.
+      allow read, update, delete: if request.auth != null;
 
-      function isValidSubmittedCultivarStructure(data) {
-        return
-          isValidString(data.name, 3, 100) &&
-          (data.sourceEmail is string && data.sourceEmail.matches('.+@.+\..+')) &&
-          (data.source == data.sourceEmail) && // Ensure source is the email
-          (data.genetics == null || (data.genetics is string && data.genetics in ['Sativa', 'Indica', 'Hybrid', 'Ruderalis'])) &&
-          (data.description == null || isValidString(data.description, 0, 5000)) &&
-          isValidCannabinoid(data.thc) &&
-          isValidCannabinoid(data.cbd) &&
-          (data.images == null || (data.images is list && data.images.size() <= 1 && (data.images.size() == 0 || isValidImage(data.images[0])))) &&
-          isList(data.effects) && (data.effects == null || data.effects.size() <= 20) &&
-          isList(data.flavors) && (data.flavors == null || data.flavors.size() <= 20) &&
-          (data.terpeneProfile == null || isValidTerpeneList(data.terpeneProfile)) &&
-          (data.status == 'User Submitted') && // Must be this status
-          (data.submittedAt is timestamp); // Server timestamp
-      }
-
-      // Anyone can create a submission (no auth needed)
-      allow create: if isValidSubmittedCultivarStructure(request.resource.data) &&
-                       request.resource.data.submittedAt == request.time;
-
-      allow update, delete: if isAdmin(); // Admins can moderate
+      // ANYONE can create a submission, with validation.
+      allow create: if request.resource.data.name is string && request.resource.data.name.size() > 0 &&
+                       request.resource.data.sourceEmail is string && request.resource.data.sourceEmail.matches('^[^@]+@[^@]+\\.[^@]+$') &&
+                       request.resource.data.status == 'User Submitted' &&
+                       request.resource.data.submittedAt == request.time &&
+                       // Image validation (optional image)
+                       (request.resource.data.images == null || request.resource.data.images.size() == 0 ||
+                         (request.resource.data.images.size() == 1 &&
+                          request.resource.data.images[0].url is string &&
+                          // Ensure the URL is from the correct Firebase Storage bucket and path for user submissions.
+                          // Replace 'YOUR_PROJECT_ID' with your actual Firebase project ID IF firebase.env("PROJECT_ID") is not working in your deployment.
+                          request.resource.data.images[0].url.startsWith('https://firebasestorage.googleapis.com/v0/b/' + firebase.env("PROJECT_ID") + '/o/cultivar-images%2Fuser-submitted%2F')
+                         )
+                       ) &&
+                       // Ensure only allowed fields are present or are of correct type if optional
+                       request.resource.data.keys().hasOnly(['name', 'sourceEmail', 'source', 'genetics', 'description', 'effects', 'flavors', 'terpeneProfile', 'images', 'thc', 'cbd', 'status', 'submittedAt']);
     }
+
+    // Optional: Users collection for managing isAdmin flag (manual setup needed in Firestore database)
+    // match /users/{userId} {
+    //   allow read: if request.auth != null && request.auth.uid == userId;
+    //   // Example: Only admins can change other user roles.
+    //   allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    // }
   }
 }
-
-    
