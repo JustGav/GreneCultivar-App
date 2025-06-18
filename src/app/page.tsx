@@ -56,6 +56,9 @@ export default function CultivarBrowserPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [cultivarNameMap, setCultivarNameMap] = useState<Map<string, string>>(new Map());
 
+  const allAvailableEffects = EFFECT_OPTIONS;
+  const allAvailableFlavors = FLAVOR_OPTIONS;
+
 
   const fetchCultivars = useCallback(async () => {
     setIsLoading(true);
@@ -363,3 +366,4 @@ export default function CultivarBrowserPage() {
     </div>
   );
 }
+
