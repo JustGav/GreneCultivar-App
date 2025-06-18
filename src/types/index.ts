@@ -113,4 +113,3 @@ export interface Cultivar {
   updatedAt: string; // ISO date string
   history?: CultivarHistoryEntry[];
 }
-

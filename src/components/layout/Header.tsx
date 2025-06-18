@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Leaf, LogIn, LogOut, UserCircle, Loader2, LayoutDashboard } from 'lucide-react';
+import { Leaf, LogIn, LogOut, UserCircle, Loader2, LayoutDashboard, PlusCircleIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -16,14 +16,16 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from 'react';
 import LoginModal from '@/components/auth/LoginModal';
+import SubmitCultivarModal from '@/components/auth/SubmitCultivarModal';
 
 export default function Header() {
   const { user, loading, logout } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isSubmitCultivarModalOpen, setIsSubmitCultivarModalOpen] = useState(false);
 
   useEffect(() => {
     if (user && isLoginModalOpen) {
-      setIsLoginModalOpen(false); // Close modal on successful login
+      setIsLoginModalOpen(false); // Close login modal on successful login
     }
   }, [user, isLoginModalOpen]);
 
@@ -86,18 +88,29 @@ export default function Header() {
               </DropdownMenu>
             </div>
           ) : (
-            <Button 
-              variant="outline" 
-              onClick={() => setIsLoginModalOpen(true)}
-              className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary"
-            >
-              <LogIn className="mr-2 h-4 w-4" />
-              Login
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsSubmitCultivarModalOpen(true)}
+                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary"
+              >
+                <PlusCircleIcon className="mr-2 h-4 w-4" />
+                Submit a Cultivar
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsLoginModalOpen(true)}
+                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary"
+              >
+                <LogIn className="mr-2 h-4 w-4" />
+                Login
+              </Button>
+            </div>
           )}
         </nav>
       </div>
       <LoginModal isOpen={isLoginModalOpen} onOpenChange={setIsLoginModalOpen} />
+      <SubmitCultivarModal isOpen={isSubmitCultivarModalOpen} onOpenChange={setIsSubmitCultivarModalOpen} />
     </header>
   );
 }

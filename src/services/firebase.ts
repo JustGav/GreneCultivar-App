@@ -56,7 +56,7 @@ const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
       return timestamp.toDate().toISOString();
     }
     if (typeof timestamp === 'string') {
-      return timestamp; 
+      return timestamp;
     }
     if (timestamp && typeof timestamp.toDate === 'function') {
         return timestamp.toDate().toISOString();
@@ -146,23 +146,31 @@ const prepareDataForFirestore = (data: Record<string, any>): Record<string, any>
     const fieldName = field as string;
     if (cleanedData[fieldName] && typeof cleanedData[fieldName] === 'object') {
       const profile = cleanedData[fieldName] as CannabinoidProfile;
-      if (profile.min === undefined) delete profile.min;
-      if (profile.max === undefined) delete profile.max;
+      if (profile.min === undefined || profile.min === null || isNaN(Number(profile.min))) delete profile.min;
+      if (profile.max === undefined || profile.max === null || isNaN(Number(profile.max))) delete profile.max;
+      if (Object.keys(profile).length === 0 && cleanedData[fieldName] !== undefined) {
+        // if profile becomes empty after cleaning, ensure it's removed or handled if field is optional
+        // For now, if both min/max are removed, the object might remain empty. Firestore handles empty maps.
+      }
+    } else if (cleanedData[fieldName] !== undefined) {
+      // If it's not an object but defined (e.g. {}), ensure it's cleaned or conforms
+      // This case should ideally not happen with strong typing but good to be aware
     }
   });
   return cleanedData;
 };
 
-export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'reviews' | 'status' | 'createdAt' | 'updatedAt' | 'history'> & { source?: string }): Promise<Cultivar> => {
+export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id' | 'reviews' | 'createdAt' | 'updatedAt' | 'history'>> & { source?: string; status?: CultivarStatus }): Promise<Cultivar> => {
   try {
     const dataToSave: { [key: string]: any } = {};
+    // Copy only defined properties from cultivarDataInput
     for (const key in cultivarDataInput) {
       if (cultivarDataInput[key as keyof typeof cultivarDataInput] !== undefined) {
         dataToSave[key] = cultivarDataInput[key as keyof typeof cultivarDataInput];
       }
     }
 
-    const arrayFields: (keyof (Omit<Cultivar, 'id' | 'reviews' | 'status' | 'createdAt' | 'updatedAt' | 'history'> & { source?: string }))[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile', 'flavors'];
+    const arrayFields: (keyof typeof dataToSave)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile', 'flavors'];
     arrayFields.forEach(field => {
       if (dataToSave[field] === undefined) {
         dataToSave[field] = [];
@@ -177,7 +185,7 @@ export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'revi
           (ai[catKey] as any) = [];
         }
       });
-    } else {
+    } else if (dataToSave.additionalInfo === undefined) { // Check if additionalInfo itself is undefined
       dataToSave.additionalInfo = {
         geneticCertificate: [],
         plantPicture: [],
@@ -188,17 +196,23 @@ export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'revi
 
     const initialHistoryEntry: Omit<CultivarHistoryEntry, 'timestamp'> & { timestamp: any } = {
         timestamp: serverTimestamp(),
-        event: "Cultivar Created",
+        event: cultivarDataInput.status === 'User Submitted' ? "Cultivar Submitted by User" : "Cultivar Created",
+        details: { status: cultivarDataInput.status || 'recentlyAdded', source: cultivarDataInput.source || 'System' }
     };
 
     const finalDataForFirestore = {
-      ...dataToSave,
-      status: 'recentlyAdded' as CultivarStatus,
-      reviews: [],
+      ...dataToSave, // Contains properties from cultivarDataInput including potentially status and source
+      reviews: [], // Always initialize reviews as empty
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       history: [initialHistoryEntry],
     };
+    
+    // Ensure status defaults if not provided by cultivarDataInput
+    if (!finalDataForFirestore.status) {
+      finalDataForFirestore.status = 'recentlyAdded' as CultivarStatus;
+    }
+
 
     const cleanedData = prepareDataForFirestore(finalDataForFirestore);
     const docRef = await addDoc(collection(db, CULTIVARS_COLLECTION), cleanedData);
@@ -227,14 +241,14 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
         const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
         expectedAICategories.forEach(catKey => {
             if (ai[catKey] === undefined) {
-                (ai[catKey] as any) = []; 
+                (ai[catKey] as any) = [];
             }
         });
     }
 
 
     const historyEntry: CultivarHistoryEntry = {
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString(), // Client-side timestamp for immediate use in history
         event: "Cultivar Details Updated",
         // Consider adding more details about what changed if needed
     };
@@ -272,7 +286,7 @@ export const updateCultivarStatus = async (id: string, status: CultivarStatus): 
 export const updateMultipleCultivarStatuses = async (cultivarIds: string[], newStatus: CultivarStatus): Promise<void> => {
   if (cultivarIds.length === 0) return;
   const batch = writeBatch(db);
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date().toISOString(); // Use a consistent client-generated timestamp for history
 
   cultivarIds.forEach(id => {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
@@ -299,7 +313,7 @@ export const updateMultipleCultivarStatuses = async (cultivarIds: string[], newS
 
 export const addReviewToCultivar = async (cultivarId: string, reviewData: Review): Promise<void> => {
   try {
-    const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, cultivarId);
+    const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
     const reviewToSave = {
       ...reviewData,
       createdAt: typeof reviewData.createdAt === 'string' ? reviewData.createdAt : new Date().toISOString(),
