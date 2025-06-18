@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react'; // Added React import
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -22,7 +22,7 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import { Loader2, PlusCircle, Upload, Leaf, Percent, Smile, Utensils, Image as ImageIcon, Palette } from 'lucide-react';
+import { Loader2, PlusCircle, Upload, Leaf, Percent, Smile, Utensils, Image as ImageIcon, Palette, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addCultivar, uploadImage } from '@/services/firebase';
 import type { Genetics, CannabinoidProfile, CultivarStatus, Terpene } from '@/types';
@@ -59,6 +59,7 @@ const numberRangeSchemaOptional = z.object({
 
 const submitCultivarFormSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }),
+  sourceEmail: z.string().email({ message: "Please enter a valid email for the source." }),
   genetics: z.enum(GENETIC_OPTIONS_MODAL).optional(),
   description: z.string().optional(),
   effects: z.array(z.string()).optional().default([]),
@@ -89,10 +90,12 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
     formState: { errors },
     reset,
     watch,
+    setValue, 
   } = useForm<SubmitCultivarFormData>({
     resolver: zodResolver(submitCultivarFormSchema),
     defaultValues: {
       name: '',
+      sourceEmail: user?.email || '', 
       genetics: undefined,
       description: '',
       effects: [],
@@ -104,6 +107,12 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
       cbd: { min: undefined, max: undefined },
     }
   });
+
+  React.useEffect(() => {
+    if (user?.email && !watch('sourceEmail')) { 
+      setValue('sourceEmail', user.email);
+    }
+  }, [user, reset, watch, setValue]);
 
   const watchedPrimaryImageFile = watch("primaryImageFile");
 
@@ -123,20 +132,19 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
         description: data.description || '',
         effects: data.effects || [],
         flavors: data.flavors || [],
-        terpeneProfile: data.terpeneProfile?.map(tp => ({...tp, id: tp.id || tp.name})) || [],
+        terpeneProfile: data.terpeneProfile?.map(tp => ({...tp, id: tp.id || tp.name})) || [], 
         images: primaryImageUrlForFirebase ? [{
             id: `img-user-${Date.now()}`,
             url: primaryImageUrlForFirebase,
             alt: data.primaryImageAlt || `${data.name} - user submitted`,
-            'data-ai-hint': 'cannabis bud'
+            'data-ai-hint': 'cannabis bud' 
         }] : [],
         thc: data.thc,
         cbd: data.cbd,
         status: 'User Submitted' as CultivarStatus,
-        source: 'User Modal Submission',
+        source: data.sourceEmail, 
       };
 
-      // @ts-ignore
       await addCultivar(cultivarDataForFirebase as any);
 
       toast({
@@ -144,7 +152,19 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
         description: `${data.name} has been submitted for review. Thank you!`,
         variant: "default",
       });
-      reset();
+      reset({ 
+        name: '', 
+        sourceEmail: user?.email || '', 
+        genetics: undefined, 
+        description: '',
+        effects: [],
+        flavors: [],
+        terpeneProfile: [],
+        primaryImageFile: undefined,
+        primaryImageAlt: '',
+        thc: { min: undefined, max: undefined },
+        cbd: { min: undefined, max: undefined },
+      });
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to submit cultivar:", error);
@@ -163,7 +183,21 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!isSubmitting) {
         onOpenChange(open);
-        if (!open) reset();
+        if (!open) {
+          reset({ 
+            name: '', 
+            sourceEmail: user?.email || '', 
+            genetics: undefined, 
+            description: '',
+            effects: [],
+            flavors: [],
+            terpeneProfile: [],
+            primaryImageFile: undefined,
+            primaryImageAlt: '',
+            thc: { min: undefined, max: undefined },
+            cbd: { min: undefined, max: undefined },
+          });
+        }
       }
     }}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
@@ -181,6 +215,22 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
             <Label htmlFor="name">Cultivar Name *</Label>
             <Input id="name" {...register('name')} placeholder="e.g., Community Haze" disabled={isSubmitting} />
             {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="sourceEmail">Your Email (for source tracking) *</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="sourceEmail"
+                type="email"
+                placeholder="you@example.com"
+                className="pl-10"
+                {...register('sourceEmail')}
+                disabled={isSubmitting}
+              />
+            </div>
+            {errors.sourceEmail && <p className="text-sm text-destructive">{errors.sourceEmail.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -206,7 +256,6 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
             <Textarea id="description" {...register('description')} placeholder="Briefly describe the cultivar..." rows={3} disabled={isSubmitting} />
           </div>
           
-          {/* Effects Checkboxes */}
           <div className="space-y-2">
             <Label className="flex items-center"><Smile className="mr-2 h-4 w-4 text-primary" />Effects (Optional)</Label>
             <Controller
@@ -239,7 +288,6 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
             />
           </div>
 
-          {/* Flavors Checkboxes */}
           <div className="space-y-2">
             <Label className="flex items-center"><Utensils className="mr-2 h-4 w-4 text-primary" />Flavors (Optional)</Label>
             <Controller
@@ -272,7 +320,6 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
             />
           </div>
           
-          {/* Terpenes Checkboxes */}
           <div className="space-y-2">
             <Label className="flex items-center"><Palette className="mr-2 h-4 w-4 text-primary" />Primary Terpenes (Optional)</Label>
             <Controller
@@ -288,7 +335,7 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
                           checked={field.value?.some(t => t.name === terpName)}
                           onCheckedChange={(checked) => {
                             const current = field.value || [];
-                            const terpObject = { id: terpName, name: terpName };
+                            const terpObject = { id: terpName, name: terpName }; 
                             if (checked) {
                               field.onChange([...current, terpObject]);
                             } else {
@@ -368,4 +415,3 @@ export default function SubmitCultivarModal({ isOpen, onOpenChange }: SubmitCult
     </Dialog>
   );
 }
-

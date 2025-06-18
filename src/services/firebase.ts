@@ -321,7 +321,7 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
      const historyEntry: CultivarHistoryEntry = {
         timestamp: new Date().toISOString(),
         event: "Review Added",
-        details: { reviewId: reviewToSave.id, rating: reviewToSave.rating }
+        details: { reviewId: reviewToSave.id, rating: reviewToSave.rating, user: reviewData.user }
     };
     await updateDoc(cultivarDocRef, {
       reviews: arrayUnion(reviewToSave),
@@ -333,6 +333,3 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
     throw error;
   }
 };
-
-
-    
