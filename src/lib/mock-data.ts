@@ -1,5 +1,5 @@
 
-import type { Cultivar } from '@/types';
+import type { Cultivar, PlantCharacteristics, YieldProfile } from '@/types';
 
 export const mockCultivars: Cultivar[] = [
   {
@@ -34,6 +34,9 @@ export const mockCultivars: Cultivar[] = [
       maxHeight: 100,
       minMoisture: 10,
       maxMoisture: 12,
+      yieldPerPlant: { min: 30, max: 60 }, // g
+      yieldPerWatt: { min: 0.5, max: 1.0 }, // g/W
+      yieldPerM2: { min: 300, max: 500 } // g/m²
     }
   },
   {
@@ -66,6 +69,9 @@ export const mockCultivars: Cultivar[] = [
       maxHeight: 180,
       minMoisture: 9,
       maxMoisture: 11,
+      // No yieldPerPlant
+      yieldPerWatt: { min: 0.8, max: 1.2 }, // g/W
+      yieldPerM2: { min: 400, max: 600 } // g/m²
     }
   },
   {
@@ -100,6 +106,8 @@ export const mockCultivars: Cultivar[] = [
       // maxHeight: undefined (will show N/A for max)
       minMoisture: 10,
       // maxMoisture: undefined (will show N/A for max)
+      yieldPerPlant: { min: 25, max: 50 } //g
+      // yieldPerWatt & yieldPerM2 undefined
     }
   },
   {
@@ -120,9 +128,13 @@ export const mockCultivars: Cultivar[] = [
       vegetative: "5-8 weeks",
       flowering: "10-12 weeks",
       harvest: "After 10-12 weeks of flowering"
+    },
+    plantCharacteristics: {
+        // No height, no moisture
+        yieldPerPlant: { min: 50, max: 90 }, // g
+        yieldPerWatt: { min: 0.7, max: 1.1 }, // g/W
+        // No yieldPerM2
     }
-    // plantCharacteristics will be undefined (section won't show or show N/A for all plant char.)
-    // plantCharacteristics: { minMoisture: 11, maxMoisture: 13} // Example if only moisture was present
   },
 ];
 
@@ -133,3 +145,4 @@ export const getAllEffects = (): string[] => {
   });
   return Array.from(allEffects).sort();
 };
+

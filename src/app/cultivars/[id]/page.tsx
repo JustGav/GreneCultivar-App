@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics } from '@/types';
+import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics, YieldProfile } from '@/types';
 import { mockCultivars } from '@/lib/mock-data';
 import ImageGallery from '@/components/ImageGallery';
 import ReviewForm from '@/components/ReviewForm';
@@ -14,8 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const calculateAverageRating = (reviews: ReviewType[]): number => {
   if (!reviews || reviews.length === 0) return 0;
@@ -38,6 +39,15 @@ const PlantCharacteristicDisplay: React.FC<{ label: string; value?: number; unit
   }
   return (
     <p className="text-sm">{label}: {value}{unit}</p>
+  );
+};
+
+const YieldRangeDisplay: React.FC<{ label: string; profile?: YieldProfile; unitSuffix: string }> = ({ label, profile, unitSuffix }) => {
+  if (!profile || profile.min === undefined || profile.max === undefined) {
+    return <p className="text-sm">{label}: N/A</p>;
+  }
+  return (
+    <p className="text-sm">{label}: {profile.min} - {profile.max} {unitSuffix}</p>
   );
 };
 
@@ -93,7 +103,10 @@ export default function CultivarDetailsPage() {
     cultivar.plantCharacteristics.minHeight !== undefined ||
     cultivar.plantCharacteristics.maxHeight !== undefined ||
     cultivar.plantCharacteristics.minMoisture !== undefined ||
-    cultivar.plantCharacteristics.maxMoisture !== undefined
+    cultivar.plantCharacteristics.maxMoisture !== undefined ||
+    cultivar.plantCharacteristics.yieldPerPlant !== undefined ||
+    cultivar.plantCharacteristics.yieldPerWatt !== undefined ||
+    cultivar.plantCharacteristics.yieldPerM2 !== undefined
   );
 
   return (
@@ -145,19 +158,36 @@ export default function CultivarDetailsPage() {
                 </div>
               </div>
 
-              {hasPlantCharacteristics && (
+              {hasPlantCharacteristics && cultivar.plantCharacteristics && (
                 <div className="mb-6 pt-6 border-t">
                   <h3 className="font-semibold text-lg flex items-center mb-3"><Combine size={20} className="mr-2 text-accent"/>Plant Characteristics</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                    <PlantCharacteristicDisplay label="Min. Height" value={cultivar.plantCharacteristics?.minHeight} unit="cm" />
-                    <PlantCharacteristicDisplay label="Max. Height" value={cultivar.plantCharacteristics?.maxHeight} unit="cm" />
-                  </div>
-                  {(cultivar.plantCharacteristics?.minMoisture !== undefined || cultivar.plantCharacteristics?.maxMoisture !== undefined) && (
-                    <div className="mt-4 pt-4 border-t border-dashed">
+                  
+                  {(cultivar.plantCharacteristics.minHeight !== undefined || cultivar.plantCharacteristics.maxHeight !== undefined) && (
+                    <div className="pb-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                        <PlantCharacteristicDisplay label="Min. Height" value={cultivar.plantCharacteristics.minHeight} unit="cm" />
+                        <PlantCharacteristicDisplay label="Max. Height" value={cultivar.plantCharacteristics.maxHeight} unit="cm" />
+                      </div>
+                    </div>
+                  )}
+
+                  {(cultivar.plantCharacteristics.minMoisture !== undefined || cultivar.plantCharacteristics.maxMoisture !== undefined) && (
+                    <div className={cn("pt-4 pb-4", (cultivar.plantCharacteristics.minHeight !== undefined || cultivar.plantCharacteristics.maxHeight !== undefined) && "border-t border-dashed")}>
                       <h4 className="font-medium text-md flex items-center mb-2"><Droplets size={18} className="mr-2 text-accent/80"/>Dry Product Moisture</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                        <PlantCharacteristicDisplay label="Min. Moisture" value={cultivar.plantCharacteristics?.minMoisture} unit="%" />
-                        <PlantCharacteristicDisplay label="Max. Moisture" value={cultivar.plantCharacteristics?.maxMoisture} unit="%" />
+                        <PlantCharacteristicDisplay label="Min. Moisture" value={cultivar.plantCharacteristics.minMoisture} unit="%" />
+                        <PlantCharacteristicDisplay label="Max. Moisture" value={cultivar.plantCharacteristics.maxMoisture} unit="%" />
+                      </div>
+                    </div>
+                  )}
+
+                  {(cultivar.plantCharacteristics.yieldPerPlant || cultivar.plantCharacteristics.yieldPerWatt || cultivar.plantCharacteristics.yieldPerM2) && (
+                     <div className={cn("pt-4", ((cultivar.plantCharacteristics.minHeight !== undefined || cultivar.plantCharacteristics.maxHeight !== undefined) || (cultivar.plantCharacteristics.minMoisture !== undefined || cultivar.plantCharacteristics.maxMoisture !== undefined)) && "border-t border-dashed")}>
+                      <h4 className="font-medium text-md flex items-center mb-2"><BarChartBig size={18} className="mr-2 text-accent/80"/>Estimated Yield</h4>
+                      <div className="space-y-1 text-sm">
+                        <YieldRangeDisplay label="Yield per Plant" profile={cultivar.plantCharacteristics.yieldPerPlant} unitSuffix="g" />
+                        <YieldRangeDisplay label="Yield per Watt" profile={cultivar.plantCharacteristics.yieldPerWatt} unitSuffix="g/W" />
+                        <YieldRangeDisplay label="Yield per m²" profile={cultivar.plantCharacteristics.yieldPerM2} unitSuffix="g/m²" />
                       </div>
                     </div>
                   )}
@@ -244,3 +274,4 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
+

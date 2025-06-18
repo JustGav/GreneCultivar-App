@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets } from "lucide-react";
+import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig } from "lucide-react";
 
 export default function CultivarDetailLoading() {
   return (
@@ -63,13 +63,15 @@ export default function CultivarDetailLoading() {
               <div className="mb-6 pt-6 border-t">
                 <h3 className="font-semibold text-lg flex items-center mb-3">
                     <Combine size={20} className="mr-2 text-muted-foreground/50"/>
-                    <Skeleton className="h-6 w-1/2" /> {/* Section Title */}
+                    <Skeleton className="h-6 w-1/2" /> {/* Section Title: Plant Char. */}
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Height Skeleton */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pb-4">
                     <Skeleton className="h-5 w-3/4" /> {/* Min Height */}
                     <Skeleton className="h-5 w-3/4" /> {/* Max Height */}
                 </div>
-                <div className="mt-4 pt-4 border-t border-dashed">
+                {/* Moisture Skeleton */}
+                <div className="mt-4 pt-4 border-t border-dashed pb-4">
                     <h4 className="font-medium text-md flex items-center mb-2">
                         <Droplets size={18} className="mr-2 text-muted-foreground/50"/>
                         <Skeleton className="h-5 w-2/5" /> {/* Moisture Title */}
@@ -77,6 +79,18 @@ export default function CultivarDetailLoading() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <Skeleton className="h-5 w-3/4" /> {/* Min Moisture */}
                         <Skeleton className="h-5 w-3/4" /> {/* Max Moisture */}
+                    </div>
+                </div>
+                {/* Yield Skeleton */}
+                <div className="mt-4 pt-4 border-t border-dashed">
+                    <h4 className="font-medium text-md flex items-center mb-2">
+                        <BarChartBig size={18} className="mr-2 text-muted-foreground/50"/>
+                        <Skeleton className="h-5 w-2/5" /> {/* Yield Title */}
+                    </h4>
+                    <div className="space-y-1">
+                        <Skeleton className="h-5 w-3/4" /> {/* Yield per Plant */}
+                        <Skeleton className="h-5 w-3/4" /> {/* Yield per Watt */}
+                        <Skeleton className="h-5 w-3/4" /> {/* Yield per m2 */}
                     </div>
                 </div>
               </div>
@@ -165,3 +179,4 @@ export default function CultivarDetailLoading() {
     </div>
   );
 }
+

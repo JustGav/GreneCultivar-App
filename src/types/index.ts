@@ -22,6 +22,11 @@ export interface CannabinoidProfile {
   max: number;
 }
 
+export interface YieldProfile {
+  min: number;
+  max: number;
+}
+
 export interface CultivationPhases {
   rooting: string; // e.g., "1-2 weeks"
   vegetative: string; // e.g., "4-8 weeks"
@@ -34,6 +39,9 @@ export interface PlantCharacteristics {
   maxHeight?: number; // cm
   minMoisture?: number; // %
   maxMoisture?: number; // %
+  yieldPerPlant?: YieldProfile; // g
+  yieldPerWatt?: YieldProfile; // g/W
+  yieldPerM2?: YieldProfile; // g/m²
 }
 
 export interface Cultivar {
@@ -53,3 +61,4 @@ export interface Cultivar {
   cultivationPhases?: CultivationPhases;
   plantCharacteristics?: PlantCharacteristics;
 }
+
