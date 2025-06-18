@@ -47,31 +47,27 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Effect to handle initial load and changes to initialCultivar prop
+  // Effect for Prop Changes (initialCultivar, isOpen)
   useEffect(() => {
-    if (initialCultivar && isOpen) {
-      setDisplayedCultivarData(initialCultivar);
-      // Reset history if initialCultivar changes or if history is empty/different
-      if (!historyStack.length || historyStack[0]?.id !== initialCultivar.id) {
-        setHistoryStack([initialCultivar]);
+    if (isOpen && initialCultivar) {
+      if (displayedCultivarData?.id !== initialCultivar.id) {
+        setDisplayedCultivarData(initialCultivar);
+        setHistoryStack([initialCultivar]); // Reset history when a new initial cultivar is provided
+        setIsLoadingLineage(false);
+        if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTo({ top: 0 });
+        }
       }
-      setIsLoadingLineage(false);
-      if (scrollAreaRef.current) {
-        scrollAreaRef.current.scrollTo({ top: 0 });
-      }
-    }
-  }, [initialCultivar, isOpen]); // Removed historyStack from deps to avoid loop on internal updates
-
-  // Effect to handle cleanup when modal is closed
-  useEffect(() => {
-    if (!isOpen) {
+    } else if (!isOpen) {
+      // This is the primary cleanup when modal closes
       setDisplayedCultivarData(null);
       setHistoryStack([]);
       setIsLoadingLineage(false);
     }
-  }, [isOpen]);
+  }, [initialCultivar, isOpen, displayedCultivarData?.id]);
 
-  // Effect to auto-close modal if it's open but seems to be in an invalid state (e.g., opened with no initial data)
+
+  // Effect to auto-close modal if it's open but seems to be in an invalid state
   useEffect(() => {
     if (isOpen && !displayedCultivarData && !isLoadingLineage && historyStack.length === 0 && !initialCultivar) {
       onOpenChange(false);
@@ -107,7 +103,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
     } finally {
       setIsLoadingLineage(false);
     }
-  }, [toast]); // State setters like setIsLoadingLineage, setDisplayedCultivarData, setHistoryStack are stable
+  }, [toast]); 
 
   const handleBackClick = () => {
     if (historyStack.length > 1) {
@@ -121,14 +117,11 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   };
 
   const { effectiveParents, effectiveChildren } = useMemo(() => {
-    if (!displayedCultivarData || !cultivarInfoMap || !displayedCultivarData.name) {
+    if (!displayedCultivarData || !cultivarInfoMap || typeof displayedCultivarData.name !== 'string' || !displayedCultivarData.name.trim()) {
       return { effectiveParents: [], effectiveChildren: [] };
     }
 
     const currentCultivarName = displayedCultivarData.name;
-    if (typeof currentCultivarName !== 'string' || currentCultivarName.trim() === '') {
-        return { effectiveParents: [], effectiveChildren: [] };
-    }
     const currentCultivarNameLower = currentCultivarName.toLowerCase();
 
     const parentsSet = new Set<string>(
@@ -139,7 +132,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
     );
 
     for (const info of cultivarInfoMap.values()) {
-      if (!info.name || typeof info.name !== 'string' || info.name.trim() === '' || info.name.toLowerCase() === currentCultivarNameLower) {
+      if (!info.name || typeof info.name !== 'string' || !info.name.trim() || info.name.toLowerCase() === currentCultivarNameLower) {
         continue;
       }
 
@@ -183,7 +176,6 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      // The main cleanup is now handled by the dedicated useEffect for !isOpen
       onOpenChange(open);
     }}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
@@ -407,13 +399,6 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                   Close
                 </Button>
               </DialogClose>
-              {displayedCultivarData.id && (
-                <a href={`/cultivars/${displayedCultivarData.id}`} target="_blank" rel="noopener noreferrer">
-                  <Button type="button" variant="default">
-                    View Full Details
-                  </Button>
-                </a>
-              )}
             </DialogFooter>
           </>
         )}
