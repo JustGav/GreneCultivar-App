@@ -35,14 +35,19 @@ export const uploadImage = async (file: File, path: string): Promise<string> => 
 
 export const deleteImageByUrl = async (imageUrl: string): Promise<void> => {
   try {
+    // Firebase storage URLs look like:
+    // https://firebasestorage.googleapis.com/v0/b/your-project-id.appspot.com/o/path%2Fto%2Fyour%2Ffile.jpg?alt=media&token=your-token
+    // We need to extract the path 'path/to/your/file.jpg' (URL decoded)
     const imageRef = ref(storage, imageUrl);
     await deleteObject(imageRef);
+    console.log(`Successfully deleted image from storage: ${imageUrl}`);
   } catch (error: any) {
     if (error.code === 'storage/object-not-found') {
       console.warn(`File not found for deletion (may have already been deleted or never existed): ${imageUrl}`);
+      // Not re-throwing as this is often an acceptable state (e.g., already deleted)
     } else {
-      console.error(`Error deleting image ${imageUrl}:`, error);
-      throw error;
+      console.error(`Error deleting image ${imageUrl} from storage:`, error);
+      throw error; // Re-throw other errors
     }
   }
 };
@@ -173,7 +178,7 @@ export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'revi
         terpeneInfo: [],
       };
     }
-    
+
     const nowISO = new Date().toISOString();
     const initialHistoryEntry: CultivarHistoryEntry = {
         timestamp: nowISO,
@@ -209,11 +214,17 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
   try {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
     const cleanedData = prepareDataForFirestore(cultivarData);
-    
+
     const arrayFields: (keyof Cultivar)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile'];
     arrayFields.forEach(field => {
       if (cleanedData[field] === undefined && cultivarData.hasOwnProperty(field)) {
-        cleanedData[field] = [];
+        // If the intent was to clear an array, it should be passed as an empty array
+        // If it's undefined, it means no change was intended for this array by the form,
+        // so we don't set it to [] unless cultivarData actually passed it as undefined explicitly.
+        // However, the current logic in Edit form sets it to [] if it should be empty.
+        if (cultivarData[field] === undefined) {
+             cleanedData[field] = []; // Ensure it's at least an empty array if explicitly cleared
+        }
       }
     });
 
@@ -225,11 +236,13 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
       const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
       expectedAICategories.forEach(catKey => {
         if (ai[catKey] === undefined && cultivarData.additionalInfo?.hasOwnProperty(catKey)) {
-          (ai[catKey] as any) = [];
+           if (cultivarData.additionalInfo?.[catKey] === undefined) {
+                (ai[catKey] as any) = [];
+           }
         }
       });
     }
-    
+
     const nowISO = new Date().toISOString();
     const historyEntry: CultivarHistoryEntry = {
         timestamp: nowISO,
@@ -256,7 +269,7 @@ export const updateCultivarStatus = async (id: string, status: CultivarStatus): 
         event: `Status changed to ${status}`,
         details: { newStatus: status }
     };
-    await updateDoc(cultivarDocRef, { 
+    await updateDoc(cultivarDocRef, {
         status,
         updatedAt: nowISO,
         history: arrayUnion(historyEntry)
@@ -291,3 +304,4 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
     throw error;
   }
 };
+

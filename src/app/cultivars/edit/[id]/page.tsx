@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useForm, Controller, useFieldArray, FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { getCultivarById, updateCultivar, uploadImage } from '@/services/firebase';
+import { getCultivarById, updateCultivar, uploadImage, deleteImageByUrl } from '@/services/firebase';
 import { groupTerpenesByCategory, EFFECT_OPTIONS, MEDICAL_EFFECT_OPTIONS } from '@/lib/mock-data';
 import type { Cultivar, Genetics, CannabinoidProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, YieldProfile, Terpene, PricingProfile, CultivarImage, CultivarStatus } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -138,10 +138,10 @@ const cultivarFormSchema = z.object({
   effects: z.array(effectEntrySchema).optional().default([]),
   medicalEffects: z.array(effectEntrySchema).optional().default([]),
 
-  primaryImageFile: imageFileInputSchema, 
+  primaryImageFile: imageFileInputSchema,
   primaryImageAlt: z.string().optional(),
   primaryImageDataAiHint: z.string().optional(),
-  existingPrimaryImageUrl: z.string().optional(),
+  existingPrimaryImageUrl: z.string().optional().or(z.literal('')), // Allow empty string
   existingPrimaryImageId: z.string().optional(),
 
 
@@ -197,13 +197,17 @@ export default function EditCultivarPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [initialCultivarData, setInitialCultivarData] = useState<Cultivar | null>(null);
+  const [initialPrimaryImageUrl, setInitialPrimaryImageUrl] = useState<string | undefined>(undefined);
 
-  const { control, handleSubmit, register, formState: { errors, isDirty, isValid }, reset, watch } = useForm<CultivarFormData>({
+
+  const { control, handleSubmit, register, formState: { errors, isDirty, isValid }, reset, watch, setValue } = useForm<CultivarFormData>({
     resolver: zodResolver(cultivarFormSchema),
     mode: 'onChange',
   });
 
   const watchedPrimaryImageFile = watch("primaryImageFile");
+  const watchedExistingPrimaryImageUrl = watch("existingPrimaryImageUrl");
+
 
   useEffect(() => {
     if (id) {
@@ -214,6 +218,9 @@ export default function EditCultivarPage() {
           const cultivar = await getCultivarById(id);
           if (cultivar) {
             setInitialCultivarData(cultivar);
+            const existingImageUrl = cultivar.images?.[0]?.url;
+            setInitialPrimaryImageUrl(existingImageUrl);
+
             const formData: Partial<CultivarFormData> = {
               name: cultivar.name,
               genetics: cultivar.genetics,
@@ -227,7 +234,7 @@ export default function EditCultivarPage() {
               effects: cultivar.effects?.map(e => ({ name: e, id: `effect-${Math.random()}` })) || [],
               medicalEffects: cultivar.medicalEffects?.map(me => ({ name: me, id: `medeffect-${Math.random()}` })) || [],
 
-              existingPrimaryImageUrl: cultivar.images?.[0]?.url,
+              existingPrimaryImageUrl: existingImageUrl || '',
               existingPrimaryImageId: cultivar.images?.[0]?.id,
               primaryImageAlt: cultivar.images?.[0]?.alt || '',
               primaryImageDataAiHint: cultivar.images?.[0]?.['data-ai-hint'] || '',
@@ -261,6 +268,13 @@ export default function EditCultivarPage() {
     }
   }, [id, reset]);
 
+  const handleRemovePrimaryImage = () => {
+    setValue('existingPrimaryImageUrl', '');
+    setValue('existingPrimaryImageId', undefined);
+    setValue('primaryImageFile', undefined);
+    // Alt text and AI hint can remain as they might be useful if a new image is chosen
+  };
+
   const { fields: terpeneProfileFields, append: appendTerpene, remove: removeTerpene } = useFieldArray({ control, name: "terpeneProfile" });
   const { fields: effectFields, append: appendEffect, remove: removeEffect } = useFieldArray({ control, name: "effects" });
   const { fields: medicalEffectFields, append: appendMedicalEffect, remove: removeMedicalEffect } = useFieldArray({ control, name: "medicalEffects" });
@@ -280,8 +294,9 @@ export default function EditCultivarPage() {
     setIsSubmitting(true);
     try {
       let finalPrimaryImage: CultivarImage | undefined = undefined;
+      const oldImageUrlFromLoad = initialPrimaryImageUrl;
 
-      if (data.primaryImageFile) { 
+      if (data.primaryImageFile) {
         const timestamp = Date.now();
         const uniqueFileName = `${timestamp}-${data.primaryImageFile.name}`;
         const newUrl = await uploadImage(data.primaryImageFile, `cultivar-images/${uniqueFileName}`);
@@ -291,6 +306,13 @@ export default function EditCultivarPage() {
             alt: data.primaryImageAlt || `${data.name} primary image`,
             'data-ai-hint': data.primaryImageDataAiHint
         };
+        if (oldImageUrlFromLoad && oldImageUrlFromLoad !== newUrl) {
+          try {
+            await deleteImageByUrl(oldImageUrlFromLoad);
+          } catch (delError) {
+            console.warn("Failed to delete old primary image from storage, it might have already been deleted:", delError);
+          }
+        }
       } else if (data.existingPrimaryImageUrl) {
          finalPrimaryImage = {
             id: data.existingPrimaryImageId!,
@@ -298,6 +320,15 @@ export default function EditCultivarPage() {
             alt: data.primaryImageAlt || `${data.name} primary image`,
             'data-ai-hint': data.primaryImageDataAiHint
         };
+      } else { // No image selected, existing was removed or never existed
+        finalPrimaryImage = undefined;
+        if (oldImageUrlFromLoad) {
+           try {
+            await deleteImageByUrl(oldImageUrlFromLoad);
+          } catch (delError) {
+            console.warn("Failed to delete old primary image from storage after removal from form:", delError);
+          }
+        }
       }
 
 
@@ -311,10 +342,12 @@ export default function EditCultivarPage() {
         const processedFiles: AdditionalFileInfo[] = [];
         for (const formFile of formFiles) {
           let url = formFile.url;
-          if (formFile.file) { 
+          if (formFile.file) {
             const timestamp = Date.now();
             const uniqueFileName = `${timestamp}-${formFile.file.name}`;
             url = await uploadImage(formFile.file, `${storagePath}/${uniqueFileName}`);
+            // If there was an old URL for this specific item (and it's different), it should be deleted.
+            // This requires more complex tracking of individual file changes within arrays, which is not implemented here.
           }
           if (url) {
             processedFiles.push({
@@ -329,6 +362,8 @@ export default function EditCultivarPage() {
         }
         return processedFiles;
       };
+      // Note: Deleting old files from 'additionalInfo' when items are removed or files replaced is not fully implemented here.
+      // This would require comparing the submitted array with the initial state to identify removed/changed files.
 
       const updatedPlantPictures = await processAdditionalFiles(data.additionalInfo_plantPictures, 'cultivar-images/additional', 'plantPicture', 'image');
       const updatedGeneticCertificates = await processAdditionalFiles(data.additionalInfo_geneticCertificates, 'cultivar-docs/certificates', 'geneticCertificate', 'pdf');
@@ -589,20 +624,27 @@ export default function EditCultivarPage() {
                 <CardDescription>Upload the main image for this cultivar. Uploading a new image will replace the existing one.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                 {watch('existingPrimaryImageUrl') && !watchedPrimaryImageFile && (
-                    <div className="mb-4">
-                        <Label>Current Primary Image:</Label>
-                        <NextImage src={watch('existingPrimaryImageUrl')!} alt={watch('primaryImageAlt') || "Current primary image"} width={200} height={150} className="rounded-md border object-cover mt-1" />
-                    </div>
-                )}
-                 {watchedPrimaryImageFile instanceof File && (
+                {watchedPrimaryImageFile instanceof File ? (
                     <div className="mb-4">
                         <Label>New Primary Image Preview:</Label>
-                        <NextImage src={URL.createObjectURL(watchedPrimaryImageFile)} alt="New primary image preview" width={200} height={150} className="rounded-md border object-cover mt-1" />
+                        <div className="relative w-48 h-36 mt-1">
+                           <NextImage src={URL.createObjectURL(watchedPrimaryImageFile)} alt="New primary image preview" layout="fill" objectFit="cover" className="rounded-md border" />
+                        </div>
                     </div>
-                )}
+                ) : watchedExistingPrimaryImageUrl ? (
+                    <div className="mb-4 space-y-2">
+                        <Label>Current Primary Image:</Label>
+                        <div className="relative w-48 h-36">
+                             <NextImage src={watchedExistingPrimaryImageUrl} alt={watch('primaryImageAlt') || "Current primary image"} layout="fill" objectFit="cover" className="rounded-md border" />
+                        </div>
+                        <Button type="button" variant="outline" size="sm" onClick={handleRemovePrimaryImage} className="text-destructive border-destructive hover:bg-destructive/10">
+                            <Trash2 className="mr-2 h-4 w-4" /> Remove Current Image
+                        </Button>
+                    </div>
+                ) :  <p className="text-sm text-muted-foreground">No primary image set.</p>}
+
                 <div>
-                    <Label htmlFor="primaryImageFile">New Primary Image File</Label>
+                    <Label htmlFor="primaryImageFile">New Primary Image File (replaces current if chosen)</Label>
                     <Input id="primaryImageFile" type="file" accept="image/*" {...register("primaryImageFile")} />
                     {errors.primaryImageFile && <p className="text-sm text-destructive mt-1">{errors.primaryImageFile.message as string}</p>}
                 </div>
@@ -926,16 +968,15 @@ export default function EditCultivarPage() {
                     </div>
                     {plantPictureFields.map((field, index) => (
                         <div key={field.id} className="space-y-2 p-3 mb-2 border rounded-md relative bg-muted/30 shadow-sm">
-                             {field.url && !watch(`additionalInfo_plantPictures.${index}.file`) && (
-                                <div className="mb-2">
-                                    <p className="text-xs text-muted-foreground">Current: <a href={field.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{field.name}</a></p>
-                                    <NextImage src={field.url} alt={field.name || "Plant picture"} width={100} height={75} className="rounded-md border object-cover mt-1"/>
-                                </div>
-                            )}
-                            {watch(`additionalInfo_plantPictures.${index}.file`) instanceof File && (
+                             {watch(`additionalInfo_plantPictures.${index}.file`) instanceof File ? (
                                  <div className="mb-2">
                                     <p className="text-xs text-muted-foreground">New Preview:</p>
                                     <NextImage src={URL.createObjectURL(watch(`additionalInfo_plantPictures.${index}.file`)!)} alt="New plant picture preview" width={100} height={75} className="rounded-md border object-cover mt-1"/>
+                                </div>
+                            ) : field.url && (
+                                <div className="mb-2">
+                                    <p className="text-xs text-muted-foreground">Current: <a href={field.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{field.name}</a></p>
+                                    <NextImage src={field.url} alt={field.name || "Plant picture"} width={100} height={75} className="rounded-md border object-cover mt-1"/>
                                 </div>
                             )}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
