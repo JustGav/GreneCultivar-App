@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { Cultivar, Genetics, CultivarStatus } from '@/types';
 import { EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data';
 import { getCultivars, updateCultivarStatus } from '@/services/firebase';
-import CultivarCard from '@/components/CultivarCard';
+import CultivarListItem from '@/components/CultivarListItem'; // Changed from CultivarCard
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
 import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown, AlertTriangle } from 'lucide-react';
@@ -35,7 +35,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
-const ITEMS_PER_PAGE = 9;
+const ITEMS_PER_PAGE = 10; // Might want more items per page for a list view
 
 const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
   if (!reviews || reviews.length === 0) return 0;
@@ -62,7 +62,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
-        router.push('/'); // Redirect to home if not logged in
+        router.push('/'); 
       } else {
         fetchCultivars();
       }
@@ -109,6 +109,8 @@ export default function DashboardPage() {
         c.id === cultivarId ? { ...c, status: newStatus } : c
       )
     );
+    // Optional: Re-fetch or intelligently update list if sort/filter depends on status
+    // For now, this local update should reflect correctly if 'showArchived' is toggled.
   }, []);
 
   const resetFilters = () => {
@@ -201,7 +203,7 @@ export default function DashboardPage() {
     { value: 'rating-desc', label: 'Rating (High to Low)'},
   ];
 
-  if (authLoading || (!user && !authLoading)) { // Show loading if auth is loading OR if user is null and auth is done (pre-redirect)
+  if (authLoading || (!user && !authLoading)) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -210,7 +212,7 @@ export default function DashboardPage() {
     );
   }
   
-  if (!user) { // This case should ideally be caught by the redirect, but as a fallback
+  if (!user) { 
     return (
        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-4">
         <AlertTriangle size={64} className="text-destructive mb-4" />
@@ -348,9 +350,13 @@ export default function DashboardPage() {
         </div>
       ) : paginatedCultivars.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-4"> {/* Changed from grid */}
             {paginatedCultivars.map(cultivar => (
-              <CultivarCard key={cultivar.id} cultivar={cultivar} onStatusChange={handleCultivarStatusChange} />
+              <CultivarListItem 
+                key={cultivar.id} 
+                cultivar={cultivar} 
+                onStatusChange={handleCultivarStatusChange} 
+              />
             ))}
           </div>
           {totalPages > 1 && (
