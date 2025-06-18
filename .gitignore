@@ -10,8 +10,8 @@
 !.yarn/releases
 !.yarn/versions
 
-/.idx/
-/.vscode/
+/.idx
+/.vscode
 .idx/*
 .vscode/*
 # testing
