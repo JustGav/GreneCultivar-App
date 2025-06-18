@@ -31,7 +31,16 @@ const STATUS_LABELS: Record<CultivarStatus, string> = {
   archived: 'Archived',
 };
 
+// Stricter schema for THC/CBD on the edit page
+const strictNumberRangeSchema = z.object({
+  min: z.coerce.number({ required_error: "Min value is required.", invalid_type_error: "Min value must be a number." }).min(0, "Min must be >= 0").max(100, "Min must be <= 100"),
+  max: z.coerce.number({ required_error: "Max value is required.", invalid_type_error: "Max value must be a number." }).min(0, "Max must be >= 0").max(100, "Max must be <= 100"),
+}).refine(data => data.min <= data.max, {
+  message: "Min value must be less than or equal to Max value if both are provided.",
+  path: ["min"],
+});
 
+// Original numberRangeSchema for other optional cannabinoid profiles
 const numberRangeSchema = z.object({
   min: z.coerce.number().min(0, "Min must be >= 0").max(100, "Min must be <= 100").optional(),
   max: z.coerce.number().min(0, "Max must be >= 0").max(100, "Max must be <= 100").optional(),
@@ -39,6 +48,7 @@ const numberRangeSchema = z.object({
   message: "Min value must be less than or equal to Max value if both are provided",
   path: ["min"],
 });
+
 
 const yieldRangeSchema = z.object({
   min: z.coerce.number().min(0, "Min must be >= 0").optional(),
@@ -145,9 +155,9 @@ const cultivarFormSchema = z.object({
   existingPrimaryImageId: z.string().optional(),
 
 
-  thc: numberRangeSchema,
-  cbd: numberRangeSchema,
-  cbc: numberRangeSchema.optional(),
+  thc: strictNumberRangeSchema, // Using stricter schema for edit
+  cbd: strictNumberRangeSchema, // Using stricter schema for edit
+  cbc: numberRangeSchema.optional(), // Optional cannabinoids still use the original schema
   cbg: numberRangeSchema.optional(),
   cbn: numberRangeSchema.optional(),
   thcv: numberRangeSchema.optional(),
@@ -188,7 +198,7 @@ type CultivarFormData = z.infer<typeof cultivarFormSchema>;
 
 const defaultFormValues: CultivarFormData = {
   name: '',
-  genetics: 'Hybrid', // Default to a common option
+  genetics: 'Hybrid', 
   status: 'recentlyAdded',
   source: '',
   description: '',
@@ -203,8 +213,8 @@ const defaultFormValues: CultivarFormData = {
   primaryImageDataAiHint: '',
   existingPrimaryImageUrl: '',
   existingPrimaryImageId: undefined,
-  thc: { min: undefined, max: undefined },
-  cbd: { min: undefined, max: undefined },
+  thc: { min: 0, max: 0 }, // Provide default numbers for strict schema
+  cbd: { min: 0, max: 0 }, // Provide default numbers for strict schema
   cbc: { min: undefined, max: undefined },
   cbg: { min: undefined, max: undefined },
   cbn: { min: undefined, max: undefined },
@@ -274,14 +284,14 @@ export default function EditCultivarPage() {
               effects: cultivar.effects?.map(e => ({ name: e, id: `effect-${Math.random()}` })) || [],
               medicalEffects: cultivar.medicalEffects?.map(me => ({ name: me, id: `medeffect-${Math.random()}` })) || [],
               
-              primaryImageFile: undefined, // Will be handled by input
+              primaryImageFile: undefined, 
               existingPrimaryImageUrl: existingImageUrl || '',
               existingPrimaryImageId: cultivar.images?.[0]?.id || undefined,
               primaryImageAlt: cultivar.images?.[0]?.alt || '',
               primaryImageDataAiHint: cultivar.images?.[0]?.['data-ai-hint'] || '',
 
-              thc: cultivar.thc || { min: undefined, max: undefined },
-              cbd: cultivar.cbd || { min: undefined, max: undefined },
+              thc: cultivar.thc || { min: 0, max: 0 }, // Ensure defaults for strict schema
+              cbd: cultivar.cbd || { min: 0, max: 0 }, // Ensure defaults for strict schema
               cbc: cultivar.cbc || { min: undefined, max: undefined },
               cbg: cultivar.cbg || { min: undefined, max: undefined },
               cbn: cultivar.cbn || { min: undefined, max: undefined },
@@ -431,8 +441,8 @@ export default function EditCultivarPage() {
         effects: data.effects ? data.effects.map(e => e.name).filter(e => e) : [],
         medicalEffects: data.medicalEffects ? data.medicalEffects.map(e => e.name).filter(e => e) : [],
         images: finalPrimaryImage ? [finalPrimaryImage] : [],
-        thc: data.thc,
-        cbd: data.cbd,
+        thc: data.thc, // Will be {min: number, max: number} due to strict schema
+        cbd: data.cbd, // Will be {min: number, max: number} due to strict schema
         cbc: data.cbc,
         cbg: data.cbg,
         cbn: data.cbn,
@@ -469,10 +479,10 @@ export default function EditCultivarPage() {
     }
   };
 
-  const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string) => {
+  const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string, isStrict: boolean = false) => {
     const fieldPrefix = String(fieldPrefixKey);
 
-    const errorsAny = errors as any; // Use any for easier dynamic access
+    const errorsAny = errors as any; 
     let minErrorMsg, maxErrorMsg, rootErrorMsg;
 
     if (fieldPrefix.includes('.')) {
@@ -480,27 +490,30 @@ export default function EditCultivarPage() {
         if (errorsAny[baseKey] && errorsAny[baseKey][nestedKey]) {
             minErrorMsg = errorsAny[baseKey][nestedKey]?.min?.message;
             maxErrorMsg = errorsAny[baseKey][nestedKey]?.max?.message;
-            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message; // For .refine() error on the object itself
+            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message; 
         }
     } else {
         if (errorsAny[fieldPrefix]) {
             minErrorMsg = errorsAny[fieldPrefix]?.min?.message;
             maxErrorMsg = errorsAny[fieldPrefix]?.max?.message;
-            rootErrorMsg = errorsAny[fieldPrefix]?.message; // For .refine() error on the object itself
+            rootErrorMsg = errorsAny[fieldPrefix]?.message; 
         }
     }
+    
+    const minField = `${fieldPrefix}.min` as any;
+    const maxField = `${fieldPrefix}.max` as any;
 
     return (
         <div className="grid grid-cols-2 gap-4 items-start">
             <div>
-                <Label htmlFor={`${fieldPrefix}.min`}>{label} Min {subLabel}</Label>
-                <Input id={`${fieldPrefix}.min`} type="number" step="0.01" {...register(`${fieldPrefix}.min` as any)} placeholder="e.g., 18.0" />
+                <Label htmlFor={minField}>{label} Min {subLabel} {isStrict ? "*" : ""}</Label>
+                <Input id={minField} type="number" step="0.01" {...register(minField)} placeholder="e.g., 18.0" />
                 {minErrorMsg && <p className="text-sm text-destructive mt-1">{minErrorMsg}</p>}
                 {rootErrorMsg && !minErrorMsg && !maxErrorMsg && <p className="text-sm text-destructive mt-1">{rootErrorMsg}</p>}
             </div>
             <div>
-                <Label htmlFor={`${fieldPrefix}.max`}>{label} Max {subLabel}</Label>
-                <Input id={`${fieldPrefix}.max`} type="number" step="0.01" {...register(`${fieldPrefix}.max` as any)} placeholder="e.g., 22.5" />
+                <Label htmlFor={maxField}>{label} Max {subLabel} {isStrict ? "*" : ""}</Label>
+                <Input id={maxField} type="number" step="0.01" {...register(maxField)} placeholder="e.g., 22.5" />
                 {maxErrorMsg && <p className="text-sm text-destructive mt-1">{maxErrorMsg}</p>}
             </div>
         </div>
@@ -707,11 +720,11 @@ export default function EditCultivarPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline text-2xl text-primary flex items-center"><Percent size={24} className="mr-2" /> Cannabinoid Profile</CardTitle>
-            <CardDescription>Enter the min/max percentages for THC and CBD. Other cannabinoids are optional.</CardDescription>
+            <CardDescription>Enter the min/max percentages for THC and CBD (required). Other cannabinoids are optional.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {renderMinMaxInput("thc", "THC", "(%) *")}
-            {renderMinMaxInput("cbd", "CBD", "(%) *")}
+            {renderMinMaxInput("thc", "THC", "(%)", true)}
+            {renderMinMaxInput("cbd", "CBD", "(%)", true)}
             {renderMinMaxInput("cbc", "CBC", "(%)")}
             {renderMinMaxInput("cbg", "CBG", "(%)")}
             {renderMinMaxInput("cbn", "CBN", "(%)")}
