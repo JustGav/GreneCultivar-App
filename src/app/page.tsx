@@ -54,15 +54,19 @@ export default function CultivarBrowserPage() {
 
   const [selectedCultivarForModal, setSelectedCultivarForModal] = useState<Cultivar | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [cultivarNameMap, setCultivarNameMap] = useState<Map<string, string>>(new Map());
 
-  const allAvailableEffects = EFFECT_OPTIONS;
-  const allAvailableFlavors = FLAVOR_OPTIONS;
 
   const fetchCultivars = useCallback(async () => {
     setIsLoading(true);
     try {
       const fetchedCultivars = await getCultivars();
       setAllCultivars(fetchedCultivars);
+      const nameMap = new Map<string, string>();
+        fetchedCultivars.forEach(c => {
+            nameMap.set(c.name.toLowerCase(), c.id);
+        });
+      setCultivarNameMap(nameMap);
     } catch (error) {
       console.error("Failed to fetch cultivars:", error);
       toast({
@@ -71,6 +75,7 @@ export default function CultivarBrowserPage() {
         variant: "destructive",
       });
       setAllCultivars([]);
+      setCultivarNameMap(new Map());
     } finally {
       setIsLoading(false);
     }
@@ -352,7 +357,8 @@ export default function CultivarBrowserPage() {
       <CultivarDetailModal 
         cultivar={selectedCultivarForModal} 
         isOpen={isModalOpen} 
-        onOpenChange={setIsModalOpen} 
+        onOpenChange={setIsModalOpen}
+        cultivarNameMap={cultivarNameMap}
       />
     </div>
   );

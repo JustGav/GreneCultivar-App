@@ -16,13 +16,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import StarRating from './StarRating';
-import { Leaf, Percent, Smile, ThermometerSun, ThermometerSnowflake, Utensils, ImageOff } from 'lucide-react';
+import { Leaf, Percent, Smile, ThermometerSun, ThermometerSnowflake, Utensils, ImageOff, Network } from 'lucide-react';
 import { Separator } from './ui/separator';
 
 interface CultivarDetailModalProps {
   cultivar: Cultivar | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  cultivarNameMap?: Map<string, string>;
 }
 
 const calculateAverageRating = (reviews: Cultivar['reviews'] = []): number => {
@@ -31,7 +32,7 @@ const calculateAverageRating = (reviews: Cultivar['reviews'] = []): number => {
   return Math.round((total / reviews.length) * 10) / 10;
 };
 
-export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange }: CultivarDetailModalProps) {
+export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cultivarNameMap }: CultivarDetailModalProps) {
   if (!cultivar) {
     return null;
   }
@@ -42,6 +43,8 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange }: 
   const thcMax = cultivar.thc?.max ?? 'N/A';
   const cbdMin = cultivar.cbd?.min ?? 'N/A';
   const cbdMax = cultivar.cbd?.max ?? 'N/A';
+
+  const hasLineage = (cultivar.parents && cultivar.parents.length > 0) || (cultivar.children && cultivar.children.length > 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -126,6 +129,50 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange }: 
                   </div>
                 </div>
               )}
+            
+            {hasLineage && (
+              <div className="pt-2">
+                <Separator className="my-3"/>
+                <h3 className="font-semibold text-lg flex items-center mb-2">
+                  <Network size={20} className="mr-2 text-accent" />Lineage
+                </h3>
+                <div className="text-sm space-y-2">
+                  {cultivar.parents && cultivar.parents.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-1">Parents</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {cultivar.parents.map((parentName, index) => (
+                          <Badge key={`parent-${index}`} variant="outline" className="text-xs">
+                            {parentName}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                   {cultivar.name && (
+                    <div className="my-1">
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-1">Current</h4>
+                        <Badge variant="secondary" className="text-xs bg-primary/20 border-primary/40">
+                            {cultivar.name}
+                        </Badge>
+                    </div>
+                  )}
+                  {cultivar.children && cultivar.children.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-1">Children</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {cultivar.children.map((childName, index) => (
+                          <Badge key={`child-${index}`} variant="outline" className="text-xs">
+                            {childName}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {cultivar.supplierUrl && (
                  <div className="pt-2">
                     <a href={cultivar.supplierUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:text-accent font-medium transition-colors">
@@ -147,4 +194,3 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange }: 
     </Dialog>
   );
 }
-
