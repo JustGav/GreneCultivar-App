@@ -1,4 +1,6 @@
 
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
@@ -97,12 +99,19 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
   const cbdMin = cultivar.cbd?.min ?? 'N/A';
   const cbdMax = cultivar.cbd?.max ?? 'N/A';
 
-  // Determine if the title-adjacent status badge should be shown
-  const showTitleAdjacentBadge = cultivar.status &&
-    cultivar.status !== 'recentlyAdded' &&
-    cultivar.status !== 'featured' &&
-    cultivar.status !== 'User Submitted' &&
-    !(isPublicView && cultivar.status === 'Live');
+  const hasImages = cultivar.images && cultivar.images.length > 0;
+  const isOverlayStatusType = cultivar.status === 'recentlyAdded' || cultivar.status === 'featured' || cultivar.status === 'User Submitted';
+
+  let showTitleAdjacentBadge = false;
+  if (cultivar.status) {
+      if (cultivar.status === 'Live' && !isPublicView) {
+          showTitleAdjacentBadge = true;
+      } else if (cultivar.status === 'Archived' || cultivar.status === 'Hide') {
+          showTitleAdjacentBadge = true;
+      } else if (isOverlayStatusType && !hasImages) {
+          showTitleAdjacentBadge = true;
+      }
+  }
 
   return (
     <Card
@@ -117,7 +126,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
         onKeyDown={isPublicView && onViewInModal ? (e) => { if (e.key === 'Enter' || e.key === ' ') onViewInModal(cultivar) } : undefined}
     >
       <CardHeader>
-        {cultivar.images && cultivar.images.length > 0 && (
+        {hasImages && (
           <div className="relative w-full h-48 mb-4 rounded-t-lg overflow-hidden">
             <Image
               src={cultivar.images[0].url}
@@ -128,7 +137,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
               className="transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
-            {(cultivar.status === 'recentlyAdded' || cultivar.status === 'featured' || cultivar.status === 'User Submitted') && (
+            {isOverlayStatusType && ( // Only show overlay if it's an overlay type AND there are images
               <Badge
                 variant={getStatusBadgeVariant(cultivar.status)}
                 className={cn(
@@ -137,7 +146,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
                 )}
               >
                 {getStatusIcon(cultivar.status)}
-                {STATUS_LABELS[cultivar.status]}
+                {STATUS_LABELS[cultivar.status as CultivarStatus]}
               </Badge>
             )}
           </div>
@@ -148,12 +157,13 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
                 <Badge
                   variant={getStatusBadgeVariant(cultivar.status)}
                   className={cn(
-                      "capitalize flex items-center text-xs h-fit",
+                      "capitalize flex items-center text-xs h-fit py-1 px-1.5",
+                      (cultivar.status === 'featured') && "bg-yellow-400/80 border-yellow-500/70 text-yellow-900 dark:text-yellow-900", // Apply featured style if shown here
                       cultivar.status === 'Hide' && "bg-gray-400/20 border-gray-500/50 text-gray-700 dark:text-gray-300"
                     )}
                 >
                     {getStatusIcon(cultivar.status)}
-                    {STATUS_LABELS[cultivar.status]}
+                    {STATUS_LABELS[cultivar.status as CultivarStatus]}
                 </Badge>
             )}
         </div>
