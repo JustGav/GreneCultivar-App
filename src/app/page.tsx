@@ -17,7 +17,8 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
-  DropdownMenuLabel
+  DropdownMenuLabel,
+  DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
@@ -338,3 +339,4 @@ export default function CultivarBrowserPage() {
     </div>
   );
 }
+
