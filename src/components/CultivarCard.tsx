@@ -95,10 +95,10 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
   const cbdMin = cultivar.cbd?.min ?? 'N/A';
   const cbdMax = cultivar.cbd?.max ?? 'N/A';
 
-  const cardContent = (
+  return (
     <Card 
         className={cn(
-            "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn",
+            "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn group", // Added group here
             isArchived && "opacity-60 bg-muted/50",
             isPublicView && "cursor-pointer"
         )}
@@ -178,21 +178,22 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
                 variant="default" 
                 className="w-full text-sm" 
                 onClick={(e) => { 
-                    e.stopPropagation(); // Prevent card's onClick if button is clicked
+                    e.stopPropagation(); 
                     if(onViewInModal) onViewInModal(cultivar); 
                 }}
                 disabled={isArchived}
+                 aria-label={`View details for ${cultivar.name} in modal`}
             >
               View Details
             </Button>
           ) : (
             <>
-              <Link href={`/cultivars/${cultivar.id}`} className="w-full">
+              <Link href={`/cultivars/${cultivar.id}`} className="w-full" aria-label={`View full details for ${cultivar.name}`}>
                 <Button variant="default" className="w-full text-sm" disabled={isArchived}>
                   View Details
                 </Button>
               </Link>
-              <Link href={`/cultivars/edit/${cultivar.id}`} className="w-full">
+              <Link href={`/cultivars/edit/${cultivar.id}`} className="w-full" aria-label={`Edit ${cultivar.name}`}>
                 <Button variant="outline" className="w-full text-sm" disabled={isArchived}>
                   <Edit size={16} className="mr-2" /> Edit
                 </Button>
@@ -202,6 +203,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
                 className="w-full text-sm text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
                 onClick={handleArchive}
                 disabled={isArchived || isArchiving}
+                aria-label={`Archive ${cultivar.name}`}
               >
                 <Archive size={16} className="mr-2" /> {isArchiving ? 'Archiving...' : 'Archive'}
               </Button>
@@ -211,16 +213,4 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
       </CardFooter>
     </Card>
   );
-
-  if (isPublicView) {
-    return cardContent; // The card itself is clickable
-  }
-
-  // For non-public view, retain the Link wrapping the card for full-card navigation to detail page.
-  // The "View Details" button inside will still navigate correctly due to event propagation.
-  return (
-     <Link href={`/cultivars/${cultivar.id}`} className="block h-full group" aria-label={`View details for ${cultivar.name}`}>
-        {cardContent}
-    </Link>
-  )
 }
