@@ -17,7 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import StarRating from './StarRating';
-import { Leaf, Percent, Smile, ThermometerSun, ThermometerSnowflake, Utensils, ImageOff, Network, ExternalLink } from 'lucide-react';
+import { Leaf, Percent, Smile, ThermometerSun, ThermometerSnowflake, Utensils, ImageOff, Network, ExternalLink, Palette } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 
@@ -141,12 +141,32 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                   <h3 className="font-semibold text-lg flex items-center mb-2"><Utensils size={20} className="mr-2 text-accent"/>Flavors</h3>
                   <div className="flex flex-wrap gap-1">
                     {cultivar.flavors.slice(0, 5).map(flavor => (
-                      <Badge key={flavor} variant="outline" className="bg-primary/10 border-primary/20 text-foreground/90">{flavor}</Badge>
+                      <Badge key={flavor} variant="outline" className="bg-primary/5 border-primary/20 text-foreground/90">{flavor}</Badge>
                     ))}
                     {cultivar.flavors.length > 5 && <Badge variant="outline">...</Badge>}
                   </div>
                 </div>
               )}
+
+            {cultivar.terpeneProfile && cultivar.terpeneProfile.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg flex items-center mb-2">
+                  <Palette size={20} className="mr-2 text-accent" />
+                  Terpenes
+                </h3>
+                <div className="flex flex-wrap gap-1">
+                  {cultivar.terpeneProfile.slice(0, 5).map(terpene => (
+                    <Badge key={terpene.id} variant="outline" className="bg-blue-500/10 border-blue-500/30 text-foreground">
+                      {terpene.name}
+                      {terpene.percentage !== undefined && (
+                        <span className="ml-1 text-xs opacity-75">({terpene.percentage}%)</span>
+                      )}
+                    </Badge>
+                  ))}
+                  {cultivar.terpeneProfile.length > 5 && <Badge variant="outline">...</Badge>}
+                </div>
+              </div>
+            )}
             
             {hasLineageData && (
               <div className="pt-2">
@@ -240,6 +260,11 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
               Close
             </Button>
           </DialogClose>
+          <Link href={`/cultivars/${cultivar.id}`} passHref>
+            <Button type="button" variant="default" onClick={() => onOpenChange(false)}>
+              View Full Details
+            </Button>
+          </Link>
         </DialogFooter>
       </DialogContent>
     </Dialog>
