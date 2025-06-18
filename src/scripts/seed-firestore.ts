@@ -57,6 +57,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
       { id: 'img-ch-2', url: 'https://placehold.co/600x400.png', alt: 'Cosmic Haze plant', 'data-ai-hint': 'cannabis plant' },
     ],
     effects: ['Energetic', 'Creative', 'Uplifted', 'Happy'],
+    flavors: ['Citrus', 'Sweet', 'Earthy'],
     medicalEffects: ['Stress Relief', 'Depression Relief', 'Fatigue'],
     terpeneProfile: [
       { id: 'tp-ch-1', name: 'Limonene', percentage: 1.2 },
@@ -104,6 +105,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
       { id: 'img-id-1', url: 'https://placehold.co/600x400.png', alt: 'Indica Dream bud', 'data-ai-hint': 'dark bud' },
     ],
     effects: ['Relaxed', 'Sleepy', 'Happy', 'Hungry'],
+    flavors: ['Earthy', 'Sweet', 'Pungent'],
     medicalEffects: ['Pain Relief', 'Insomnia', 'Stress Relief'],
     terpeneProfile: [
       { id: 'tp-id-1', name: 'Myrcene', percentage: 1.5 },
@@ -140,6 +142,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
         { id: 'img-hh-1', url: 'https://placehold.co/600x400.png', alt: 'Hybrid Harmony flower', 'data-ai-hint': 'green flower' },
     ],
     effects: ['Happy', 'Uplifted', 'Relaxed', 'Focused'],
+    flavors: ['Pine', 'Berry', 'Flowery'],
     medicalEffects: ['Anxiety Relief', 'Mild Pain Relief'],
     terpeneProfile: [
         { id: 'tp-hh-1', name: 'Limonene' },
@@ -176,6 +179,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
       { id: 'img-rr-1', url: 'https://placehold.co/600x400.png', alt: 'Ruderalis Ranger plant', 'data-ai-hint': 'small plant' },
     ],
     effects: ['Calm', 'Mildly Relaxed'],
+    flavors: ['Earthy', 'Woody'],
     cultivationPhases: {
         germination: '2-4 days',
         flowering: '6-8 weeks (auto)',
@@ -204,7 +208,7 @@ const prepareDataForFirestoreSeed = (data: Record<string, any>): Record<string, 
     }
   }
   // Ensure essential array fields are present, even if empty
-  const arrayFields: (keyof Omit<Cultivar, 'id' | 'reviews'>)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile', 'history'];
+  const arrayFields: (keyof Omit<Cultivar, 'id' | 'reviews'>)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile', 'flavors', 'history'];
     arrayFields.forEach(field => {
       if (cleanedData[field] === undefined) {
         cleanedData[field] = [];

@@ -77,6 +77,14 @@ export const MEDICAL_EFFECT_OPTIONS: string[] = [
   'Neuroprotective', 'Glaucoma Relief', 'Fibromyalgia Relief'
 ].sort();
 
+export const FLAVOR_OPTIONS: string[] = [
+  'Earthy', 'Sweet', 'Citrus', 'Diesel', 'Pungent', 'Woody', 'Pine', 'Spicy/Herbal', 
+  'Berry', 'Tropical', 'Flowery', 'Skunky', 'Chemical', 'Fruity', 'Nutty', 'Minty', 
+  'Vanilla', 'Coffee', 'Grape', 'Lemon', 'Orange', 'Pepper', 'Ammonia', 'Blueberry',
+  'Cheese', 'Chestnut', 'Lavender', 'Lime', 'Mango', 'Menthol', 'Peach', 'Pear', 'Plum',
+  'Rose', 'Sage', 'Strawberry', 'Tar', 'Tea', 'Tobacco', 'Tree Fruit', 'Violet'
+].sort();
+
 
 // mockCultivars array has been removed as data will now be fetched from Firebase.
 // You will need to seed your Firestore 'cultivars' collection with initial data.

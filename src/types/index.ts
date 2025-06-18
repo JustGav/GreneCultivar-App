@@ -92,6 +92,7 @@ export interface Cultivar {
   thcv?: CannabinoidProfile;
   effects: string[];
   medicalEffects?: string[];
+  flavors?: string[];
   description: string;
   images: CultivarImage[];
   reviews: Review[];

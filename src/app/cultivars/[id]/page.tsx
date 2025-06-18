@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Loader2, Database, ShieldCheck, Hourglass, Archive as ArchiveIconLucide, Info } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Loader2, Database, ShieldCheck, Hourglass, Archive as ArchiveIconLucide, Info, Utensils } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -139,7 +139,6 @@ export default function CultivarDetailsPage() {
     if (!cultivar) return;
     try {
       await addReviewToCultivar(cultivar.id, newReview);
-      // Re-fetch cultivar data to get updated reviews and history
       await fetchCultivarData();
       toast({
         title: "Review Added",
@@ -213,6 +212,7 @@ export default function CultivarDetailsPage() {
   );
   const hasEffects = cultivar.effects && cultivar.effects.length > 0;
   const hasMedicalEffects = cultivar.medicalEffects && cultivar.medicalEffects.length > 0;
+  const hasFlavors = cultivar.flavors && cultivar.flavors.length > 0;
   const hasLineage = (cultivar.parents && cultivar.parents.length > 0) || (cultivar.children && cultivar.children.length > 0);
 
 
@@ -433,6 +433,23 @@ export default function CultivarDetailsPage() {
                       </Badge>
                     );
                   })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {hasFlavors && cultivar.flavors && (
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="font-headline text-2xl text-primary flex items-center">
+                  <Utensils size={28} className="mr-3 text-primary/80" /> Reported Flavors
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {cultivar.flavors.map(flavor => (
+                    <Badge key={flavor} variant="secondary" className="bg-primary/5 border-primary/20 text-primary-foreground/80">{flavor}</Badge>
+                  ))}
                 </div>
               </CardContent>
             </Card>

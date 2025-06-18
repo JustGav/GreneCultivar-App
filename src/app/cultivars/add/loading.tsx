@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Edit3, Percent, Clock, Sprout, Paperclip, PlusCircle, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, ImageIcon as ImageIconLucide, Database } from "lucide-react";
+import { ArrowLeft, Edit3, Percent, Clock, Sprout, Paperclip, PlusCircle, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, ImageIcon as ImageIconLucide, Database, Utensils } from "lucide-react";
 
 export default function AddCultivarLoading() {
   return (
@@ -32,7 +32,6 @@ export default function AddCultivarLoading() {
             <Palette size={24} className="mr-2 text-muted-foreground/50" />
             <Skeleton className="h-8 w-1/2" /> {/* Section Title: Terpene Profile */}
           </div>
-          {/* No description skeleton here anymore */}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="p-3 border rounded-md space-y-2">
@@ -46,9 +45,25 @@ export default function AddCultivarLoading() {
                     <Skeleton className="h-10 w-full" /> {/* Percentage Input */}
                 </div>
             </div>
-            {/* Removed skeleton for description input field */}
           </div>
           <Skeleton className="h-9 w-32" /> {/* Add Terpene Button */}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center">
+            <Utensils size={24} className="mr-2 text-muted-foreground/50" />
+            <Skeleton className="h-8 w-1/2" /> {/* Section Title: Flavors */}
+          </div>
+          <Skeleton className="h-5 w-full mt-1" /> {/* Description */}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-3 border rounded-md space-y-2">
+            <Skeleton className="h-4 w-1/3 mb-1" /> {/* Label Flavor */}
+            <Skeleton className="h-10 w-full" /> {/* Flavor Select/Input */}
+          </div>
+          <Skeleton className="h-9 w-32" /> {/* Add Flavor Button */}
         </CardContent>
       </Card>
 

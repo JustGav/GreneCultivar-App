@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Database, CheckCheck, ShieldCheck, ArchiveIcon, Info, CalendarDays } from "lucide-react";
+import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Database, CheckCheck, ShieldCheck, ArchiveIcon, Info, CalendarDays, Utensils } from "lucide-react";
 
 export default function CultivarDetailLoading() {
   return (
@@ -163,6 +163,22 @@ export default function CultivarDetailLoading() {
             <CardHeader>
               <div className="flex items-center">
                 <Smile size={28} className="mr-3 text-muted-foreground/50" />
+                <Skeleton className="h-8 w-2/5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="h-6 w-16 rounded-full" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+                <Skeleton className="h-6 w-12 rounded-full" />
+              </div>
+            </CardContent>
+          </Card>
+
+           <Card>
+            <CardHeader>
+              <div className="flex items-center">
+                <Utensils size={28} className="mr-3 text-muted-foreground/50" />
                 <Skeleton className="h-8 w-2/5" />
               </div>
             </CardHeader>

@@ -56,14 +56,11 @@ const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
       return timestamp.toDate().toISOString();
     }
     if (typeof timestamp === 'string') {
-      return timestamp; // Already a string
+      return timestamp; 
     }
     if (timestamp && typeof timestamp.toDate === 'function') {
         return timestamp.toDate().toISOString();
     }
-    // Fallback for unexpected types, or if you want to ensure it's always fresh if missing
-    // However, if the field is truly missing and should be, this might be incorrect.
-    // For createdAt/updatedAt, this should ideally not be hit if data is saved correctly.
     return new Date().toISOString();
   };
 
@@ -83,6 +80,7 @@ const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
     thcv: (data.thcv || defaultCannabinoidProfile) as CannabinoidProfile | undefined,
     effects: data.effects || [],
     medicalEffects: data.medicalEffects || [],
+    flavors: data.flavors || [],
     description: data.description,
     images: data.images || [],
     reviews: (data.reviews || []).map((review: any) => ({
@@ -148,12 +146,8 @@ const prepareDataForFirestore = (data: Record<string, any>): Record<string, any>
     const fieldName = field as string;
     if (cleanedData[fieldName] && typeof cleanedData[fieldName] === 'object') {
       const profile = cleanedData[fieldName] as CannabinoidProfile;
-      // Ensure keys are only deleted if explicitly undefined, not if 0
       if (profile.min === undefined) delete profile.min;
       if (profile.max === undefined) delete profile.max;
-      // If the profile object becomes empty, remove it entirely or keep as empty object.
-      // Firestore handles empty objects fine. If it should be removed, use deleteField().
-      // For now, an empty object like {thc: {}} is acceptable if all its sub-fields are removed.
     }
   });
   return cleanedData;
@@ -168,7 +162,7 @@ export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'revi
       }
     }
 
-    const arrayFields: (keyof (Omit<Cultivar, 'id' | 'reviews' | 'status' | 'createdAt' | 'updatedAt' | 'history'> & { source?: string }))[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile'];
+    const arrayFields: (keyof (Omit<Cultivar, 'id' | 'reviews' | 'status' | 'createdAt' | 'updatedAt' | 'history'> & { source?: string }))[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile', 'flavors'];
     arrayFields.forEach(field => {
       if (dataToSave[field] === undefined) {
         dataToSave[field] = [];
@@ -193,7 +187,7 @@ export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'revi
     }
 
     const initialHistoryEntry: Omit<CultivarHistoryEntry, 'timestamp'> & { timestamp: any } = {
-        timestamp: serverTimestamp(), // Fine here, part of addDoc
+        timestamp: serverTimestamp(),
         event: "Cultivar Created",
     };
 
@@ -233,14 +227,14 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
         const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
         expectedAICategories.forEach(catKey => {
             if (ai[catKey] === undefined) {
-                (ai[catKey] as any) = [];
+                (ai[catKey] as any) = []; // Ensure array exists if additionalInfo is being updated
             }
         });
     }
 
 
     const historyEntry: CultivarHistoryEntry = {
-        timestamp: new Date().toISOString(), // CHANGED: Client-generated ISO string
+        timestamp: new Date().toISOString(),
         event: "Cultivar Details Updated",
     };
 
@@ -259,7 +253,7 @@ export const updateCultivarStatus = async (id: string, status: CultivarStatus): 
   try {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
     const historyEntry: CultivarHistoryEntry = {
-        timestamp: new Date().toISOString(), // CHANGED: Client-generated ISO string
+        timestamp: new Date().toISOString(),
         event: `Status changed to ${status}`,
         details: { newStatus: status }
     };
@@ -283,7 +277,7 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
       createdAt: typeof reviewData.createdAt === 'string' ? reviewData.createdAt : new Date().toISOString(),
     };
      const historyEntry: CultivarHistoryEntry = {
-        timestamp: new Date().toISOString(), // CHANGED: Client-generated ISO string
+        timestamp: new Date().toISOString(),
         event: "Review Added",
         details: { reviewId: reviewToSave.id, rating: reviewToSave.rating }
     };
@@ -297,4 +291,3 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
     throw error;
   }
 };
-

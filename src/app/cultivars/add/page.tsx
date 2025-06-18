@@ -8,7 +8,7 @@ import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { addCultivar, uploadImage } from '@/services/firebase';
-import { groupTerpenesByCategory, EFFECT_OPTIONS, MEDICAL_EFFECT_OPTIONS } from '@/lib/mock-data';
+import { groupTerpenesByCategory, EFFECT_OPTIONS, MEDICAL_EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data';
 import type { Cultivar, Genetics, CannabinoidProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, YieldProfile, Terpene, PricingProfile, CultivarImage } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2, Upload, Database } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2, Upload, Database, Utensils } from 'lucide-react';
 import NextImage from 'next/image';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
@@ -119,6 +119,11 @@ const effectEntrySchema = z.object({
   name: z.string().min(1, "Effect name is required."),
 });
 
+const flavorEntrySchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, "Flavor name is required."),
+});
+
 const lineageEntrySchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Name is required."),
@@ -138,6 +143,7 @@ const cultivarFormSchema = z.object({
 
   effects: z.array(effectEntrySchema).optional().default([]),
   medicalEffects: z.array(effectEntrySchema).optional().default([]),
+  flavors: z.array(flavorEntrySchema).optional().default([]),
 
   primaryImageFile: requiredImageFileInputSchema, 
   primaryImageAlt: z.string().optional(),
@@ -205,6 +211,7 @@ export default function AddCultivarPage() {
       terpeneProfile: [],
       effects: [],
       medicalEffects: [],
+      flavors: [],
       primaryImageFile: undefined,
       primaryImageAlt: '',
       primaryImageDataAiHint: '',
@@ -235,6 +242,7 @@ export default function AddCultivarPage() {
   const { fields: terpeneProfileFields, append: appendTerpene, remove: removeTerpene } = useFieldArray({ control, name: "terpeneProfile" });
   const { fields: effectFields, append: appendEffect, remove: removeEffect } = useFieldArray({ control, name: "effects" });
   const { fields: medicalEffectFields, append: appendMedicalEffect, remove: removeMedicalEffect } = useFieldArray({ control, name: "medicalEffects" });
+  const { fields: flavorFields, append: appendFlavor, remove: removeFlavor } = useFieldArray({ control, name: "flavors" });
   const { fields: parentFields, append: appendParent, remove: removeParent } = useFieldArray({ control, name: "parents" });
   const { fields: childrenFields, append: appendChild, remove: removeChild } = useFieldArray({ control, name: "children" });
   const { fields: geneticCertificateFields, append: appendGeneticCertificate, remove: removeGeneticCertificate } = useFieldArray({ control, name: "additionalInfo_geneticCertificates" });
@@ -302,6 +310,7 @@ export default function AddCultivarPage() {
         })) || [],
         effects: data.effects ? data.effects.map(e => e.name).filter(e => e) : [],
         medicalEffects: data.medicalEffects ? data.medicalEffects.map(e => e.name).filter(e => e) : [],
+        flavors: data.flavors ? data.flavors.map(f => f.name).filter(f => f) : [],
         images: primaryImageUrlForFirebase ? [{
             id: `img-${Date.now()}-1`,
             url: primaryImageUrlForFirebase,
@@ -503,6 +512,49 @@ export default function AddCultivarPage() {
             </Button>
             {terpeneProfileFields.length === 0 && <p className="text-sm text-muted-foreground">No terpenes added yet.</p>}
           </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="font-headline text-2xl text-primary flex items-center"><Utensils size={24} className="mr-2" /> Reported Flavors</CardTitle>
+                <CardDescription>Select the common flavors associated with this cultivar.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                {flavorFields.map((field, index) => (
+                    <div key={field.id} className="flex items-end gap-2 p-3 border rounded-md relative bg-muted/30 shadow-sm">
+                        <div className="flex-grow">
+                            <Label htmlFor={`flavors.${index}.name`}>Flavor *</Label>
+                            <Controller
+                                name={`flavors.${index}.name`}
+                                control={control}
+                                defaultValue=""
+                                render={({ field: controllerField }) => (
+                                    <Select onValueChange={controllerField.onChange} value={controllerField.value}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a flavor" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {FLAVOR_OPTIONS.map(flavorName => (
+                                                <SelectItem key={flavorName} value={flavorName}>
+                                                    {flavorName}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
+                            {errors.flavors?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.flavors?.[index]?.name?.message}</p>}
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeFlavor(index)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => appendFlavor({ name: '' })}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Flavor
+                </Button>
+                {flavorFields.length === 0 && <p className="text-sm text-muted-foreground">No flavors added yet.</p>}
+            </CardContent>
         </Card>
 
         <Card className="shadow-lg">
@@ -954,4 +1006,3 @@ export default function AddCultivarPage() {
     </div>
   );
 }
-
