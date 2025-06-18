@@ -14,9 +14,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState, useEffect } from 'react';
+import LoginModal from '@/components/auth/LoginModal';
 
 export default function Header() {
-  const { user, loading, loginWithGoogle, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (user && isLoginModalOpen) {
+      setIsLoginModalOpen(false); // Close modal on successful login
+    }
+  }, [user, isLoginModalOpen]);
 
   return (
     <header className="bg-primary text-primary-foreground shadow-md sticky top-0 z-50">
@@ -68,15 +77,16 @@ export default function Header() {
           ) : (
             <Button 
               variant="outline" 
-              onClick={loginWithGoogle} 
+              onClick={() => setIsLoginModalOpen(true)}
               className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary"
             >
               <LogIn className="mr-2 h-4 w-4" />
-              Login with Google
+              Login
             </Button>
           )}
         </nav>
       </div>
+      <LoginModal isOpen={isLoginModalOpen} onOpenChange={setIsLoginModalOpen} />
     </header>
   );
 }

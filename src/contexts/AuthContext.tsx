@@ -4,13 +4,14 @@
 import type { User } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { auth } from '@/lib/firebase-config';
-import { onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   loginWithGoogle: () => Promise<void>;
+  loginWithEmailPassword: (email: string, password: string) => Promise<boolean>; // Returns true on success
   logout: () => Promise<void>;
 }
 
@@ -35,10 +36,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await signInWithPopup(auth, provider);
       toast({ title: "Login Successful", description: "Welcome back!" });
+      // setLoading(false) will be handled by onAuthStateChanged
     } catch (error) {
       console.error("Error during Google sign-in:", error);
       toast({ title: "Login Failed", description: (error as Error).message || "Could not sign in with Google.", variant: "destructive" });
       setLoading(false);
+    }
+  };
+
+  const loginWithEmailPassword = async (email: string, password: string): Promise<boolean> => {
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({ title: "Login Successful", description: "Welcome back!" });
+      // setLoading(false) will be handled by onAuthStateChanged
+      return true;
+    } catch (error) {
+      console.error("Error during email/password sign-in:", error);
+      toast({ title: "Login Failed", description: (error as Error).message || "Could not sign in with email/password.", variant: "destructive" });
+      setLoading(false);
+      return false;
     }
   };
 
@@ -51,13 +68,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Error during sign-out:", error);
       toast({ title: "Logout Failed", description: (error as Error).message || "Could not log out.", variant: "destructive" });
     } finally {
-      // User state will be updated by onAuthStateChanged
-      // setLoading will also be handled by onAuthStateChanged after user becomes null
+      // setLoading(false) will be handled by onAuthStateChanged
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, loginWithGoogle, loginWithEmailPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -70,3 +86,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
