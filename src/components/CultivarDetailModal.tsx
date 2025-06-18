@@ -48,7 +48,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (initialCultivar && isOpen) { 
+    if (initialCultivar && isOpen) {
         setDisplayedCultivarData(initialCultivar);
         if (!historyStack.length || historyStack[historyStack.length - 1]?.id !== initialCultivar.id) {
             setHistoryStack([initialCultivar]);
@@ -62,7 +62,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
       setHistoryStack([]);
       setIsLoadingLineage(false);
     }
-  }, [initialCultivar, isOpen]);
+  }, [initialCultivar, isOpen, historyStack]);
 
 
   useEffect(() => {
@@ -114,15 +114,15 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   };
 
   const { effectiveParents, effectiveChildren } = useMemo(() => {
-    if (!displayedCultivarData || !cultivarInfoMap) {
+    if (!displayedCultivarData || !cultivarInfoMap || !displayedCultivarData.name) {
       return { effectiveParents: [], effectiveChildren: [] };
     }
 
-    const currentCultivarName = (typeof displayedCultivarData.name === 'string' && displayedCultivarData.name.trim() !== '') ? displayedCultivarData.name : null;
-    if (!currentCultivarName) {
-      return { effectiveParents: [], effectiveChildren: [] };
+    const currentCultivarName = displayedCultivarData.name;
+    if (typeof currentCultivarName !== 'string' || currentCultivarName.trim() === '') {
+        return { effectiveParents: [], effectiveChildren: [] };
     }
-    
+
     const parentsSet = new Set<string>(
       (displayedCultivarData.parents || []).filter(p => typeof p === 'string' && p.trim() !== '')
     );
@@ -130,7 +130,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
       (displayedCultivarData.children || []).filter(c => typeof c === 'string' && c.trim() !== '')
     );
 
-    for (const info of cultivarInfoMap.values()) { 
+    for (const info of cultivarInfoMap.values()) {
       if (typeof info.name !== 'string' || !info.name.trim() || info.name.toLowerCase() === currentCultivarName.toLowerCase()) {
         continue;
       }
@@ -153,10 +153,10 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   }, [displayedCultivarData, cultivarInfoMap]);
 
 
-  if (!displayedCultivarData && !isLoadingLineage && !isOpen) { 
+  if (!displayedCultivarData && !isLoadingLineage && !isOpen) {
     return null;
   }
-   if (!displayedCultivarData && isOpen && !isLoadingLineage) { 
+   if (!displayedCultivarData && isOpen && !isLoadingLineage) {
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 items-center justify-center">
@@ -179,7 +179,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
-        setDisplayedCultivarData(null); 
+        setDisplayedCultivarData(null);
         setHistoryStack([]);
       }
       onOpenChange(open);
@@ -265,10 +265,10 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                             <Badge
                               key={effect}
                               className={cn(
-                                "text-black", 
+                                "text-black",
                                 isNegative
-                                  ? 'bg-destructive/10 border-destructive/30' 
-                                  : 'bg-primary/10 border-primary/30' 
+                                  ? 'bg-destructive/10 border-destructive/30'
+                                  : 'bg-primary/10 border-primary/30'
                               )}
                             >
                               {effect}
