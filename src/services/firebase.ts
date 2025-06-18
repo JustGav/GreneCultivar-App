@@ -35,19 +35,15 @@ export const uploadImage = async (file: File, path: string): Promise<string> => 
 
 export const deleteImageByUrl = async (imageUrl: string): Promise<void> => {
   try {
-    // Firebase storage URLs look like:
-    // https://firebasestorage.googleapis.com/v0/b/your-project-id.appspot.com/o/path%2Fto%2Fyour%2Ffile.jpg?alt=media&token=your-token
-    // We need to extract the path 'path/to/your/file.jpg' (URL decoded)
     const imageRef = ref(storage, imageUrl);
     await deleteObject(imageRef);
     console.log(`Successfully deleted image from storage: ${imageUrl}`);
   } catch (error: any) {
     if (error.code === 'storage/object-not-found') {
       console.warn(`File not found for deletion (may have already been deleted or never existed): ${imageUrl}`);
-      // Not re-throwing as this is often an acceptable state (e.g., already deleted)
     } else {
       console.error(`Error deleting image ${imageUrl} from storage:`, error);
-      throw error; // Re-throw other errors
+      throw error; 
     }
   }
 };
@@ -60,13 +56,15 @@ const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
       return timestamp.toDate().toISOString();
     }
     if (typeof timestamp === 'string') {
-      return timestamp; // Already a string
+      return timestamp; 
     }
-    if (timestamp && typeof timestamp.toDate === 'function') { // Handle older serverTimestamp objects
+    if (timestamp && typeof timestamp.toDate === 'function') { 
         return timestamp.toDate().toISOString();
     }
-    return new Date().toISOString(); // Fallback, though ideally data should be consistent
+    return new Date().toISOString(); 
   };
+
+  const defaultCannabinoidProfile: CannabinoidProfile = { min: undefined, max: undefined };
 
   return {
     id,
@@ -74,12 +72,12 @@ const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
     genetics: data.genetics,
     status: data.status || 'recentlyAdded',
     source: data.source,
-    thc: data.thc as CannabinoidProfile,
-    cbd: data.cbd as CannabinoidProfile,
-    cbc: data.cbc as CannabinoidProfile | undefined,
-    cbg: data.cbg as CannabinoidProfile | undefined,
-    cbn: data.cbn as CannabinoidProfile | undefined,
-    thcv: data.thcv as CannabinoidProfile | undefined,
+    thc: (data.thc || defaultCannabinoidProfile) as CannabinoidProfile,
+    cbd: (data.cbd || defaultCannabinoidProfile) as CannabinoidProfile,
+    cbc: (data.cbc || defaultCannabinoidProfile) as CannabinoidProfile | undefined,
+    cbg: (data.cbg || defaultCannabinoidProfile) as CannabinoidProfile | undefined,
+    cbn: (data.cbn || defaultCannabinoidProfile) as CannabinoidProfile | undefined,
+    thcv: (data.thcv || defaultCannabinoidProfile) as CannabinoidProfile | undefined,
     effects: data.effects || [],
     medicalEffects: data.medicalEffects || [],
     description: data.description,
@@ -109,8 +107,6 @@ const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
 export const getCultivars = async (): Promise<Cultivar[]> => {
   try {
     const cultivarsCol = collection(db, CULTIVARS_COLLECTION);
-    // Order by createdAt descending to get newest first, or name for alphabetical.
-    // For now, let's stick to name as per previous logic.
     const q = query(cultivarsCol, orderBy('name'));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(docSnapshot => mapDocToCultivar(docSnapshot.data(), docSnapshot.id));
@@ -143,6 +139,19 @@ const prepareDataForFirestore = (data: Record<string, any>): Record<string, any>
       cleanedData[key] = data[key];
     }
   }
+  // Ensure cannabinoid profiles are objects, even if empty
+  const cannabinoidFields: (keyof Cultivar)[] = ['thc', 'cbd', 'cbc', 'cbg', 'cbn', 'thcv'];
+  cannabinoidFields.forEach(field => {
+    if (cleanedData[field] && typeof cleanedData[field] === 'object') {
+      if (cleanedData[field].min === undefined) delete cleanedData[field].min;
+      if (cleanedData[field].max === undefined) delete cleanedData[field].max;
+      // If both are undefined, Firestore might store an empty object {} which is fine.
+    } else if (data.hasOwnProperty(field) && cleanedData[field] === undefined) {
+      // If the form intended to clear it, it would pass undefined,
+      // ensure it's an object for Firestore if the field itself is expected.
+      cleanedData[field] = {};
+    }
+  });
   return cleanedData;
 };
 
@@ -218,12 +227,8 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
     const arrayFields: (keyof Cultivar)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile'];
     arrayFields.forEach(field => {
       if (cleanedData[field] === undefined && cultivarData.hasOwnProperty(field)) {
-        // If the intent was to clear an array, it should be passed as an empty array
-        // If it's undefined, it means no change was intended for this array by the form,
-        // so we don't set it to [] unless cultivarData actually passed it as undefined explicitly.
-        // However, the current logic in Edit form sets it to [] if it should be empty.
         if (cultivarData[field] === undefined) {
-             cleanedData[field] = []; // Ensure it's at least an empty array if explicitly cleared
+             cleanedData[field] = []; 
         }
       }
     });

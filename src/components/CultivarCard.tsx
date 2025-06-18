@@ -23,7 +23,8 @@ function calculateAverageRating(reviews: Cultivar['reviews']): number {
   return Math.round((total / reviews.length) * 10) / 10; 
 }
 
-const getStatusBadgeVariant = (status: CultivarStatus): "default" | "secondary" | "destructive" | "outline" => {
+const getStatusBadgeVariant = (status?: CultivarStatus): "default" | "secondary" | "destructive" | "outline" => {
+  if (!status) return 'outline';
   switch (status) {
     case 'verified':
       return 'default'; // Primary color (green)
@@ -36,7 +37,8 @@ const getStatusBadgeVariant = (status: CultivarStatus): "default" | "secondary" 
   }
 };
 
-const getStatusIcon = (status: CultivarStatus) => {
+const getStatusIcon = (status?: CultivarStatus) => {
+  if (!status) return <Info size={14} className="mr-1" />;
   switch (status) {
     case 'verified':
       return <ShieldCheck size={14} className="mr-1" />;
@@ -86,6 +88,11 @@ export default function CultivarCard({ cultivar, onStatusChange }: CultivarCardP
   
   const isArchived = cultivar.status === 'archived';
 
+  const thcMin = cultivar.thc?.min ?? 'N/A';
+  const thcMax = cultivar.thc?.max ?? 'N/A';
+  const cbdMin = cultivar.cbd?.min ?? 'N/A';
+  const cbdMax = cultivar.cbd?.max ?? 'N/A';
+
   return (
     <Card className={cn(
         "flex flex-col h-full hover:shadow-xl transition-shadow duration-300 ease-in-out animate-fadeIn",
@@ -93,7 +100,7 @@ export default function CultivarCard({ cultivar, onStatusChange }: CultivarCardP
       )}
     >
       <CardHeader>
-        {cultivar.images.length > 0 && (
+        {cultivar.images && cultivar.images.length > 0 && (
           <div className="relative w-full h-48 mb-4 rounded-t-lg overflow-hidden">
             <Image
               src={cultivar.images[0].url}
@@ -108,10 +115,12 @@ export default function CultivarCard({ cultivar, onStatusChange }: CultivarCardP
         )}
         <div className="flex justify-between items-start">
             <CardTitle className="font-headline text-2xl text-primary">{cultivar.name}</CardTitle>
-            <Badge variant={getStatusBadgeVariant(cultivar.status)} className="capitalize flex items-center text-xs h-fit">
-                {getStatusIcon(cultivar.status)}
-                {STATUS_LABELS[cultivar.status]}
-            </Badge>
+            {cultivar.status && (
+                <Badge variant={getStatusBadgeVariant(cultivar.status)} className="capitalize flex items-center text-xs h-fit">
+                    {getStatusIcon(cultivar.status)}
+                    {STATUS_LABELS[cultivar.status]}
+                </Badge>
+            )}
         </div>
         <CardDescription className="flex items-center gap-2">
           <Leaf size={16} className="text-primary" />
@@ -122,19 +131,19 @@ export default function CultivarCard({ cultivar, onStatusChange }: CultivarCardP
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
             <ThermometerSun size={16} className="text-red-500" /> 
-            <span>THC: {cultivar.thc.min}% - {cultivar.thc.max}%</span>
+            <span>THC: {thcMin}{thcMin !== 'N/A' ? '%' : ''} - {thcMax}{thcMax !== 'N/A' ? '%' : ''}</span>
           </div>
           <div className="flex items-center gap-2">
             <ThermometerSnowflake size={16} className="text-blue-500" />
-            <span>CBD: {cultivar.cbd.min}% - {cultivar.cbd.max}%</span>
+            <span>CBD: {cbdMin}{cbdMin !== 'N/A' ? '%' : ''} - {cbdMax}{cbdMax !== 'N/A' ? '%' : ''}</span>
           </div>
           <div className="mt-2">
             <h4 className="font-semibold text-muted-foreground">Effects:</h4>
             <div className="flex flex-wrap gap-1 mt-1">
-              {cultivar.effects.slice(0, 3).map(effect => (
+              {cultivar.effects && cultivar.effects.slice(0, 3).map(effect => (
                 <Badge key={effect} variant="secondary" className="bg-accent/20 text-accent-foreground/80">{effect}</Badge>
               ))}
-              {cultivar.effects.length > 3 && <Badge variant="outline">...</Badge>}
+              {cultivar.effects && cultivar.effects.length > 3 && <Badge variant="outline">...</Badge>}
             </div>
           </div>
         </div>
@@ -168,3 +177,4 @@ export default function CultivarCard({ cultivar, onStatusChange }: CultivarCardP
     </Card>
   );
 }
+
