@@ -119,11 +119,17 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
               className="transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
+            {cultivar.status === 'recentlyAdded' && (
+              <Badge variant={getStatusBadgeVariant('recentlyAdded')} className="absolute top-2 right-2 z-10 capitalize flex items-center text-xs h-fit py-1 px-2 shadow-md">
+                {getStatusIcon('recentlyAdded')}
+                {STATUS_LABELS['recentlyAdded']}
+              </Badge>
+            )}
           </div>
         )}
         <div className="flex justify-between items-start">
             <CardTitle className="font-headline text-2xl text-primary">{cultivar.name}</CardTitle>
-            {cultivar.status && (
+            {cultivar.status && cultivar.status !== 'recentlyAdded' && (
                 <Badge variant={getStatusBadgeVariant(cultivar.status)} className="capitalize flex items-center text-xs h-fit">
                     {getStatusIcon(cultivar.status)}
                     {STATUS_LABELS[cultivar.status]}
@@ -139,11 +145,11 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
         <div className="space-y-3 text-sm">
           <div className="flex items-center gap-2">
             <ThermometerSun size={16} className="text-red-500" /> 
-            <span>THC: {thcMin}{thcMin !== 'N/A' ? '%' : ''} - {thcMax}{thcMax !== 'N/A' ? '%' : ''}</span>
+            <span>THC: {thcMin}{thcMin !== 'N/A' && thcMin !== undefined && thcMin !== 0 ? '%' : ''} - {thcMax}{thcMax !== 'N/A' && thcMax !== undefined && thcMax !== 0 ? '%' : ''}</span>
           </div>
           <div className="flex items-center gap-2">
             <ThermometerSnowflake size={16} className="text-blue-500" />
-            <span>CBD: {cbdMin}{cbdMin !== 'N/A' ? '%' : ''} - {cbdMax}{cbdMax !== 'N/A' ? '%' : ''}</span>
+            <span>CBD: {cbdMin}{cbdMin !== 'N/A' && cbdMin !== undefined && cbdMin !== 0 ? '%' : ''} - {cbdMax}{cbdMax !== 'N/A' && cbdMax !== undefined && cbdMax !== 0 ? '%' : ''}</span>
           </div>
           <div className="mt-2">
             <h4 className="font-semibold text-muted-foreground">Effects:</h4>
@@ -172,7 +178,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
                 {cultivar.terpeneProfile.slice(0, 3).map(terpene => (
                   <Badge key={terpene.id} variant="outline" className="bg-blue-500/10 border-blue-500/30 text-foreground">
                     {terpene.name}
-                    {terpene.percentage !== undefined && terpene.percentage > 0 && (
+                    {terpene.percentage && terpene.percentage > 0 && (
                       <span className="ml-1 text-xs opacity-75">({terpene.percentage}%)</span>
                     )}
                   </Badge>
@@ -190,18 +196,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
         </div>
         <div className={cn("grid grid-cols-1 gap-2 w-full", isPublicView ? "" : "sm:grid-cols-3")}>
           {isPublicView ? (
-            <Button 
-                variant="default" 
-                className="w-full text-sm" 
-                onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if(onViewInModal) onViewInModal(cultivar); 
-                }}
-                disabled={isArchived}
-                 aria-label={`View details for ${cultivar.name} in modal`}
-            >
-              View Details
-            </Button>
+            null // No explicit button for public view, card is clickable
           ) : (
             <>
               <Link href={`/cultivars/${cultivar.id}`} className="w-full" aria-label={`View full details for ${cultivar.name}`}>
