@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -128,6 +128,7 @@ export default function CultivarDetailsPage() {
   );
   const hasEffects = cultivar.effects && cultivar.effects.length > 0;
   const hasMedicalEffects = cultivar.medicalEffects && cultivar.medicalEffects.length > 0;
+  const hasLineage = (cultivar.parents && cultivar.parents.length > 0) || (cultivar.children && cultivar.children.length > 0);
 
 
   return (
@@ -159,6 +160,15 @@ export default function CultivarDetailsPage() {
             <CardContent>
               <p className="text-lg font-body text-foreground/90 leading-relaxed mb-6">{cultivar.description}</p>
               
+              {cultivar.supplierUrl && (
+                <div className="mb-6">
+                    <a href={cultivar.supplierUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-primary hover:text-accent font-medium transition-colors">
+                        <ExternalLink size={16} className="mr-2"/>
+                        Visit Supplier
+                    </a>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="space-y-3">
                   <h3 className="font-semibold text-lg flex items-center"><Percent size={20} className="mr-2 text-accent"/>Cannabinoid Profile</h3>
@@ -169,7 +179,6 @@ export default function CultivarDetailsPage() {
                   <CannabinoidDisplay label="CBN" profile={cultivar.cbn} />
                   <CannabinoidDisplay label="THCV" profile={cultivar.thcv} />
                 </div>
-                {/* Effects are now in their own card */}
               </div>
 
               {hasTerpeneProfile && (
@@ -318,6 +327,38 @@ export default function CultivarDetailsPage() {
             </Card>
           )}
 
+          {hasLineage && (
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="font-headline text-2xl text-primary flex items-center">
+                  <Network size={28} className="mr-3 text-primary/80" /> Lineage
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {cultivar.parents && cultivar.parents.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-md mb-1">Parents:</h4>
+                    <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
+                      {cultivar.parents.map((parent, index) => (
+                        <li key={`parent-${index}`}>{parent}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {cultivar.children && cultivar.children.length > 0 && (
+                  <div>
+                    <h4 className="font-semibold text-md mb-1">Children:</h4>
+                    <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
+                      {cultivar.children.map((child, index) => (
+                        <li key={`child-${index}`}>{child}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
 
           {hasAdditionalInfo && cultivar.additionalInfo && (
             <Card className="shadow-lg">
@@ -428,4 +469,3 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
-

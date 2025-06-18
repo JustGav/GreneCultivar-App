@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network } from 'lucide-react';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
 
@@ -39,7 +39,7 @@ const yieldRangeSchema = z.object({
 });
 
 const additionalFileSchema = z.object({
-  id: z.string().optional(), // for useFieldArray key
+  id: z.string().optional(), 
   name: z.string().min(1, "File name is required."),
   url: z.string().url({ message: "Please enter a valid URL." }),
 });
@@ -49,7 +49,7 @@ const additionalImageFileSchema = additionalFileSchema.extend({
 });
 
 const terpeneEntrySchema = z.object({
-  id: z.string().optional(), // for useFieldArray key
+  id: z.string().optional(), 
   name: z.string().min(1, "Terpene name is required."),
   percentage: z.coerce.number().min(0, "Percentage must be >=0").max(100, "Percentage must be <=100").optional(),
   description: z.string().optional(),
@@ -65,13 +65,18 @@ const pricingSchema = z.object({
     }
     return true;
   }, {
-    message: "Min price must be less than or equal to Max price.",
+    message: "Min price (€) must be less than or equal to Max price (€).",
     path: ["max"], 
   }).optional();
 
 const effectEntrySchema = z.object({
-  id: z.string().optional(), // for useFieldArray key
+  id: z.string().optional(), 
   name: z.string().min(1, "Effect name is required."),
+});
+
+const lineageEntrySchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, "Name is required."),
 });
 
 const cultivarFormSchema = z.object({
@@ -111,10 +116,10 @@ const cultivarFormSchema = z.object({
     yieldPerM2: yieldRangeSchema.optional(),
   }).refine(data => (data.minHeight === undefined || data.maxHeight === undefined) || data.minHeight <= data.maxHeight, {
     message: "Min height must be less than or equal to Max height",
-    path: ["minHeight"],
+    path: ["maxHeight"], // Error shown on maxHeight field for better UX
   }).refine(data => (data.minMoisture === undefined || data.maxMoisture === undefined) || data.minMoisture <= data.maxMoisture, {
     message: "Min moisture must be less than or equal to Max moisture",
-    path: ["minMoisture"],
+    path: ["maxMoisture"], // Error shown on maxMoisture field
   }).optional(),
   
   additionalInfo_geneticCertificates: z.array(additionalFileSchema).optional(),
@@ -124,6 +129,10 @@ const cultivarFormSchema = z.object({
 
   terpeneProfile: z.array(terpeneEntrySchema).optional(),
   pricing: pricingSchema,
+
+  supplierUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
+  parents: z.array(lineageEntrySchema).optional().default([]),
+  children: z.array(lineageEntrySchema).optional().default([]),
 });
 
 type CultivarFormData = z.infer<typeof cultivarFormSchema>;
@@ -163,6 +172,9 @@ export default function AddCultivarPage() {
       additionalInfo_terpeneInfos: [],
       terpeneProfile: [],
       pricing: { min: undefined, max: undefined, avg: undefined },
+      supplierUrl: '',
+      parents: [],
+      children: [],
     },
   });
 
@@ -173,6 +185,8 @@ export default function AddCultivarPage() {
   const { fields: cannabinoidInfoFields, append: appendCannabinoidInfo, remove: removeCannabinoidInfo } = useFieldArray({ control, name: "additionalInfo_cannabinoidInfos" });
   const { fields: terpeneInfoFields, append: appendTerpeneInfo, remove: removeTerpeneInfo } = useFieldArray({ control, name: "additionalInfo_terpeneInfos" });
   const { fields: terpeneProfileFields, append: appendTerpene, remove: removeTerpene } = useFieldArray({ control, name: "terpeneProfile" });
+  const { fields: parentFields, append: appendParent, remove: removeParent } = useFieldArray({ control, name: "parents" });
+  const { fields: childrenFields, append: appendChild, remove: removeChild } = useFieldArray({ control, name: "children" });
 
 
   const onSubmit = (data: CultivarFormData) => {
@@ -224,6 +238,9 @@ export default function AddCultivarPage() {
               avg: data.pricing.avg,
             }
           : undefined,
+        supplierUrl: data.supplierUrl || undefined,
+        parents: data.parents ? data.parents.map(p => p.name).filter(name => name) : [],
+        children: data.children ? data.children.map(c => c.name).filter(name => name) : [],
       };
       
       const processAdditionalInfoCategory = (
@@ -276,7 +293,6 @@ export default function AddCultivarPage() {
   
   const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string) => {
     const fieldPrefix = String(fieldPrefixKey);
-    // Type assertion to help TypeScript understand the structure for error handling
     const errorsForPrefix = errors[fieldPrefix.split('.')[0] as keyof CultivarFormData] as any;
     const nestedErrorPath = fieldPrefix.includes('.') ? fieldPrefix.split('.').slice(1).join('.') : undefined;
 
@@ -285,21 +301,22 @@ export default function AddCultivarPage() {
     if (nestedErrorPath && errorsForPrefix && errorsForPrefix[nestedErrorPath]) {
         minError = errorsForPrefix[nestedErrorPath]?.min?.message;
         maxError = errorsForPrefix[nestedErrorPath]?.max?.message;
-        rootError = errorsForPrefix[nestedErrorPath]?.message;
-    } else if (errorsForPrefix) {
+        rootError = errorsForPrefix[nestedErrorPath]?.message; // For object-level errors like refine
+    } else if (errorsForPrefix && !nestedErrorPath) { // Direct properties of errors object
         minError = errorsForPrefix?.min?.message;
         maxError = errorsForPrefix?.max?.message;
-        rootError = errorsForPrefix?.message;
+        rootError = errorsForPrefix?.message; // For object-level errors like refine
     }
 
 
     return (
-        <div className="grid grid-cols-2 gap-4 items-end">
+        <div className="grid grid-cols-2 gap-4 items-start"> {/* Changed items-end to items-start */}
             <div>
                 <Label htmlFor={`${fieldPrefix}.min`}>{label} Min {subLabel}</Label>
                 <Input id={`${fieldPrefix}.min`} type="number" step="0.01" {...register(`${fieldPrefix}.min` as any)} placeholder="e.g., 18.0" />
                 {minError && <p className="text-sm text-destructive mt-1">{minError}</p>}
-                {rootError && <p className="text-sm text-destructive mt-1">{rootError}</p>}
+                {/* Display root error only once, typically under the first input or a common area if not specific to min/max */}
+                {rootError && !minError && !maxError && <p className="text-sm text-destructive mt-1">{rootError}</p>}
             </div>
             <div>
                 <Label htmlFor={`${fieldPrefix}.max`}>{label} Max {subLabel}</Label>
@@ -354,6 +371,11 @@ export default function AddCultivarPage() {
               <Label htmlFor="description">Description *</Label>
               <Textarea id="description" {...register("description")} placeholder="Describe the cultivar..." rows={4} />
               {errors.description && <p className="text-sm text-destructive mt-1">{errors.description.message}</p>}
+            </div>
+            <div>
+                <Label htmlFor="supplierUrl">Supplier URL</Label>
+                <Input id="supplierUrl" type="url" {...register("supplierUrl")} placeholder="https://example-supplier.com/cultivar-link" />
+                {errors.supplierUrl && <p className="text-sm text-destructive mt-1">{errors.supplierUrl.message}</p>}
             </div>
           </CardContent>
         </Card>
@@ -525,6 +547,7 @@ export default function AddCultivarPage() {
                     {errors.terpeneProfile?.[index]?.percentage && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile[index]?.percentage?.message}</p>}
                   </div>
                 </div>
+                 {/* Removed Aroma/Notes field for Terpene */}
                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeTerpene(index)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -573,7 +596,11 @@ export default function AddCultivarPage() {
         <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center"><Sprout size={24} className="mr-2" /> Plant Characteristics</CardTitle>
-                 {errors.plantCharacteristics?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.message}</p>}
+                 {errors.plantCharacteristics?.minHeight?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.minHeight.message}</p>}
+                 {errors.plantCharacteristics?.maxHeight?.message && !errors.plantCharacteristics.minHeight?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxHeight.message}</p>}
+                 {errors.plantCharacteristics?.minMoisture?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.minMoisture.message}</p>}
+                 {errors.plantCharacteristics?.maxMoisture?.message && !errors.plantCharacteristics.minMoisture?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxMoisture.message}</p>}
+
             </CardHeader>
             <CardContent className="space-y-6">
                 <div>
@@ -582,12 +609,10 @@ export default function AddCultivarPage() {
                         <div>
                             <Label htmlFor="plantCharacteristics.minHeight">Min Height</Label>
                             <Input id="plantCharacteristics.minHeight" type="number" step="0.1" {...register("plantCharacteristics.minHeight")} placeholder="e.g., 60" />
-                            {errors.plantCharacteristics?.minHeight?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.minHeight.message}</p>}
                         </div>
                         <div>
                             <Label htmlFor="plantCharacteristics.maxHeight">Max Height</Label>
                             <Input id="plantCharacteristics.maxHeight" type="number" step="0.1" {...register("plantCharacteristics.maxHeight")} placeholder="e.g., 120" />
-                            {errors.plantCharacteristics?.maxHeight?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxHeight.message}</p>}
                         </div>
                     </div>
                 </div>
@@ -598,12 +623,10 @@ export default function AddCultivarPage() {
                         <div>
                             <Label htmlFor="plantCharacteristics.minMoisture">Min Moisture</Label>
                             <Input id="plantCharacteristics.minMoisture" type="number" step="0.1" {...register("plantCharacteristics.minMoisture")} placeholder="e.g., 9" />
-                            {errors.plantCharacteristics?.minMoisture?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.minMoisture.message}</p>}
                         </div>
                         <div>
                             <Label htmlFor="plantCharacteristics.maxMoisture">Max Moisture</Label>
                             <Input id="plantCharacteristics.maxMoisture" type="number" step="0.1" {...register("plantCharacteristics.maxMoisture")} placeholder="e.g., 12" />
-                            {errors.plantCharacteristics?.maxMoisture?.message && <p className="text-sm text-destructive mt-1">{errors.plantCharacteristics.maxMoisture.message}</p>}
                         </div>
                     </div>
                 </div>
@@ -635,7 +658,6 @@ export default function AddCultivarPage() {
                     <Label htmlFor="pricing.max">Max Price (€)</Label>
                     <Input id="pricing.max" type="number" step="0.01" {...register("pricing.max")} placeholder="e.g., 11.50" />
                     {errors.pricing?.max && <p className="text-sm text-destructive mt-1">{errors.pricing.max.message}</p>}
-                     {/* Display root-level error for pricing object if it exists (e.g. min > max) */}
                      {errors.pricing && !errors.pricing.min && !errors.pricing.max && !errors.pricing.avg && errors.pricing.message && (
                         <p className="text-sm text-destructive mt-1">{errors.pricing.message}</p>
                     )}
@@ -648,6 +670,56 @@ export default function AddCultivarPage() {
                 </div>
             </CardContent>
         </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-2xl text-primary flex items-center"><Users size={24} className="mr-2" /> Lineage: Parents</CardTitle>
+            <CardDescription>List the parent cultivars.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {parentFields.map((field, index) => (
+              <div key={field.id} className="flex items-end gap-2 p-3 border rounded-md relative bg-muted/30 shadow-sm">
+                <div className="flex-grow">
+                  <Label htmlFor={`parents.${index}.name`}>Parent Name *</Label>
+                  <Input {...register(`parents.${index}.name`)} placeholder="e.g., OG Kush" />
+                  {errors.parents?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.parents[index]?.name?.message}</p>}
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeParent(index)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => appendParent({ name: '' })}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Parent
+            </Button>
+            {parentFields.length === 0 && <p className="text-sm text-muted-foreground">No parents added yet.</p>}
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-2xl text-primary flex items-center"><Users size={24} className="mr-2" /> Lineage: Children</CardTitle>
+            <CardDescription>List the child cultivars (if any).</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {childrenFields.map((field, index) => (
+              <div key={field.id} className="flex items-end gap-2 p-3 border rounded-md relative bg-muted/30 shadow-sm">
+                <div className="flex-grow">
+                  <Label htmlFor={`children.${index}.name`}>Child Name *</Label>
+                  <Input {...register(`children.${index}.name`)} placeholder="e.g., Serene Dream" />
+                  {errors.children?.[index]?.name && <p className="text-sm text-destructive mt-1">{errors.children[index]?.name?.message}</p>}
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeChild(index)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={() => appendChild({ name: '' })}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Child
+            </Button>
+            {childrenFields.length === 0 && <p className="text-sm text-muted-foreground">No children added yet.</p>}
+          </CardContent>
+        </Card>
         
         <Card className="shadow-lg">
             <CardHeader>
@@ -655,7 +727,6 @@ export default function AddCultivarPage() {
                 <CardDescription>Provide URLs for relevant documents or images. Add multiple files if needed.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {/* Genetic Certificates */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><Award size={18} className="mr-2 text-accent"/>Genetic Certificates</h4>
@@ -686,7 +757,6 @@ export default function AddCultivarPage() {
                 </div>
                 <Separator />
 
-                {/* Plant Pictures */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><ImageIcon size={18} className="mr-2 text-accent"/>Plant Pictures</h4>
@@ -721,7 +791,6 @@ export default function AddCultivarPage() {
                 </div>
                 <Separator />
 
-                {/* Cannabinoid Info */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FileText size={18} className="mr-2 text-accent"/>Cannabinoid Information</h4>
@@ -752,7 +821,6 @@ export default function AddCultivarPage() {
                 </div>
                 <Separator />
                 
-                {/* Terpene Info */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FlaskConical size={18} className="mr-2 text-accent"/>Terpene Information</h4>

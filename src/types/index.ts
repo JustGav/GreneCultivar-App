@@ -94,4 +94,7 @@ export interface Cultivar {
   };
   terpeneProfile?: Terpene[];
   pricing?: PricingProfile;
+  supplierUrl?: string;
+  parents?: string[];
+  children?: string[];
 }

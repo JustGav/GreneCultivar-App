@@ -37,6 +37,7 @@ export const TERPENE_OPTIONS: { name: string; category: string }[] = [
   { name: "Fenchol", category: TERPENE_CATEGORIES.ADDITIONAL },
   { name: "Terpineol", category: TERPENE_CATEGORIES.ADDITIONAL },
   { name: "Bergamotene", category: TERPENE_CATEGORIES.ADDITIONAL },
+  // { name: "Valencene", category: TERPENE_CATEGORIES.ADDITIONAL }, // Already in Secondary
 ];
 
 export const groupTerpenesByCategory = () => {
@@ -137,7 +138,10 @@ export const mockCultivars: Cultivar[] = [
       { id: 'tp1-2-gls', name: 'Beta-Caryophyllene', description: 'Spicy, peppery, woody', percentage: 0.5 },
       { id: 'tp1-3-gls', name: 'Limonene', description: 'Citrus, lemon, fresh', percentage: 0.3 },
     ],
-    pricing: { min: 8, max: 12, avg: 10 }
+    pricing: { min: 8, max: 12, avg: 10 },
+    supplierUrl: 'https://example-growers.com/greenleaf-serenity',
+    parents: ['OG Kush', 'Purple Urkle'],
+    children: ['Serene Dream'],
   },
   {
     id: '2',
@@ -186,7 +190,9 @@ export const mockCultivars: Cultivar[] = [
       { id: 'tp2-1-gau', name: 'Terpinolene', description: 'Fruity, floral, piney', percentage: 1.2 },
       { id: 'tp2-2-gau', name: 'Ocimene', description: 'Sweet, herbal, woody', percentage: 0.6 },
     ],
-    pricing: { avg: 15 }
+    pricing: { avg: 15 },
+    supplierUrl: 'https://aurora-cultivars.com/golden-aura',
+    parents: ['Durban Poison', 'Jack Herer'],
   },
   {
     id: '3',
@@ -227,7 +233,8 @@ export const mockCultivars: Cultivar[] = [
       { id: 'tp3-1-mhb', name: 'Alpha-Pinene', description: 'Pine, woody, sharp', percentage: 0.7 },
       { id: 'tp3-2-mhb', name: 'Humulene', description: 'Earthy, woody, spicy', percentage: 0.4 },
     ],
-    pricing: { min: 9, max: 14 }
+    pricing: { min: 9, max: 14 },
+    children: ['Harmony Haze', 'Mystic Muffin'],
   },
   {
     id: '4',
@@ -261,6 +268,7 @@ export const mockCultivars: Cultivar[] = [
       ]
     },
     terpeneProfile: [],
+    parents: ['Thai Sativa', 'Haze'],
   },
   {
     id: '5',
@@ -268,7 +276,7 @@ export const mockCultivars: Cultivar[] = [
     genetics: 'Ruderalis',
     thc: { min: 10, max: 15 },
     cbd: { min: 0.5, max: 1.0 },
-    effects: ['Calm', 'Relaxed'], // Simplified from 'Mild', 'Relaxed', 'Quick Onset'
+    effects: ['Calm', 'Relaxed'], 
     medicalEffects: ['Stress Relief'],
     description: 'A hardy Ruderalis strain known for its autoflowering capabilities and resilience. Provides a mild, manageable effect perfect for beginners or those seeking a less intense experience. Earthy and slightly woody notes.',
     images: [
@@ -299,6 +307,5 @@ export const mockCultivars: Cultivar[] = [
 ];
 
 export const getAllEffects = (): string[] => {
-  // Now uses the predefined EFFECT_OPTIONS for consistency in the filter
   return EFFECT_OPTIONS;
 };

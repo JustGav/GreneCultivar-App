@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Edit3, Percent, Clock, Sprout, Paperclip, PlusCircle, Palette, DollarSign, Sunrise, Smile, Stethoscope } from "lucide-react";
+import { ArrowLeft, Edit3, Percent, Clock, Sprout, Paperclip, PlusCircle, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network } from "lucide-react";
 
 export default function AddCultivarLoading() {
   return (
@@ -17,7 +17,7 @@ export default function AddCultivarLoading() {
           <Skeleton className="h-5 w-full mt-1" /> {/* Description */}
         </CardHeader>
         <CardContent className="space-y-6">
-          {[1, 2, 3].map(i => ( // Basic info fields
+          {[1, 2, 3, 4].map(i => ( // Basic info fields + supplier URL
             <div key={i} className="space-y-2">
               <Skeleton className="h-5 w-1/4" /> {/* Label */}
               <Skeleton className="h-10 w-full" /> {/* Input */}
@@ -112,7 +112,6 @@ export default function AddCultivarLoading() {
           <Skeleton className="h-5 w-full mt-1" /> {/* Description */}
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Placeholder for one terpene entry */}
           <div className="p-3 border rounded-md space-y-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -137,7 +136,7 @@ export default function AddCultivarLoading() {
             </div>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1,2,3,4,5].map(i => ( // For Germination, Rooting, Vegetative, Flowering, Harvest
+            {[1,2,3,4,5].map(i => ( 
                  <div key={i} className="space-y-2">
                     <Skeleton className="h-5 w-1/3" />
                     <Skeleton className="h-10 w-full" />
@@ -155,13 +154,13 @@ export default function AddCultivarLoading() {
         </CardHeader>
         <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Skeleton className="h-20 w-full" /> {/* Min/Max Height */}
-                <Skeleton className="h-20 w-full" /> 
+                <Skeleton className="h-10 w-full" /> {/* Min Height Label + Input */}
+                <Skeleton className="h-10 w-full" /> {/* Max Height Label + Input */}
             </div>
              <Skeleton className="h-px w-full" /> {/* Separator */}
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Skeleton className="h-20 w-full" /> {/* Min/Max Moisture */}
-                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-10 w-full" /> {/* Min Moisture Label + Input */}
+                <Skeleton className="h-10 w-full" /> {/* Max Moisture Label + Input */}
             </div>
             <Skeleton className="h-px w-full" /> {/* Separator */}
             <Skeleton className="h-28 w-full" /> {/* Yields */}
@@ -192,6 +191,42 @@ export default function AddCultivarLoading() {
         </CardContent>
       </Card>
 
+      {/* Lineage Parents Skeleton */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center">
+            <Users size={24} className="mr-2 text-muted-foreground/50" />
+            <Skeleton className="h-8 w-1/2" /> {/* Section Title: Parents */}
+          </div>
+          <Skeleton className="h-5 w-full mt-1" /> {/* Description */}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-3 border rounded-md space-y-2">
+            <Skeleton className="h-4 w-1/3 mb-1" /> {/* Label Name */}
+            <Skeleton className="h-10 w-full" /> {/* Name Input */}
+          </div>
+          <Skeleton className="h-9 w-32" /> {/* Add Parent Button */}
+        </CardContent>
+      </Card>
+
+      {/* Lineage Children Skeleton */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center">
+            <Users size={24} className="mr-2 text-muted-foreground/50" />
+            <Skeleton className="h-8 w-1/2" /> {/* Section Title: Children */}
+          </div>
+          <Skeleton className="h-5 w-full mt-1" /> {/* Description */}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-3 border rounded-md space-y-2">
+            <Skeleton className="h-4 w-1/3 mb-1" /> {/* Label Name */}
+            <Skeleton className="h-10 w-full" /> {/* Name Input */}
+          </div>
+          <Skeleton className="h-9 w-32" /> {/* Add Child Button */}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <div className="flex items-center">
@@ -201,13 +236,12 @@ export default function AddCultivarLoading() {
           <Skeleton className="h-5 w-full mt-1" /> {/* Description */}
         </CardHeader>
         <CardContent className="space-y-6">
-          {[1, 2, 3, 4].map(i => ( // Loop for 4 categories
+          {[1, 2, 3, 4].map(i => ( 
             <div key={i} className="space-y-3">
               <div className="flex justify-between items-center">
                 <Skeleton className="h-6 w-1/3" /> {/* File Category Title */}
                 <Skeleton className="h-8 w-28" /> {/* Add File Button */}
               </div>
-              {/* Placeholder for one file entry per category */}
               <div className="p-3 border rounded-md space-y-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -219,7 +253,7 @@ export default function AddCultivarLoading() {
                         <Skeleton className="h-10 w-full" /> {/* URL Input */}
                     </div>
                 </div>
-                {i === 1 && ( /* Example: AI Hint for second category (Plant Pictures) */
+                {i === 1 && ( 
                     <div>
                         <Skeleton className="h-4 w-1/3 mb-1" /> {/* Label */}
                         <Skeleton className="h-10 w-full" /> {/* AI Hint Input */}
