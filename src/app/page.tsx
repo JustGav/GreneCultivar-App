@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Cultivar, Genetics, CultivarStatus } from '@/types';
 import { EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data';
-import { getCultivars } from '@/services/firebase'; // Removed updateCultivarStatus
+import { getCultivars } from '@/services/firebase';
 import CultivarCard from '@/components/CultivarCard';
 import CultivarDetailModal from '@/components/CultivarDetailModal';
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
 
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
@@ -47,10 +48,11 @@ export default function CultivarBrowserPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
-  const [showArchived, setShowArchived] = useState(false); // Public view probably shouldn't show archived by default
+  const [showArchived, setShowArchived] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
 
   const [selectedCultivarForModal, setSelectedCultivarForModal] = useState<Cultivar | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -112,7 +114,6 @@ export default function CultivarBrowserPage() {
   const filteredAndSortedCultivars = useMemo(() => {
     let filtered = allCultivars;
 
-    // For public page, default to NOT showing archived unless explicitly toggled
     if (!showArchived) {
       filtered = filtered.filter(c => c.status !== 'archived');
     }
@@ -209,7 +210,6 @@ export default function CultivarBrowserPage() {
               Discover your next favorite strain. Filter by effects, flavors, or search by name.
             </p>
           </div>
-          {/* "Add New Cultivar" button removed for public view */}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 items-end pt-4">
@@ -240,11 +240,17 @@ export default function CultivarBrowserPage() {
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+          
+          {!authLoading && user && ( // Only show "Show Archived" if user is logged in
+            <Button onClick={handleShowArchivedToggle} variant="outline" className="w-full">
+              {showArchived ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+              {showArchived ? 'Hide Archived' : 'Show Archived'}
+            </Button>
+          )}
+          {/* If user is not logged in, this space will be empty or adjust layout if needed */}
+          {!user && <div className="lg:col-span-1"></div>}
 
-          <Button onClick={handleShowArchivedToggle} variant="outline" className="w-full">
-            {showArchived ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-            {showArchived ? 'Hide Archived' : 'Show Archived'}
-          </Button>
+
         </div>
 
         <Accordion type="single" collapsible className="w-full">
@@ -309,10 +315,10 @@ export default function CultivarBrowserPage() {
         </Accordion>
       </section>
 
-      {isLoading ? (
+      {isLoading || authLoading ? ( // Show loading spinner if either data or auth is loading
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-          <p className="text-lg text-muted-foreground">Loading cultivars...</p>
+          <p className="text-lg text-muted-foreground">{authLoading ? 'Checking authentication...' : 'Loading cultivars...'}</p>
         </div>
       ) : paginatedCultivars.length > 0 ? (
         <>
