@@ -157,6 +157,32 @@ export const mockCultivars: Cultivar[] = [
       ]
     }
   },
+  {
+    id: '5',
+    name: 'Arctic AutoBloom',
+    genetics: 'Ruderalis',
+    thc: { min: 10, max: 15 },
+    cbd: { min: 0.5, max: 1.0 },
+    effects: ['Mild', 'Relaxed', 'Quick Onset'],
+    description: 'A hardy Ruderalis strain known for its autoflowering capabilities and resilience. Provides a mild, manageable effect perfect for beginners or those seeking a less intense experience. Earthy and slightly woody notes.',
+    images: [
+      { id: 'img5-1', url: 'https://placehold.co/600x400.png', alt: 'Arctic AutoBloom Plant', "data-ai-hint": "ruderalis plant" },
+    ],
+    reviews: [
+      { id: 'rev5-1', user: 'Frank', rating: 4, text: 'Super easy to grow and harvest. Decent, mild buzz.', createdAt: new Date(Date.now() - 86400000 * 1).toISOString(), sentimentScore: 0.6 },
+    ],
+    cultivationPhases: {
+      rooting: "5-10 days",
+      vegetative: "2-3 weeks",
+      flowering: "6-8 weeks (autoflower)",
+      harvest: "Around 8-10 weeks from seed"
+    },
+    plantCharacteristics: {
+      minHeight: 30,
+      maxHeight: 70,
+      yieldPerPlant: { min: 15, max: 30 },
+    },
+  }
 ];
 
 export const getAllEffects = (): string[] => {

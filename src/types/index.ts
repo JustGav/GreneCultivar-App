@@ -15,7 +15,7 @@ export interface Review {
   createdAt: string; // ISO date string
 }
 
-export type Genetics = 'Indica' | 'Sativa' | 'Hybrid';
+export type Genetics = 'Indica' | 'Sativa' | 'Hybrid' | 'Ruderalis';
 
 export interface CannabinoidProfile {
   min: number;
