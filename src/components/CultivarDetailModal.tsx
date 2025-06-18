@@ -24,7 +24,7 @@ interface CultivarDetailModalProps {
   cultivar: Cultivar | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  cultivarNameMap?: Map<string, string>;
+  cultivarNameMap?: Map<string, string>; // cultivarNameMap is passed but not used for lineage links in this modal version
 }
 
 const calculateAverageRating = (reviews: Cultivar['reviews'] = []): number => {
