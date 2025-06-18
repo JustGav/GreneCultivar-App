@@ -29,7 +29,7 @@ export default function RootLayout({
         <AuthProvider>
           <FilterProvider> {/* Wrap with FilterProvider */}
             <Header />
-            <main className="flex-grow container mx-auto px-4 pt-12 pb-12">
+            <main className="flex-grow container mx-auto px-4 pt-12 pb-12 overflow-y-auto">
               {children}
             </main>
             <Footer />
