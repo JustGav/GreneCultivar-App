@@ -8,14 +8,13 @@ import { getCultivars, updateCultivarStatus } from '@/services/firebase';
 import CultivarCard from '@/components/CultivarCard';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
   DropdownMenuLabel
@@ -29,7 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
-const STATUS_OPTIONS: CultivarStatus[] = ['recentlyAdded', 'verified', 'archived'];
+const ITEMS_PER_PAGE = 9;
 
 const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
   if (!reviews || reviews.length === 0) return 0;
@@ -45,6 +44,7 @@ export default function CultivarBrowserPage() {
   const [geneticFilters, setGeneticFilters] = useState<string[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
+  const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
   
   const allAvailableEffects = EFFECT_OPTIONS;
@@ -75,12 +75,14 @@ export default function CultivarBrowserPage() {
     setSelectedEffects(prev =>
       prev.includes(effect) ? prev.filter(e => e !== effect) : [...prev, effect]
     );
+    setCurrentPage(1);
   };
 
   const handleGeneticFilterChange = (geneticType: Genetics, checked: boolean) => {
     setGeneticFilters(prev =>
       checked ? [...prev, geneticType] : prev.filter(g => g !== geneticType)
     );
+    setCurrentPage(1);
   };
 
   const handleCultivarStatusChange = useCallback((cultivarId: string, newStatus: CultivarStatus) => {
@@ -89,8 +91,9 @@ export default function CultivarBrowserPage() {
         c.id === cultivarId ? { ...c, status: newStatus } : c
       )
     );
+    // Potentially refetch or smarter update if status change affects filtering
+    // For now, relying on the showArchived filter to re-evaluate
   }, []);
-
 
   const resetFilters = () => {
     setSearchTerm('');
@@ -98,6 +101,7 @@ export default function CultivarBrowserPage() {
     setGeneticFilters([]);
     setShowArchived(false);
     setSortOption('name-asc');
+    setCurrentPage(1);
   };
   
   const filteredAndSortedCultivars = useMemo(() => {
@@ -141,6 +145,36 @@ export default function CultivarBrowserPage() {
     });
   }, [allCultivars, searchTerm, selectedEffects, geneticFilters, sortOption, showArchived]);
 
+  const totalPages = Math.ceil(filteredAndSortedCultivars.length / ITEMS_PER_PAGE);
+
+  const paginatedCultivars = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredAndSortedCultivars.slice(startIndex, endIndex);
+  }, [filteredAndSortedCultivars, currentPage]);
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleSearchTermChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+  
+  const handleSortChange = (value: string) => {
+    setSortOption(value as SortOption);
+    setCurrentPage(1);
+  }
+
+  const handleShowArchivedToggle = () => {
+    setShowArchived(prev => !prev);
+    setCurrentPage(1);
+  }
 
   const sortOptions: {value: SortOption, label: string, icon?: React.ReactNode}[] = [
     { value: 'name-asc', label: 'Name (A-Z)'},
@@ -179,7 +213,7 @@ export default function CultivarBrowserPage() {
               type="text"
               placeholder="Search by name..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchTermChange}
               className="pl-10"
               aria-label="Search by cultivar name"
             />
@@ -193,7 +227,7 @@ export default function CultivarBrowserPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuRadioGroup value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
+              <DropdownMenuRadioGroup value={sortOption} onValueChange={handleSortChange}>
                 {sortOptions.map(opt => (
                   <DropdownMenuRadioItem key={opt.value} value={opt.value}>{opt.label}</DropdownMenuRadioItem>
                 ))}
@@ -204,7 +238,7 @@ export default function CultivarBrowserPage() {
           <Button onClick={resetFilters} variant="outline" className="w-full">
             <ListRestart className="mr-2 h-4 w-4" /> Reset Filters
           </Button>
-          <Button onClick={() => setShowArchived(prev => !prev)} variant="outline" className="w-full">
+          <Button onClick={handleShowArchivedToggle} variant="outline" className="w-full">
             {showArchived ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
             {showArchived ? 'Hide Archived' : 'Show Archived'}
           </Button>
@@ -263,12 +297,37 @@ export default function CultivarBrowserPage() {
           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
           <p className="text-lg text-muted-foreground">Loading cultivars...</p>
         </div>
-      ) : filteredAndSortedCultivars.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAndSortedCultivars.map(cultivar => (
-            <CultivarCard key={cultivar.id} cultivar={cultivar} onStatusChange={handleCultivarStatusChange} />
-          ))}
-        </div>
+      ) : paginatedCultivars.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {paginatedCultivars.map(cultivar => (
+              <CultivarCard key={cultivar.id} cultivar={cultivar} onStatusChange={handleCultivarStatusChange} />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-4 mt-8">
+              <Button
+                variant="outline"
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1}
+                aria-label="Go to previous page"
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+                aria-label="Go to next page"
+              >
+                Next <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-12">
           <Search className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
