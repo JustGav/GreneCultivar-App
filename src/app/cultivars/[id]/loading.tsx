@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton, Palette, DollarSign } from "lucide-react";
+import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton, Palette, DollarSign, Sunrise } from "lucide-react";
 
 export default function CultivarDetailLoading() {
   return (
@@ -116,6 +116,9 @@ export default function CultivarDetailLoading() {
                   <Skeleton className="h-6 w-1/2" />
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Sunrise size={18} className="text-muted-foreground/50" /> <Skeleton className="h-5 w-3/4" />
+                  </div>
                   <div className="flex items-center space-x-2">
                     <Sprout size={18} className="text-muted-foreground/50" /> <Skeleton className="h-5 w-3/4" />
                   </div>
@@ -242,4 +245,3 @@ export default function CultivarDetailLoading() {
     </div>
   );
 }
-

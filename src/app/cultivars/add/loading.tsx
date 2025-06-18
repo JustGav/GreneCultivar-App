@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Edit3, Percent, Clock, Sprout, Paperclip, PlusCircle, Palette, DollarSign } from "lucide-react";
+import { ArrowLeft, Edit3, Percent, Clock, Sprout, Paperclip, PlusCircle, Palette, DollarSign, Sunrise } from "lucide-react";
 
 export default function AddCultivarLoading() {
   return (
@@ -77,7 +77,7 @@ export default function AddCultivarLoading() {
             </div>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1,2,3,4].map(i => (
+            {[1,2,3,4,5].map(i => ( // Increased to 5 for germination
                  <div key={i} className="space-y-2">
                     <Skeleton className="h-5 w-1/3" />
                     <Skeleton className="h-10 w-full" />

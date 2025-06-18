@@ -88,6 +88,7 @@ export const mockCultivars: Cultivar[] = [
       { id: 'rev1-2', user: 'Bob', rating: 4, text: 'Very relaxing, a bit too much munchies though. Great for movie nights.', createdAt: new Date(Date.now() - 86400000).toISOString(), sentimentScore: 0.7 },
     ],
     cultivationPhases: {
+      germination: "3-7 days",
       rooting: "7-14 days",
       vegetative: "4-6 weeks",
       flowering: "8-9 weeks",
@@ -144,6 +145,7 @@ export const mockCultivars: Cultivar[] = [
       { id: 'rev2-1', user: 'Charlie', rating: 5, text: 'My go-to for creative work! No couch-lock, just pure focus.', createdAt: new Date().toISOString(), sentimentScore: 0.95 },
     ],
     cultivationPhases: {
+      germination: "4-8 days",
       rooting: "10-16 days",
       vegetative: "3-5 weeks",
       flowering: "9-11 weeks",
@@ -192,6 +194,7 @@ export const mockCultivars: Cultivar[] = [
       { id: 'rev3-2', user: 'Edward', rating: 5, text: 'Perfectly balanced, helps with my anxiety without making me sleepy.', createdAt: new Date(Date.now() - 86400000 * 5).toISOString(), sentimentScore: 0.88 },
     ],
     cultivationPhases: {
+      germination: "3-5 days",
       rooting: "7-12 days",
       vegetative: "4-7 weeks",
       flowering: "8-10 weeks",
@@ -223,6 +226,7 @@ export const mockCultivars: Cultivar[] = [
     ],
     reviews: [],
     cultivationPhases: {
+      germination: "5-10 days",
       rooting: "12-18 days",
       vegetative: "5-8 weeks",
       flowering: "10-12 weeks",
@@ -257,6 +261,7 @@ export const mockCultivars: Cultivar[] = [
       { id: 'rev5-1', user: 'Frank', rating: 4, text: 'Super easy to grow and harvest. Decent, mild buzz.', createdAt: new Date(Date.now() - 86400000 * 1).toISOString(), sentimentScore: 0.6 },
     ],
     cultivationPhases: {
+      germination: "2-5 days",
       rooting: "5-10 days",
       vegetative: "2-3 weeks",
       flowering: "6-8 weeks (autoflower)",
@@ -283,4 +288,3 @@ export const getAllEffects = (): string[] => {
   });
   return Array.from(allEffects).sort();
 };
-

@@ -28,10 +28,11 @@ export interface YieldProfile {
 }
 
 export interface CultivationPhases {
-  rooting: string; // e.g., "1-2 weeks"
-  vegetative: string; // e.g., "4-8 weeks"
-  flowering: string; // e.g., "8-10 weeks"
-  harvest: string; // e.g., "After 9 weeks of flowering"
+  germination?: string; // e.g., "3-7 days"
+  rooting?: string; // e.g., "1-2 weeks"
+  vegetative?: string; // e.g., "4-8 weeks"
+  flowering?: string; // e.g., "8-10 weeks"
+  harvest?: string; // e.g., "After 9 weeks of flowering"
 }
 
 export interface PlantCharacteristics {
@@ -58,8 +59,8 @@ export interface AdditionalFileInfo {
 export interface Terpene {
   id: string;
   name: string;
-  description?: string; // e.g., "Earthy, musky notes" - Now optional
-  percentage?: number; // Optional percentage value
+  description?: string;
+  percentage?: number;
 }
 
 export interface PricingProfile {

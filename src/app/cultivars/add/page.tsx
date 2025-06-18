@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise } from 'lucide-react';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
 
@@ -49,7 +49,6 @@ const additionalImageFileSchema = additionalFileSchema.extend({
 
 const terpeneEntrySchema = z.object({
   name: z.string().min(1, "Terpene name is required."),
-  // description field removed from schema as input is removed
   percentage: z.coerce.number().min(0, "Percentage must be >=0").max(100, "Percentage must be <=100").optional(),
 });
 
@@ -86,6 +85,7 @@ const cultivarFormSchema = z.object({
   primaryImageDataAiHint: z.string().optional(),
 
   cultivationPhases: z.object({
+    germination: z.string().optional(),
     rooting: z.string().optional(),
     vegetative: z.string().optional(),
     flowering: z.string().optional(),
@@ -191,7 +191,6 @@ export default function AddCultivarPage() {
         terpeneProfile: data.terpeneProfile?.map((tp, index) => ({ 
             id: `terp-${newCultivarId}-${index}`,
             name: tp.name,
-            // description: tp.description, // Removed as input is removed, will be undefined
             percentage: tp.percentage,
         })) || [],
         pricing: (data.pricing?.min !== undefined || data.pricing?.max !== undefined || data.pricing?.avg !== undefined)
@@ -442,6 +441,11 @@ export default function AddCultivarPage() {
             <CardTitle className="font-headline text-2xl text-primary flex items-center"><Clock size={24} className="mr-2" /> Cultivation Phases</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <div>
+              <Label htmlFor="cultivationPhases.germination">Germination Phase Duration</Label>
+              <Input id="cultivationPhases.germination" {...register("cultivationPhases.germination")} placeholder="e.g., 3-7 days" />
+              {errors.cultivationPhases?.germination && <p className="text-sm text-destructive mt-1">{errors.cultivationPhases.germination.message}</p>}
+            </div>
             <div>
               <Label htmlFor="cultivationPhases.rooting">Rooting Phase Duration</Label>
               <Input id="cultivationPhases.rooting" {...register("cultivationPhases.rooting")} placeholder="e.g., 7-14 days" />

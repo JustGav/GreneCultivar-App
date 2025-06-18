@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -119,6 +119,13 @@ export default function CultivarDetailsPage() {
   const hasAdditionalInfo = cultivar.additionalInfo && Object.values(cultivar.additionalInfo).some(files => files && files.length > 0);
   const hasTerpeneProfile = cultivar.terpeneProfile && cultivar.terpeneProfile.length > 0;
   const hasPricingInfo = cultivar.pricing && (cultivar.pricing.min !== undefined || cultivar.pricing.max !== undefined || cultivar.pricing.avg !== undefined);
+  const hasCultivationPhases = cultivar.cultivationPhases && (
+    cultivar.cultivationPhases.germination ||
+    cultivar.cultivationPhases.rooting ||
+    cultivar.cultivationPhases.vegetative ||
+    cultivar.cultivationPhases.flowering ||
+    cultivar.cultivationPhases.harvest
+  );
 
 
   return (
@@ -228,26 +235,40 @@ export default function CultivarDetailsPage() {
                 </div>
               )}
 
-              {cultivar.cultivationPhases && (
+              {hasCultivationPhases && cultivar.cultivationPhases && (
                 <div className="pt-6 border-t">
                    <h3 className="font-semibold text-lg flex items-center mb-4"><Timer size={20} className="mr-2 text-accent"/>Estimated Cultivation Phases</h3>
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center">
-                        <Sprout size={18} className="mr-2 text-primary/70" />
-                        <strong>Rooting:</strong>&nbsp;{cultivar.cultivationPhases.rooting}
-                      </div>
-                      <div className="flex items-center">
-                        <Leaf size={18} className="mr-2 text-primary/70" />
-                        <strong>Vegetative:</strong>&nbsp;{cultivar.cultivationPhases.vegetative}
-                      </div>
-                      <div className="flex items-center">
-                        <Flower size={18} className="mr-2 text-primary/70" />
-                        <strong>Flowering:</strong>&nbsp;{cultivar.cultivationPhases.flowering}
-                      </div>
-                      <div className="flex items-center">
-                        <Scissors size={18} className="mr-2 text-primary/70" />
-                        <strong>Harvest:</strong>&nbsp;{cultivar.cultivationPhases.harvest}
-                      </div>
+                      {cultivar.cultivationPhases.germination && (
+                        <div className="flex items-center">
+                          <Sunrise size={18} className="mr-2 text-primary/70" />
+                          <strong>Germination:</strong>&nbsp;{cultivar.cultivationPhases.germination}
+                        </div>
+                      )}
+                      {cultivar.cultivationPhases.rooting && (
+                        <div className="flex items-center">
+                          <Sprout size={18} className="mr-2 text-primary/70" />
+                          <strong>Rooting:</strong>&nbsp;{cultivar.cultivationPhases.rooting}
+                        </div>
+                      )}
+                      {cultivar.cultivationPhases.vegetative && (
+                        <div className="flex items-center">
+                          <Leaf size={18} className="mr-2 text-primary/70" />
+                          <strong>Vegetative:</strong>&nbsp;{cultivar.cultivationPhases.vegetative}
+                        </div>
+                      )}
+                      {cultivar.cultivationPhases.flowering && (
+                        <div className="flex items-center">
+                          <Flower size={18} className="mr-2 text-primary/70" />
+                          <strong>Flowering:</strong>&nbsp;{cultivar.cultivationPhases.flowering}
+                        </div>
+                      )}
+                      {cultivar.cultivationPhases.harvest && (
+                        <div className="flex items-center">
+                          <Scissors size={18} className="mr-2 text-primary/70" />
+                          <strong>Harvest:</strong>&nbsp;{cultivar.cultivationPhases.harvest}
+                        </div>
+                      )}
                    </div>
                 </div>
               )}
