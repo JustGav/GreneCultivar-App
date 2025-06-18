@@ -62,11 +62,11 @@ export default function Header() {
 
   return (
     <header className="bg-primary text-primary-foreground shadow-md sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <div className="container mx-auto px-4 py-1.5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 sm:gap-4 flex-grow min-w-0">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0">
-            <Leaf size={28} className="sm:size-32"/>
-            <h1 className="text-2xl sm:text-3xl font-headline">GreneCultivar</h1>
+            <Leaf size={24} className="sm:size-28"/>
+            <h1 className="text-xl sm:text-2xl font-headline">GreneCultivar</h1>
           </Link>
           
           <div className="relative hidden md:flex items-center gap-2 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
@@ -126,26 +126,26 @@ export default function Header() {
         
         <nav className="flex-shrink-0">
           {loading ? (
-            <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary" disabled>
+            <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9" disabled>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Loading...
             </Button>
           ) : user ? (
             <div className="flex items-center gap-2">
               <Link href="/" passHref>
-                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary hidden sm:flex">
+                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9 hidden sm:flex">
                   <Home className="mr-2 h-4 w-4" />
                   Public
                 </Button>
               </Link>
               <Link href="/dashboard" passHref>
-                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary hidden sm:flex">
+                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9 hidden sm:flex">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Dashboard
                 </Button>
               </Link>
               <Link href="/logs" passHref>
-                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary hidden sm:flex">
+                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9 hidden sm:flex">
                   <LogIcon className="mr-2 h-4 w-4" />
                   Logs
                 </Button>
@@ -209,7 +209,7 @@ export default function Header() {
               <Button
                 variant="outline"
                 onClick={() => setIsSubmitCultivarModalOpen(true)}
-                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary"
+                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9"
               >
                 <PlusCircleIcon className="mr-2 h-4 w-4" />
                 Submit
@@ -217,7 +217,7 @@ export default function Header() {
               <Button
                 variant="outline"
                 onClick={() => setIsLoginModalOpen(true)}
-                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary"
+                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9"
               >
                 <LogIn className="mr-2 h-4 w-4" />
                 Login
@@ -227,7 +227,7 @@ export default function Header() {
         </nav>
       </div>
       
-      <div className="container mx-auto px-4 pb-2 md:hidden flex items-center gap-2">
+      <div className="container mx-auto px-4 pb-1 md:hidden flex items-center gap-2">
         <form onSubmit={handleHeaderSearchSubmit} className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-foreground/60" />
           <Input
@@ -286,4 +286,3 @@ export default function Header() {
     </header>
   );
 }
-
