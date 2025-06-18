@@ -27,9 +27,9 @@ import { cn } from '@/lib/utils';
 
 export default function Header() {
   const { user, loading, logout } = useAuth();
-  const { 
-    searchTerm, 
-    setSearchTerm, 
+  const {
+    searchTerm,
+    setSearchTerm,
     isFiltersActive,
     sortOption,
     setSortOption,
@@ -51,7 +51,7 @@ export default function Header() {
 
   const handleHeaderSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Header search term:", searchTerm);
+    // console.log("Header search term:", searchTerm); // Intentionally commented out
   };
 
   const handleSortChange = (value: string) => {
@@ -62,22 +62,22 @@ export default function Header() {
 
   return (
     <header className="bg-primary text-primary-foreground shadow-md sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-1.5 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 sm:gap-4 flex-grow min-w-0">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0">
-            <Leaf size={24} className="sm:size-28"/>
-            <h1 className="text-xl sm:text-2xl font-headline">GreneCultivar</h1>
+      <div className="container mx-auto px-2 py-1 flex items-center justify-between gap-2 sm:gap-3"> {/* Reduced py, px */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-grow min-w-0"> {/* Reduced gap */}
+          <Link href="/" className="flex items-center gap-1.5 sm:gap-2 hover:opacity-80 transition-opacity flex-shrink-0"> {/* Reduced gap */}
+            <Leaf size={20} className="sm:size-22"/> {/* Reduced icon size */}
+            <h1 className="text-lg sm:text-xl font-headline">GreneCultivar</h1> {/* Reduced text size */}
           </Link>
-          
-          <div className="relative hidden md:flex items-center gap-2 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
+
+          <div className="relative hidden md:flex items-center gap-1.5 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg"> {/* Reduced gap */}
             <form onSubmit={handleHeaderSearchSubmit} className="relative flex-grow">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-foreground/60" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary-foreground/60" /> {/* Adjusted icon positioning */}
               <Input
                 type="search"
                 placeholder="Search cultivars..."
                 value={searchTerm}
                 onChange={handleHeaderSearchChange}
-                className="pl-10 pr-3 py-2 h-9 text-sm w-full bg-primary/70 text-primary-foreground placeholder:text-primary-foreground/60 border-primary-foreground/40 focus:bg-primary/90 focus:border-primary-foreground/70 ring-offset-primary"
+                className="pl-8 pr-2 py-1 h-8 text-xs sm:text-sm w-full bg-primary/70 text-primary-foreground placeholder:text-primary-foreground/60 border-primary-foreground/40 focus:bg-primary/90 focus:border-primary-foreground/70 ring-offset-primary" /* Reduced h, py, pl, pr, text size */
                 aria-label="Search cultivars"
               />
             </form>
@@ -88,14 +88,14 @@ export default function Header() {
                   size="icon"
                   onClick={() => setIsFilterModalOpen(true)}
                   className={cn(
-                    "h-9 w-9 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground relative",
+                    "h-8 w-8 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground relative", /* Reduced h, w */
                     isFiltersActive && "ring-2 ring-offset-1 ring-offset-primary ring-accent"
                   )}
                   aria-label="Open filters"
                 >
-                  <FilterIcon className="h-4 w-4" />
+                  <FilterIcon className="h-3.5 w-3.5" /> {/* Reduced icon size */}
                   {isFiltersActive && (
-                    <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent border-2 border-primary animate-pulse"></span>
+                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent border border-primary animate-pulse"></span> {/* Adjusted badge size/pos */}
                   )}
                 </Button>
                 <DropdownMenu>
@@ -103,18 +103,18 @@ export default function Header() {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-9 w-9 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                      className="h-8 w-8 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" /* Reduced h, w */
                       aria-label="Sort options"
                     >
-                      {sortOption.endsWith('-asc') ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                      {sortOption.endsWith('-asc') ? <SortAsc className="h-3.5 w-3.5" /> : <SortDesc className="h-3.5 w-3.5" />} {/* Reduced icon size */}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-background text-foreground">
-                    <DropdownMenuLabel>Sort By</DropdownMenuLabel>
+                  <DropdownMenuContent align="end" className="w-48 bg-background text-foreground"> {/* Reduced w */}
+                    <DropdownMenuLabel className="text-xs">Sort By</DropdownMenuLabel> {/* Reduced text size */}
                     <DropdownMenuSeparator />
                     <DropdownMenuRadioGroup value={sortOption} onValueChange={handleSortChange}>
                       {SORT_OPTIONS_CONFIG.map(opt => (
-                        <DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">{opt.label}</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer text-xs">{opt.label}</DropdownMenuRadioItem> /* Reduced text size */
                       ))}
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
@@ -123,119 +123,119 @@ export default function Header() {
             )}
           </div>
         </div>
-        
+
         <nav className="flex-shrink-0">
           {loading ? (
-            <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9" disabled>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-8 text-xs px-2 sm:px-3" disabled> {/* Reduced h, text size, px */}
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> {/* Reduced icon size */}
               Loading...
             </Button>
           ) : user ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5"> {/* Reduced gap */}
               <Link href="/" passHref>
-                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9 hidden sm:flex">
-                  <Home className="mr-2 h-4 w-4" />
+                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-8 text-xs px-2 sm:px-3 hidden sm:flex"> {/* Reduced h, text size, px */}
+                  <Home className="mr-1.5 h-3.5 w-3.5" /> {/* Reduced icon size */}
                   Public
                 </Button>
               </Link>
               <Link href="/dashboard" passHref>
-                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9 hidden sm:flex">
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-8 text-xs px-2 sm:px-3 hidden sm:flex"> {/* Reduced h, text size, px */}
+                  <LayoutDashboard className="mr-1.5 h-3.5 w-3.5" /> {/* Reduced icon size */}
                   Dashboard
                 </Button>
               </Link>
               <Link href="/logs" passHref>
-                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9 hidden sm:flex">
-                  <LogIcon className="mr-2 h-4 w-4" />
+                <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-8 text-xs px-2 sm:px-3 hidden sm:flex"> {/* Reduced h, text size, px */}
+                  <LogIcon className="mr-1.5 h-3.5 w-3.5" /> {/* Reduced icon size */}
                   Logs
                 </Button>
               </Link>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full hover:bg-primary/80 p-0">
-                    <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-primary/80 p-0"> {/* Reduced h, w */}
+                    <Avatar className="h-7 w-7 sm:h-8 sm:w-8"> {/* Reduced avatar size */}
                       <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || 'User'} />
-                      <AvatarFallback>
-                        {user.displayName ? user.displayName.charAt(0).toUpperCase() : <UserCircle size={20}/>}
+                      <AvatarFallback className="text-xs"> {/* Reduced text size */}
+                        {user.displayName ? user.displayName.charAt(0).toUpperCase() : <UserCircle size={16}/>} {/* Reduced icon size */}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-background text-foreground" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
+                <DropdownMenuContent className="w-48 bg-background text-foreground" align="end" forceMount> {/* Reduced w */}
+                  <DropdownMenuLabel className="font-normal text-xs"> {/* Reduced text size */}
+                    <div className="flex flex-col space-y-0.5"> {/* Reduced space-y */}
+                      <p className="text-xs font-medium leading-none"> {/* Reduced text size */}
                         {user.displayName || 'User'}
                       </p>
-                      <p className="text-xs leading-none text-muted-foreground">
+                      <p className="text-xs leading-none text-muted-foreground"> {/* Reduced text size */}
                         {user.email}
                       </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="sm:hidden cursor-pointer">
+                  <DropdownMenuItem asChild className="sm:hidden cursor-pointer text-xs"> {/* Reduced text size */}
                     <Link href="/">
-                       <Home className="mr-2 h-4 w-4" />
+                       <Home className="mr-1.5 h-3.5 w-3.5" /> {/* Reduced icon size */}
                       Public Page
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="sm:hidden cursor-pointer">
+                  <DropdownMenuItem asChild className="sm:hidden cursor-pointer text-xs"> {/* Reduced text size */}
                     <Link href="/dashboard">
-                       <LayoutDashboard className="mr-2 h-4 w-4" />
+                       <LayoutDashboard className="mr-1.5 h-3.5 w-3.5" /> {/* Reduced icon size */}
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
-                   <DropdownMenuItem asChild className="sm:hidden cursor-pointer">
+                   <DropdownMenuItem asChild className="sm:hidden cursor-pointer text-xs"> {/* Reduced text size */}
                     <Link href="/logs">
-                       <LogIcon className="mr-2 h-4 w-4" />
+                       <LogIcon className="mr-1.5 h-3.5 w-3.5" /> {/* Reduced icon size */}
                       Audit Logs
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="sm:hidden" />
-                   <DropdownMenuItem onClick={() => setIsSubmitCultivarModalOpen(true)} className="cursor-pointer">
-                    <PlusCircleIcon className="mr-2 h-4 w-4" />
+                   <DropdownMenuItem onClick={() => setIsSubmitCultivarModalOpen(true)} className="cursor-pointer text-xs"> {/* Reduced text size */}
+                    <PlusCircleIcon className="mr-1.5 h-3.5 w-3.5" /> {/* Reduced icon size */}
                     Submit Cultivar
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
-                    <LogOut className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive text-xs"> {/* Reduced text size */}
+                    <LogOut className="mr-1.5 h-3.5 w-3.5" /> {/* Reduced icon size */}
                     Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5"> {/* Reduced gap */}
               <Button
                 variant="outline"
                 onClick={() => setIsSubmitCultivarModalOpen(true)}
-                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9"
+                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-8 text-xs px-2 sm:px-3" /* Reduced h, text size, px */
               >
-                <PlusCircleIcon className="mr-2 h-4 w-4" />
+                <PlusCircleIcon className="mr-1.5 h-3.5 w-3.5" /> {/* Reduced icon size */}
                 Submit
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setIsLoginModalOpen(true)}
-                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-9"
+                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary h-8 text-xs px-2 sm:px-3" /* Reduced h, text size, px */
               >
-                <LogIn className="mr-2 h-4 w-4" />
+                <LogIn className="mr-1.5 h-3.5 w-3.5" /> {/* Reduced icon size */}
                 Login
               </Button>
             </div>
           )}
         </nav>
       </div>
-      
-      <div className="container mx-auto px-4 pb-1 md:hidden flex items-center gap-2">
+
+      <div className="container mx-auto px-2 pb-1 md:hidden flex items-center gap-1.5"> {/* Reduced pb, gap */}
         <form onSubmit={handleHeaderSearchSubmit} className="relative flex-grow">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-foreground/60" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary-foreground/60" /> {/* Adjusted icon pos */}
           <Input
             type="search"
             placeholder="Search cultivars..."
             value={searchTerm}
             onChange={handleHeaderSearchChange}
-            className="pl-10 pr-3 py-2 h-9 text-sm w-full bg-primary/70 text-primary-foreground placeholder:text-primary-foreground/60 border-primary-foreground/40 focus:bg-primary/90 focus:border-primary-foreground/70 ring-offset-primary"
+            className="pl-8 pr-2 py-1 h-8 text-xs w-full bg-primary/70 text-primary-foreground placeholder:text-primary-foreground/60 border-primary-foreground/40 focus:bg-primary/90 focus:border-primary-foreground/70 ring-offset-primary" /* Reduced h, py, pl, pr, text size */
             aria-label="Search cultivars on mobile"
           />
         </form>
@@ -246,14 +246,14 @@ export default function Header() {
               size="icon"
               onClick={() => setIsFilterModalOpen(true)}
               className={cn(
-                "h-9 w-9 flex-shrink-0 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground relative",
+                "h-8 w-8 flex-shrink-0 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground relative", /* Reduced h, w */
                 isFiltersActive && "ring-2 ring-offset-1 ring-offset-primary ring-accent"
               )}
               aria-label="Open filters on mobile"
             >
-              <FilterIcon className="h-4 w-4" />
+              <FilterIcon className="h-3.5 w-3.5" /> {/* Reduced icon size */}
               {isFiltersActive && (
-                <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent border-2 border-primary animate-pulse"></span>
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent border border-primary animate-pulse"></span> {/* Adjusted badge size/pos */}
               )}
             </Button>
             <DropdownMenu>
@@ -261,18 +261,18 @@ export default function Header() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-9 w-9 flex-shrink-0 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                  className="h-8 w-8 flex-shrink-0 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" /* Reduced h, w */
                   aria-label="Sort options on mobile"
                 >
-                  {sortOption.endsWith('-asc') ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                  {sortOption.endsWith('-asc') ? <SortAsc className="h-3.5 w-3.5" /> : <SortDesc className="h-3.5 w-3.5" />} {/* Reduced icon size */}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-background text-foreground">
-                <DropdownMenuLabel>Sort By</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-48 bg-background text-foreground"> {/* Reduced w */}
+                <DropdownMenuLabel className="text-xs">Sort By</DropdownMenuLabel> {/* Reduced text size */}
                 <DropdownMenuSeparator />
                 <DropdownMenuRadioGroup value={sortOption} onValueChange={handleSortChange}>
                   {SORT_OPTIONS_CONFIG.map(opt => (
-                    <DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer">{opt.label}</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem key={opt.value} value={opt.value} className="cursor-pointer text-xs">{opt.label}</DropdownMenuRadioItem> /* Reduced text size */
                   ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
@@ -286,3 +286,5 @@ export default function Header() {
     </header>
   );
 }
+    
+    
