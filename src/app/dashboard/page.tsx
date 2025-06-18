@@ -9,7 +9,7 @@ import { EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data';
 import { getCultivars, updateCultivarStatus, updateMultipleCultivarStatuses } from '@/services/firebase';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, Archive, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown, AlertTriangle, Edit, ImageOff, ShieldCheck, Hourglass, Info as InfoIcon, Star as StarIcon, CheckSquare, Square, Users, ChevronDown } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, Archive, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown, AlertTriangle, Edit, ImageOff, ShieldCheck, Hourglass, Info as InfoIcon, Star as StarIcon, CheckSquare, Square, Users, ChevronDown, UserPlus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -84,7 +84,7 @@ const getStatusIcon = (status?: CultivarStatus) => {
   switch (status) {
     case 'Live': return <ShieldCheck size={14} className="mr-1 text-green-500" />;
     case 'featured': return <StarIcon size={14} className="mr-1 text-yellow-500 fill-yellow-500" />;
-    case 'User Submitted': return <Users size={14} className="mr-1" />;
+    case 'User Submitted': return <UserPlus size={14} className="mr-1" />;
     case 'recentlyAdded': return <Hourglass size={14} className="mr-1" />;
     case 'Hide': return <EyeOff size={14} className="mr-1" />;
     case 'archived': return <Archive size={14} className="mr-1" />;
@@ -142,33 +142,33 @@ export default function DashboardPage() {
   }, [toast]);
 
 
-  const handleEffectToggle = (effect: string) => {
+  const handleEffectToggle = useCallback((effect: string) => {
     setSelectedEffects(prev =>
       prev.includes(effect) ? prev.filter(e => e !== effect) : [...prev, effect]
     );
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleFlavorToggle = (flavor: string, checked: boolean) => {
+  const handleFlavorToggle = useCallback((flavor: string, checked: boolean) => {
     setSelectedFlavors(prev =>
       checked ? [...prev, flavor] : prev.filter(f => f !== flavor)
     );
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleGeneticToggle = (genetic: Genetics) => {
+  const handleGeneticToggle = useCallback((genetic: Genetics) => {
     setSelectedGenetics(prev =>
       prev.includes(genetic) ? prev.filter(g => g !== genetic) : [...prev, genetic]
     );
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleStatusToggle = (status: CultivarStatus) => {
+  const handleStatusToggle = useCallback((status: CultivarStatus) => {
     setSelectedStatuses(prev =>
       prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
     );
     setCurrentPage(1);
-  };
+  }, []);
 
   const handleCultivarStatusChange = useCallback((cultivarId: string, newStatus: CultivarStatus) => {
     setAllCultivars(prevCultivars =>
