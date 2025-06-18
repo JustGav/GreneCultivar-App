@@ -106,12 +106,13 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
   if (cultivar.status) {
       if (cultivar.status === 'Live' && !isPublicView) {
           showTitleAdjacentBadge = true;
-      } else if (cultivar.status === 'Archived' || cultivar.status === 'Hide') {
+      } else if (cultivar.status === 'archived' || cultivar.status === 'Hide') { // Keep 'Archived' and 'Hide' always next to title if not public or no image
           showTitleAdjacentBadge = true;
-      } else if (isOverlayStatusType && !hasImages) {
+      } else if (isOverlayStatusType && !hasImages) { // If it's an overlay type but no image, show next to title
           showTitleAdjacentBadge = true;
       }
   }
+
 
   return (
     <Card
@@ -137,7 +138,7 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
               className="transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
-            {isOverlayStatusType && ( // Only show overlay if it's an overlay type AND there are images
+            {isOverlayStatusType && ( 
               <Badge
                 variant={getStatusBadgeVariant(cultivar.status)}
                 className={cn(
@@ -153,12 +154,12 @@ export default function CultivarCard({ cultivar, onStatusChange, isPublicView = 
         )}
         <div className="flex justify-between items-start">
             <CardTitle className="font-headline text-2xl text-primary">{cultivar.name}</CardTitle>
-            {showTitleAdjacentBadge && cultivar.status && (
+            {showTitleAdjacentBadge && cultivar.status && cultivar.status !== 'Live' && ( // Added cultivar.status !== 'Live'
                 <Badge
                   variant={getStatusBadgeVariant(cultivar.status)}
                   className={cn(
                       "capitalize flex items-center text-xs h-fit py-1 px-1.5",
-                      (cultivar.status === 'featured') && "bg-yellow-400/80 border-yellow-500/70 text-yellow-900 dark:text-yellow-900", // Apply featured style if shown here
+                      (cultivar.status === 'featured') && "bg-yellow-400/80 border-yellow-500/70 text-yellow-900 dark:text-yellow-900",
                       cultivar.status === 'Hide' && "bg-gray-400/20 border-gray-500/50 text-gray-700 dark:text-gray-300"
                     )}
                 >

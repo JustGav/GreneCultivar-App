@@ -50,21 +50,28 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   // Effect for Prop Changes (initialCultivar, isOpen)
   useEffect(() => {
     if (isOpen && initialCultivar) {
-      if (displayedCultivarData?.id !== initialCultivar.id) {
+      // Only reset if the initialCultivar.id is different from the current one,
+      // or if there's no displayed cultivar yet (initial modal open)
+      if (!displayedCultivarData || displayedCultivarData.id !== initialCultivar.id) {
         setDisplayedCultivarData(initialCultivar);
-        setHistoryStack([initialCultivar]); // Reset history when a new initial cultivar is provided
+        setHistoryStack([initialCultivar]);
         setIsLoadingLineage(false);
-        if (scrollAreaRef.current) {
+         if (scrollAreaRef.current) {
           scrollAreaRef.current.scrollTo({ top: 0 });
         }
       }
-    } else if (!isOpen) {
-      // This is the primary cleanup when modal closes
+    }
+    // Don't reset on !isOpen here, handle that in a separate effect to avoid race conditions.
+  }, [initialCultivar, isOpen]); // Removed displayedCultivarData from dependencies
+
+  // Effect for Modal Closure
+  useEffect(() => {
+    if (!isOpen) {
       setDisplayedCultivarData(null);
       setHistoryStack([]);
       setIsLoadingLineage(false);
     }
-  }, [initialCultivar, isOpen, displayedCultivarData?.id]);
+  }, [isOpen]);
 
 
   // Effect to auto-close modal if it's open but seems to be in an invalid state
