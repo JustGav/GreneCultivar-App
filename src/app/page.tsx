@@ -48,7 +48,7 @@ export default function CultivarBrowserPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
-  const [showArchived, setShowArchived] = useState(false); // Used for logged-in users
+  const [showArchived, setShowArchived] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
@@ -56,7 +56,7 @@ export default function CultivarBrowserPage() {
 
   const [selectedCultivarForModal, setSelectedCultivarForModal] = useState<Cultivar | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [cultivarNameMap, setCultivarNameMap] = useState<Map<string, string>>(new Map());
+  const [cultivarInfoMap, setCultivarInfoMap] = useState<Map<string, { id: string; status: CultivarStatus }>>(new Map());
 
   const allAvailableEffects = EFFECT_OPTIONS;
   const allAvailableFlavors = FLAVOR_OPTIONS;
@@ -67,11 +67,11 @@ export default function CultivarBrowserPage() {
     try {
       const fetchedCultivars = await getCultivars();
       setAllCultivars(fetchedCultivars);
-      const nameMap = new Map<string, string>();
+      const infoMap = new Map<string, { id: string; status: CultivarStatus }>();
         fetchedCultivars.forEach(c => {
-            nameMap.set(c.name.toLowerCase(), c.id);
+            infoMap.set(c.name.toLowerCase(), { id: c.id, status: c.status });
         });
-      setCultivarNameMap(nameMap);
+      setCultivarInfoMap(infoMap);
     } catch (error) {
       console.error("Failed to fetch cultivars:", error);
       toast({
@@ -80,7 +80,7 @@ export default function CultivarBrowserPage() {
         variant: "destructive",
       });
       setAllCultivars([]);
-      setCultivarNameMap(new Map());
+      setCultivarInfoMap(new Map());
     } finally {
       setIsLoading(false);
     }
@@ -114,17 +114,16 @@ export default function CultivarBrowserPage() {
   const filteredAndSortedCultivars = useMemo(() => {
     let baseFilteredCultivars: Cultivar[];
 
-    if (!user) { // Handles both non-logged-in state and initial auth loading where user is null
+    if (!user) {
       baseFilteredCultivars = allCultivars.filter(c => c.status === 'Live' || c.status === 'featured');
-    } else { // User is definitively logged in
+    } else {
       if (!showArchived) {
         baseFilteredCultivars = allCultivars.filter(c => c.status !== 'archived');
       } else {
-        baseFilteredCultivars = [...allCultivars]; // Show all including archived if showArchived is true for logged-in user
+        baseFilteredCultivars = [...allCultivars];
       }
     }
 
-    // Apply common filters (search, effects, flavors)
     let furtherFilteredCultivars = baseFilteredCultivars;
     if (searchTerm) {
       furtherFilteredCultivars = furtherFilteredCultivars.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -135,19 +134,15 @@ export default function CultivarBrowserPage() {
     if (selectedFlavors.length > 0) {
       furtherFilteredCultivars = furtherFilteredCultivars.filter(c => c.flavors && selectedFlavors.every(flav => c.flavors.includes(flav)));
     }
-    
-    // Apply sorting
+
     return [...furtherFilteredCultivars].sort((a, b) => {
-      // For public view (user is null), prioritize 'featured' status
       if (!user) {
         const isAFeatured = a.status === 'featured';
         const isBFeatured = b.status === 'featured';
         if (isAFeatured && !isBFeatured) return -1;
         if (!isAFeatured && isBFeatured) return 1;
-        // If both are 'featured' or both are 'Live' (or other non-featured statuses if logic changes), fall through to secondary sort
       }
 
-      // Common secondary sort logic
       const ratingA = calculateAverageRating(a.reviews);
       const ratingB = calculateAverageRating(b.reviews);
       const thcMaxA = a.thc?.max ?? 0;
@@ -167,7 +162,7 @@ export default function CultivarBrowserPage() {
         default: return 0;
       }
     });
-  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived, user, authLoading]);
+  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived, user]);
 
 
   const totalPages = Math.ceil(filteredAndSortedCultivars.length / ITEMS_PER_PAGE);
@@ -259,13 +254,12 @@ export default function CultivarBrowserPage() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          {(!authLoading && user) && ( // Only show "Show Archived" if user is logged in
+          {(!authLoading && user) && (
             <Button onClick={handleShowArchivedToggle} variant="outline" className="w-full">
               {showArchived ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
               {showArchived ? 'Hide Archived' : 'Show Archived'}
             </Button>
           )}
-          {/* If user is not logged in or auth is loading, this space will be empty or adjust layout if needed */}
           {(authLoading || !user) && <div className="lg:col-span-1"></div>}
 
 
@@ -345,7 +339,7 @@ export default function CultivarBrowserPage() {
               <CultivarCard 
                 key={cultivar.id} 
                 cultivar={cultivar} 
-                isPublicView={!user} // Pass true if user is not logged in
+                isPublicView={!user}
                 onViewInModal={handleOpenCultivarModal}
               />
             ))}
@@ -385,7 +379,7 @@ export default function CultivarBrowserPage() {
         cultivar={selectedCultivarForModal} 
         isOpen={isModalOpen} 
         onOpenChange={setIsModalOpen}
-        cultivarNameMap={cultivarNameMap}
+        cultivarInfoMap={cultivarInfoMap}
       />
     </div>
   );

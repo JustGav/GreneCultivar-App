@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Loader2, Database, ShieldCheck, Hourglass, Archive as ArchiveIconLucide, Info, Utensils, Star as StarIcon, Users, EyeOff } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Loader2, Database, ShieldCheck, Hourglass, Archive as ArchiveIconLucide, Info, Utensils, Star as StarIcon, Users, EyeOff, UserPlus } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -87,7 +87,7 @@ const getStatusIcon = (status?: CultivarStatus) => {
   switch (status) {
     case 'Live': return <ShieldCheck size={16} className="mr-1.5 text-green-500" />;
     case 'featured': return <StarIcon size={16} className="mr-1.5 text-yellow-500 fill-yellow-500" />;
-    case 'User Submitted': return <Users size={16} className="mr-1.5" />;
+    case 'User Submitted': return <UserPlus size={16} className="mr-1.5" />;
     case 'recentlyAdded': return <Hourglass size={16} className="mr-1.5" />;
     case 'Hide': return <EyeOff size={16} className="mr-1.5" />;
     case 'archived': return <ArchiveIconLucide size={16} className="mr-1.5" />;
@@ -106,7 +106,7 @@ export default function CultivarDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const [cultivarNameMap, setCultivarNameMap] = useState<Map<string, string>>(new Map());
+  const [cultivarInfoMap, setCultivarInfoMap] = useState<Map<string, { id: string; status: CultivarStatus }>>(new Map());
 
   const fetchCultivarData = useCallback(async () => {
     if (!id) return;
@@ -123,11 +123,11 @@ export default function CultivarDetailsPage() {
 
       try {
         const allCultivarsData = await getCultivars();
-        const nameMap = new Map<string, string>();
+        const infoMap = new Map<string, { id: string; status: CultivarStatus }>();
         allCultivarsData.forEach(c => {
-            nameMap.set(c.name.toLowerCase(), c.id); 
+            infoMap.set(c.name.toLowerCase(), { id: c.id, status: c.status });
         });
-        setCultivarNameMap(nameMap);
+        setCultivarInfoMap(infoMap);
       } catch (err) {
         console.warn("Failed to fetch all cultivars for lineage linking:", err);
       }
@@ -252,8 +252,8 @@ export default function CultivarDetailsPage() {
                   <Leaf size={36} className="mr-3 text-primary/80" /> {cultivar.name}
                 </CardTitle>
                 {cultivar.status && (
-                  <Badge 
-                    variant={getStatusBadgeVariant(cultivar.status)} 
+                  <Badge
+                    variant={getStatusBadgeVariant(cultivar.status)}
                     className={cn(
                         "capitalize text-sm h-fit flex items-center py-1.5 px-3",
                         cultivar.status === 'featured' && "bg-yellow-400/20 border-yellow-500/50 text-yellow-700 dark:text-yellow-300",
@@ -511,9 +511,10 @@ export default function CultivarDetailsPage() {
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">Parents</h4>
                     <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                       {cultivar.parents.map((parentName, index) => {
-                        const parentId = cultivarNameMap.get(parentName.toLowerCase());
-                        return parentId ? (
-                          <Link key={`parent-${index}`} href={`/cultivars/${parentId}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm text-primary hover:underline hover:bg-muted/60 transition-colors">
+                        const parentInfo = cultivarInfoMap.get(parentName.toLowerCase());
+                        const isLinkable = parentInfo && (parentInfo.status === 'Live' || parentInfo.status === 'featured');
+                        return isLinkable ? (
+                          <Link key={`parent-${index}`} href={`/cultivars/${parentInfo.id}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm text-primary hover:underline hover:bg-muted/60 transition-colors">
                             {parentName}
                           </Link>
                         ) : (
@@ -542,9 +543,10 @@ export default function CultivarDetailsPage() {
                     <h4 className="text-sm font-semibold text-muted-foreground mb-2">Children</h4>
                     <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                       {cultivar.children.map((childName, index) => {
-                        const childId = cultivarNameMap.get(childName.toLowerCase());
-                        return childId ? (
-                          <Link key={`child-${index}`} href={`/cultivars/${childId}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm text-primary hover:underline hover:bg-muted/60 transition-colors">
+                        const childInfo = cultivarInfoMap.get(childName.toLowerCase());
+                        const isLinkable = childInfo && (childInfo.status === 'Live' || childInfo.status === 'featured');
+                        return isLinkable ? (
+                          <Link key={`child-${index}`} href={`/cultivars/${childInfo.id}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm text-primary hover:underline hover:bg-muted/60 transition-colors">
                             {childName}
                           </Link>
                         ) : (

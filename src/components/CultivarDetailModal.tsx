@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { Cultivar } from '@/types';
+import type { Cultivar, CultivarStatus } from '@/types';
 import Image from 'next/image';
 import {
   Dialog,
@@ -28,7 +28,7 @@ interface CultivarDetailModalProps {
   cultivar: Cultivar | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  cultivarNameMap?: Map<string, string>;
+  cultivarInfoMap?: Map<string, { id: string; status: CultivarStatus }>;
 }
 
 const calculateAverageRating = (reviews: Cultivar['reviews'] = []): number => {
@@ -39,7 +39,7 @@ const calculateAverageRating = (reviews: Cultivar['reviews'] = []): number => {
 
 const NEGATIVE_EFFECTS_MODAL = ['Dry Mouth', 'Dry Eyes', 'Paranoid', 'Anxious', 'Dizzy'];
 
-export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen, onOpenChange, cultivarNameMap }: CultivarDetailModalProps) {
+export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen, onOpenChange, cultivarInfoMap }: CultivarDetailModalProps) {
   const [displayedCultivarData, setDisplayedCultivarData] = useState<Cultivar | null>(null);
   const [isLoadingLineage, setIsLoadingLineage] = useState(false);
   const [historyStack, setHistoryStack] = useState<Cultivar[]>([]);
@@ -49,20 +49,18 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   useEffect(() => {
     if (initialCultivar) {
         setDisplayedCultivarData(initialCultivar);
-        setHistoryStack([initialCultivar]); // Reset history with the new initial cultivar
+        setHistoryStack([initialCultivar]);
         setIsLoadingLineage(false);
         if (scrollAreaRef.current) {
           scrollAreaRef.current.scrollTo({ top: 0 });
         }
-    } else if (isOpen && !initialCultivar) { 
+    } else if (isOpen && !initialCultivar) {
         // This case is managed by the parent - modal won't open if initialCultivar is null
     }
   }, [initialCultivar, isOpen]);
 
 
   useEffect(() => {
-    // Effect to close modal if it's open, data becomes null, and not loading
-    // and there's no history (e.g. initial load failed)
     if (isOpen && !displayedCultivarData && !isLoadingLineage && historyStack.length === 0) {
       onOpenChange(false);
     }
@@ -112,9 +110,6 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
 
 
   if (!displayedCultivarData && !isLoadingLineage) {
-    // This condition is tricky; if initialCultivar was null, effect might have closed it.
-    // If it's open and no data, it means we are likely in a loading state or initial load failed.
-    // The effect above should handle closing if initial load failed and it was intended to be open.
     return null;
   }
 
@@ -128,8 +123,8 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) { // When modal is explicitly closed by user action
-        setHistoryStack([]); // Clear history for next opening
+      if (!open) {
+        setHistoryStack([]);
       }
       onOpenChange(open);
     }}>
@@ -147,7 +142,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               )}
-              <div className={cn("flex-grow", historyStack.length <=1 && "pl-9")}> {/* Add padding if no back button to align title */}
+              <div className={cn("flex-grow", historyStack.length <=1 && "pl-9")}>
                 <DialogTitle className="font-headline text-3xl text-primary flex items-center">
                   <Leaf size={30} className="mr-3 text-primary/80 flex-shrink-0" />
                   <span className="truncate">{displayedCultivarData.name}</span>
@@ -165,7 +160,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
             </DialogHeader>
 
             <ScrollArea ref={scrollAreaRef} className="flex-grow overflow-y-auto px-6">
-              <div key={displayedCultivarData.id} className="space-y-4 pb-6"> {/* Key ensures re-render and potential scroll reset for content block */}
+              <div key={displayedCultivarData.id} className="space-y-4 pb-6">
                 {displayedCultivarData.images && displayedCultivarData.images.length > 0 ? (
                   <div className="relative w-full aspect-video rounded-md overflow-hidden my-4 shadow-md">
                     <Image
@@ -274,16 +269,17 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                           <h4 className="text-sm font-semibold text-muted-foreground mb-2">Parents</h4>
                           <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                             {displayedCultivarData.parents.map((parentName, index) => {
-                              const parentId = cultivarNameMap?.get(parentName.toLowerCase());
+                              const parentInfo = cultivarInfoMap?.get(parentName.toLowerCase());
+                              const isLinkable = parentInfo && (parentInfo.status === 'Live' || parentInfo.status === 'featured');
                               return (
                                 <Badge
                                   key={`parent-${index}`}
                                   variant="outline"
-                                  className={cn("text-xs hover:bg-accent/20 hover:border-accent/50", parentId && "cursor-pointer")}
-                                  onClick={() => parentId && handleLineageItemClick(parentId)}
-                                  role={parentId ? "button" : undefined}
-                                  tabIndex={parentId ? 0 : -1}
-                                  onKeyDown={parentId ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleLineageItemClick(parentId) } : undefined}
+                                  className={cn("text-xs", isLinkable ? "cursor-pointer hover:bg-accent/20 hover:border-accent/50" : "bg-muted/50 text-muted-foreground/80")}
+                                  onClick={isLinkable ? () => handleLineageItemClick(parentInfo.id) : undefined}
+                                  role={isLinkable ? "button" : undefined}
+                                  tabIndex={isLinkable ? 0 : -1}
+                                  onKeyDown={isLinkable ? (e) => { if ((e.key === 'Enter' || e.key === ' ') && parentInfo) handleLineageItemClick(parentInfo.id); } : undefined}
                                 >
                                   {parentName}
                                 </Badge>
@@ -309,16 +305,17 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                           <h4 className="text-sm font-semibold text-muted-foreground mb-2">Children</h4>
                           <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                             {displayedCultivarData.children.map((childName, index) => {
-                              const childId = cultivarNameMap?.get(childName.toLowerCase());
+                              const childInfo = cultivarInfoMap?.get(childName.toLowerCase());
+                              const isLinkable = childInfo && (childInfo.status === 'Live' || childInfo.status === 'featured');
                               return (
                                  <Badge
                                   key={`child-${index}`}
                                   variant="outline"
-                                  className={cn("text-xs hover:bg-accent/20 hover:border-accent/50", childId && "cursor-pointer")}
-                                  onClick={() => childId && handleLineageItemClick(childId)}
-                                  role={childId ? "button" : undefined}
-                                  tabIndex={childId ? 0 : -1}
-                                  onKeyDown={childId ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleLineageItemClick(childId) } : undefined}
+                                  className={cn("text-xs", isLinkable ? "cursor-pointer hover:bg-accent/20 hover:border-accent/50" : "bg-muted/50 text-muted-foreground/80")}
+                                  onClick={isLinkable ? () => handleLineageItemClick(childInfo.id) : undefined}
+                                  role={isLinkable ? "button" : undefined}
+                                  tabIndex={isLinkable ? 0 : -1}
+                                  onKeyDown={isLinkable ? (e) => { if ((e.key === 'Enter' || e.key === ' ') && childInfo) handleLineageItemClick(childInfo.id); } : undefined}
                                 >
                                   {childName}
                                 </Badge>
