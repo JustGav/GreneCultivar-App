@@ -30,7 +30,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { useAuth } from '@/contexts/AuthContext';
 
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
@@ -52,7 +52,7 @@ export default function CultivarBrowserPage() {
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
+  const { user, loading: authLoading } = useAuth();
 
   const [selectedCultivarForModal, setSelectedCultivarForModal] = useState<Cultivar | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -90,19 +90,19 @@ export default function CultivarBrowserPage() {
     fetchCultivars();
   }, [fetchCultivars]);
 
-  const handleEffectToggle = (effect: string) => {
+  const handleEffectToggle = useCallback((effect: string) => {
     setSelectedEffects(prev =>
       prev.includes(effect) ? prev.filter(e => e !== effect) : [...prev, effect]
     );
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleFlavorToggle = (flavor: string, checked: boolean) => {
+  const handleFlavorToggle = useCallback((flavor: string, checked: boolean) => {
     setSelectedFlavors(prev =>
       checked ? [...prev, flavor] : prev.filter(f => f !== flavor)
     );
     setCurrentPage(1);
-  };
+  }, []);
 
   const resetFilters = () => {
     setSearchTerm('');
@@ -112,25 +112,40 @@ export default function CultivarBrowserPage() {
   };
 
   const filteredAndSortedCultivars = useMemo(() => {
-    let filtered = allCultivars;
+    let processedCultivars = allCultivars;
 
-    if (!showArchived) {
-      filtered = filtered.filter(c => c.status !== 'archived');
+    // Apply view-specific base filtering
+    if (!user && !authLoading) { // Public, non-logged-in view
+      processedCultivars = allCultivars.filter(c => c.status === 'Live' || c.status === 'Featured');
+    } else { // Logged-in user view OR auth is loading
+      if (!showArchived) {
+        processedCultivars = processedCultivars.filter(c => c.status !== 'archived');
+      }
     }
 
+    // Apply common filters
     if (searchTerm) {
-      filtered = filtered.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      processedCultivars = processedCultivars.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }
-
     if (selectedEffects.length > 0) {
-      filtered = filtered.filter(c => c.effects && selectedEffects.every(eff => c.effects.includes(eff)));
+      processedCultivars = processedCultivars.filter(c => c.effects && selectedEffects.every(eff => c.effects.includes(eff)));
     }
-
     if (selectedFlavors.length > 0) {
-      filtered = filtered.filter(c => c.flavors && selectedFlavors.every(flav => c.flavors.includes(flav)));
+      processedCultivars = processedCultivars.filter(c => c.flavors && selectedFlavors.every(flav => c.flavors.includes(flav)));
     }
+    
+    // Apply sorting
+    return [...processedCultivars].sort((a, b) => {
+      // Public, non-logged-in view: Prioritize 'featured' status
+      if (!user && !authLoading) {
+        const isAFeatured = a.status === 'featured';
+        const isBFeatured = b.status === 'featured';
+        if (isAFeatured && !isBFeatured) return -1;
+        if (!isAFeatured && isBFeatured) return 1;
+        // If both are 'featured' or both are 'Live', fall through to secondary sort
+      }
 
-    return [...filtered].sort((a, b) => {
+      // Common secondary sort logic
       const ratingA = calculateAverageRating(a.reviews);
       const ratingB = calculateAverageRating(b.reviews);
       const thcMaxA = a.thc?.max ?? 0;
@@ -150,7 +165,7 @@ export default function CultivarBrowserPage() {
         default: return 0;
       }
     });
-  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived]);
+  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived, user, authLoading]);
 
   const totalPages = Math.ceil(filteredAndSortedCultivars.length / ITEMS_PER_PAGE);
 
@@ -241,14 +256,14 @@ export default function CultivarBrowserPage() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          {!authLoading && user && ( // Only show "Show Archived" if user is logged in
+          {(!authLoading && user) && ( // Only show "Show Archived" if user is logged in
             <Button onClick={handleShowArchivedToggle} variant="outline" className="w-full">
               {showArchived ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
               {showArchived ? 'Hide Archived' : 'Show Archived'}
             </Button>
           )}
-          {/* If user is not logged in, this space will be empty or adjust layout if needed */}
-          {!user && <div className="lg:col-span-1"></div>}
+          {/* If user is not logged in or auth is loading, this space will be empty or adjust layout if needed */}
+          {(authLoading || !user) && <div className="lg:col-span-1"></div>}
 
 
         </div>
@@ -315,7 +330,7 @@ export default function CultivarBrowserPage() {
         </Accordion>
       </section>
 
-      {isLoading || authLoading ? ( // Show loading spinner if either data or auth is loading
+      {isLoading || authLoading ? (
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
           <p className="text-lg text-muted-foreground">{authLoading ? 'Checking authentication...' : 'Loading cultivars...'}</p>
