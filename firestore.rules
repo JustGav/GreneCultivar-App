@@ -2,11 +2,178 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow all reads and writes to all documents for development purposes.
-    // IMPORTANT: For production, you MUST replace this with proper security rules
-    // that enforce authentication and authorization.
-    match /{document=**} {
-      allow read, write: if true;
+
+    // --- Helper Functions ---
+    function isString(data) { return data is string; }
+    function isNonEmptyString(data) { return isString(data) && data.size() > 0; }
+    function isList(data) { return data is list; }
+    function isMap(data) { return data is map; }
+    function isNumber(data) { return data is number; }
+    // For fields that MUST be server-set to the request time
+    function isTimestampFromServer(data) { return data == request.time; }
+    // For fields where client sends ISO string, Firestore converts to Timestamp
+    function isClientProvidedTimestamp(data) { return data is timestamp; }
+
+    function isValidGenetics(genetics) {
+      return genetics == 'Sativa' || genetics == 'Indica' || genetics == 'Hybrid' || genetics == 'Ruderalis';
+    }
+    function isValidStatus(status) {
+      return status == 'recentlyAdded' || status == 'verified' || status == 'archived';
+    }
+
+    function isValidUrl(url) {
+      // Allows null, empty string, or a valid https/http URL
+      return url == null || url == '' || (isString(url) && url.matches('https?://.+'));
+    }
+
+    function isValidCannabinoidProfile(profile) {
+      return profile == null || (
+        isMap(profile) &&
+        (profile.min == null || (isNumber(profile.min) && profile.min >= 0 && profile.min <=100) ) &&
+        (profile.max == null || (isNumber(profile.max) && profile.max >= 0 && profile.max <=100) ) &&
+        // Ensure min <= max if both are provided
+        (profile.min == null || profile.max == null || profile.min <= profile.max)
+      );
+    }
+
+    function isValidImage(img) {
+      return isMap(img) &&
+             isNonEmptyString(img.id) &&
+             isNonEmptyString(img.url) && (img.url.matches('https?://.+')) && // General URL for images
+             isNonEmptyString(img.alt) &&
+             (img.get('data-ai-hint', null) == null || (isString(img.get('data-ai-hint', null)) && img.get('data-ai-hint', null).size() <= 50) );
+    }
+    function isValidImagesArray(images) {
+      return isList(images) && images.size() <= 5 && // Max 5 images
+             (images.size() == 0 || images.every(img, isValidImage(img)));
+    }
+
+    function isValidTerpene(terp) {
+      return isMap(terp) &&
+             isNonEmptyString(terp.id) &&
+             isNonEmptyString(terp.name) &&
+             (terp.percentage == null || (isNumber(terp.percentage) && terp.percentage >= 0 && terp.percentage <= 100));
+    }
+    function isValidTerpeneProfile(profile) {
+      return isList(profile) && profile.size() >= 0 && profile.size() <= 20 && // Max 20 terpenes
+             (profile.size() == 0 || profile.every(terp, isValidTerpene(terp)));
+    }
+
+    function isValidAdditionalFile(file) {
+      return isMap(file) &&
+             isNonEmptyString(file.id) &&
+             isNonEmptyString(file.name) &&
+             isNonEmptyString(file.url) && (file.url.matches('https?://.+')) &&
+             (file.fileType == 'image' || file.fileType == 'pdf' || file.fileType == 'document') &&
+             isString(file.category) && (file.category == 'geneticCertificate' || file.category == 'plantPicture' || file.category == 'cannabinoidInfo' || file.category == 'terpeneInfo') &&
+             (file.get('data-ai-hint', null) == null || (isString(file.get('data-ai-hint', null)) && file.get('data-ai-hint', null).size() <= 50) );
+    }
+    function isValidAdditionalInfoCategory(files) {
+      return isList(files) && files.size() >= 0 && files.size() <= 5 && // Max 5 files per category
+             (files.size() == 0 || files.every(file, isValidAdditionalFile(file)));
+    }
+    function isValidAdditionalInfo(info) {
+      return info == null || (
+        isMap(info) &&
+        (info.geneticCertificate == null || isValidAdditionalInfoCategory(info.geneticCertificate)) &&
+        (info.plantPicture == null || isValidAdditionalInfoCategory(info.plantPicture)) &&
+        (info.cannabinoidInfo == null || isValidAdditionalInfoCategory(info.cannabinoidInfo)) &&
+        (info.terpeneInfo == null || isValidAdditionalInfoCategory(info.terpeneInfo))
+      );
+    }
+    
+    // Validates a review structure when it's part of a document write.
+    // Assumes client sends ISO string for createdAt, which Firestore converts to Timestamp.
+    function isWrittenReviewValid(review) {
+      return isMap(review) &&
+             isNonEmptyString(review.id) &&
+             isNonEmptyString(review.user) && // In future, could check against request.auth.uid
+             isNumber(review.rating) && review.rating >= 1 && review.rating <= 5 &&
+             isNonEmptyString(review.text) &&
+             (review.sentimentScore == null || isNumber(review.sentimentScore)) &&
+             isClientProvidedTimestamp(review.createdAt); // Validates type after Firestore conversion
+    }
+
+    // Validates a history entry structure when it's part of a document write.
+    function isWrittenHistoryEntryValid(entry) {
+      return isMap(entry) &&
+             isNonEmptyString(entry.event) &&
+             isClientProvidedTimestamp(entry.timestamp) && // Validates type after Firestore conversion
+             (entry.details == null || isMap(entry.details));
+    }
+
+    // --- Cultivar Rules ---
+    match /cultivars/{cultivarId} {
+      allow read: if true; // Public read access
+
+      function incomingData() { return request.resource.data; }
+      function existingData() { return resource.data; }
+
+      // Common data structure and basic validation for create and update
+      function commonWriteValidations() {
+        return isNonEmptyString(incomingData().name) && incomingData().name.size() < 100 &&
+               isNonEmptyString(incomingData().description) && incomingData().description.size() < 2000 &&
+               isValidGenetics(incomingData().genetics) &&
+               isValidStatus(incomingData().status) &&
+               (incomingData().source == null || (isString(incomingData().source) && incomingData().source.size() < 200)) &&
+               isValidUrl(incomingData().supplierUrl) &&
+               isValidCannabinoidProfile(incomingData().thc) &&
+               isValidCannabinoidProfile(incomingData().cbd) &&
+               isValidCannabinoidProfile(incomingData().cbc) &&
+               isValidCannabinoidProfile(incomingData().cbg) &&
+               isValidCannabinoidProfile(incomingData().cbn) &&
+               isValidCannabinoidProfile(incomingData().thcv) &&
+               isList(incomingData().effects) && incomingData().effects.size() <= 20 && (incomingData().effects.size() == 0 || isString(incomingData().effects[0])) &&
+               (incomingData().medicalEffects == null || (isList(incomingData().medicalEffects) && incomingData().medicalEffects.size() <= 20 && (incomingData().medicalEffects.size() == 0 || isString(incomingData().medicalEffects[0])) ) )&&
+               isValidImagesArray(incomingData().images) &&
+               (isList(incomingData().parents) && incomingData().parents.size() <= 10 && (incomingData().parents.size() == 0 || isString(incomingData().parents[0])) ) &&
+               (isList(incomingData().children) && incomingData().children.size() <= 10 && (incomingData().children.size() == 0 || isString(incomingData().children[0])) ) &&
+               isValidTerpeneProfile(incomingData().terpeneProfile) &&
+               isValidAdditionalInfo(incomingData().additionalInfo) &&
+               (incomingData().pricing == null || (
+                 isMap(incomingData().pricing) &&
+                 (incomingData().pricing.min == null || (isNumber(incomingData().pricing.min) && incomingData().pricing.min >=0) ) &&
+                 (incomingData().pricing.max == null || (isNumber(incomingData().pricing.max) && incomingData().pricing.max >=0) ) &&
+                 (incomingData().pricing.avg == null || (isNumber(incomingData().pricing.avg) && incomingData().pricing.avg >=0) ) &&
+                 (incomingData().pricing.min == null || incomingData().pricing.max == null || incomingData().pricing.min <= incomingData().pricing.max)
+               ));
+      }
+
+      allow create: if
+        // TODO: When auth is added, replace 'true' with 'request.auth != null'
+        true &&
+        commonWriteValidations() &&
+        incomingData().status == 'recentlyAdded' &&
+        isTimestampFromServer(incomingData().createdAt) &&    // Enforces server-set timestamp
+        isTimestampFromServer(incomingData().updatedAt) &&    // Enforces server-set timestamp
+        isList(incomingData().reviews) && incomingData().reviews.size() == 0 && // No reviews on create
+        isList(incomingData().history) && incomingData().history.size() == 1 && // Exactly one history entry
+        // For create, the client *should* send a serverTimestamp sentinel for history[0].timestamp.
+        // If client sends ISO string, this will be client-provided timestamp.
+        isWrittenHistoryEntryValid(incomingData().history[0]) &&
+        incomingData().history[0].event == "Cultivar Created" &&
+        (incomingData().history[0].timestamp == request.time || isClientProvidedTimestamp(incomingData().history[0].timestamp)); // Accommodate client ISO string or server timestamp
+
+      allow update: if
+        // TODO: When auth is added, replace 'true' with 'request.auth != null'
+        true &&
+        commonWriteValidations() &&
+        incomingData().createdAt == existingData().createdAt && // Creation timestamp is immutable
+        isTimestampFromServer(incomingData().updatedAt) &&      // Update timestamp must be server time
+
+        // Reviews: Allow adding, check validity of all reviews.
+        isList(incomingData().reviews) &&
+        (incomingData().reviews.size() == 0 || incomingData().reviews.every(review, isWrittenReviewValid(review))) &&
+        (existingData().reviews == null || incomingData().reviews.size() >= existingData().reviews.size()) && // Prevent review deletion via direct update
+
+        // History: Allow appending, check validity of all entries.
+        isList(incomingData().history) && incomingData().history.size() > 0 && // History should not be emptied
+        (incomingData().history.size() == 0 || incomingData().history.every(entry, isWrittenHistoryEntryValid(entry))) &&
+        (existingData().history == null || incomingData().history.size() >= existingData().history.size()) && // Prevent history deletion/tampering
+        // If history grew, the last entry's timestamp was client-set or ideally server-set.
+        (existingData().history == null || incomingData().history.size() == existingData().history.size() || isClientProvidedTimestamp(incomingData().history[incomingData().history.size()-1].timestamp) );
+
+      allow delete: if false; // Prefer using 'archived' status.
     }
   }
 }
