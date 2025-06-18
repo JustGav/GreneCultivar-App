@@ -141,7 +141,7 @@ const cultivarFormSchema = z.object({
   primaryImageFile: imageFileInputSchema,
   primaryImageAlt: z.string().optional(),
   primaryImageDataAiHint: z.string().optional(),
-  existingPrimaryImageUrl: z.string().optional().or(z.literal('')), // Allow empty string
+  existingPrimaryImageUrl: z.string().optional().or(z.literal('')), 
   existingPrimaryImageId: z.string().optional(),
 
 
@@ -186,6 +186,45 @@ const cultivarFormSchema = z.object({
 
 type CultivarFormData = z.infer<typeof cultivarFormSchema>;
 
+const defaultFormValues: CultivarFormData = {
+  name: '',
+  genetics: 'Hybrid', // Default to a common option
+  status: 'recentlyAdded',
+  source: '',
+  description: '',
+  supplierUrl: '',
+  parents: [],
+  children: [],
+  terpeneProfile: [],
+  effects: [],
+  medicalEffects: [],
+  primaryImageFile: undefined,
+  primaryImageAlt: '',
+  primaryImageDataAiHint: '',
+  existingPrimaryImageUrl: '',
+  existingPrimaryImageId: undefined,
+  thc: { min: undefined, max: undefined },
+  cbd: { min: undefined, max: undefined },
+  cbc: { min: undefined, max: undefined },
+  cbg: { min: undefined, max: undefined },
+  cbn: { min: undefined, max: undefined },
+  thcv: { min: undefined, max: undefined },
+  cultivationPhases: { germination: '', rooting: '', vegetative: '', flowering: '', harvest: '' },
+  plantCharacteristics: {
+    minHeight: undefined, maxHeight: undefined,
+    minMoisture: undefined, maxMoisture: undefined,
+    yieldPerPlant: { min: undefined, max: undefined },
+    yieldPerWatt: { min: undefined, max: undefined },
+    yieldPerM2: { min: undefined, max: undefined },
+  },
+  pricing: { min: undefined, max: undefined, avg: undefined },
+  additionalInfo_geneticCertificates: [],
+  additionalInfo_plantPictures: [],
+  additionalInfo_cannabinoidInfos: [],
+  additionalInfo_terpeneInfos: [],
+};
+
+
 const categorizedTerpenes = groupTerpenesByCategory();
 
 export default function EditCultivarPage() {
@@ -203,6 +242,7 @@ export default function EditCultivarPage() {
   const { control, handleSubmit, register, formState: { errors, isDirty, isValid }, reset, watch, setValue } = useForm<CultivarFormData>({
     resolver: zodResolver(cultivarFormSchema),
     mode: 'onChange',
+    defaultValues: defaultFormValues,
   });
 
   const watchedPrimaryImageFile = watch("primaryImageFile");
@@ -221,10 +261,10 @@ export default function EditCultivarPage() {
             const existingImageUrl = cultivar.images?.[0]?.url;
             setInitialPrimaryImageUrl(existingImageUrl);
 
-            const formData: Partial<CultivarFormData> = {
+            const formData: CultivarFormData = {
               name: cultivar.name,
               genetics: cultivar.genetics,
-              status: cultivar.status,
+              status: cultivar.status || 'recentlyAdded',
               source: cultivar.source || '',
               description: cultivar.description,
               supplierUrl: cultivar.supplierUrl || '',
@@ -233,27 +273,34 @@ export default function EditCultivarPage() {
               terpeneProfile: cultivar.terpeneProfile?.map(tp => ({ id: tp.id, name: tp.name, percentage: tp.percentage })) || [],
               effects: cultivar.effects?.map(e => ({ name: e, id: `effect-${Math.random()}` })) || [],
               medicalEffects: cultivar.medicalEffects?.map(me => ({ name: me, id: `medeffect-${Math.random()}` })) || [],
-
+              
+              primaryImageFile: undefined, // Will be handled by input
               existingPrimaryImageUrl: existingImageUrl || '',
-              existingPrimaryImageId: cultivar.images?.[0]?.id,
+              existingPrimaryImageId: cultivar.images?.[0]?.id || undefined,
               primaryImageAlt: cultivar.images?.[0]?.alt || '',
               primaryImageDataAiHint: cultivar.images?.[0]?.['data-ai-hint'] || '',
 
-              thc: cultivar.thc || {},
-              cbd: cultivar.cbd || {},
-              cbc: cultivar.cbc || {},
-              cbg: cultivar.cbg || {},
-              cbn: cultivar.cbn || {},
-              thcv: cultivar.thcv || {},
-              cultivationPhases: cultivar.cultivationPhases || {},
-              plantCharacteristics: cultivar.plantCharacteristics || {},
-              pricing: cultivar.pricing || {},
-              additionalInfo_geneticCertificates: cultivar.additionalInfo?.geneticCertificate?.map(f => ({...f, file: undefined})) || [],
-              additionalInfo_plantPictures: cultivar.additionalInfo?.plantPicture?.map(f => ({...f, file: undefined})) || [],
-              additionalInfo_cannabinoidInfos: cultivar.additionalInfo?.cannabinoidInfo?.map(f => ({...f, file: undefined})) || [],
-              additionalInfo_terpeneInfos: cultivar.additionalInfo?.terpeneInfo?.map(f => ({...f, file: undefined})) || [],
+              thc: cultivar.thc || { min: undefined, max: undefined },
+              cbd: cultivar.cbd || { min: undefined, max: undefined },
+              cbc: cultivar.cbc || { min: undefined, max: undefined },
+              cbg: cultivar.cbg || { min: undefined, max: undefined },
+              cbn: cultivar.cbn || { min: undefined, max: undefined },
+              thcv: cultivar.thcv || { min: undefined, max: undefined },
+              cultivationPhases: cultivar.cultivationPhases || { germination: '', rooting: '', vegetative: '', flowering: '', harvest: '' },
+              plantCharacteristics: cultivar.plantCharacteristics || {
+                minHeight: undefined, maxHeight: undefined,
+                minMoisture: undefined, maxMoisture: undefined,
+                yieldPerPlant: { min: undefined, max: undefined },
+                yieldPerWatt: { min: undefined, max: undefined },
+                yieldPerM2: { min: undefined, max: undefined },
+              },
+              pricing: cultivar.pricing || { min: undefined, max: undefined, avg: undefined },
+              additionalInfo_geneticCertificates: cultivar.additionalInfo?.geneticCertificate?.map(f => ({...f, file: undefined as File | undefined, url: f.url || undefined })) || [],
+              additionalInfo_plantPictures: cultivar.additionalInfo?.plantPicture?.map(f => ({...f, file: undefined as File | undefined, url: f.url || undefined, dataAiHint: f['data-ai-hint'] || undefined })) || [],
+              additionalInfo_cannabinoidInfos: cultivar.additionalInfo?.cannabinoidInfo?.map(f => ({...f, file: undefined as File | undefined, url: f.url || undefined })) || [],
+              additionalInfo_terpeneInfos: cultivar.additionalInfo?.terpeneInfo?.map(f => ({...f, file: undefined as File | undefined, url: f.url || undefined })) || [],
             };
-            reset(formData as CultivarFormData);
+            reset(formData);
           } else {
             setFetchError("Cultivar not found.");
           }
@@ -272,7 +319,6 @@ export default function EditCultivarPage() {
     setValue('existingPrimaryImageUrl', '');
     setValue('existingPrimaryImageId', undefined);
     setValue('primaryImageFile', undefined);
-    // Alt text and AI hint can remain as they might be useful if a new image is chosen
   };
 
   const { fields: terpeneProfileFields, append: appendTerpene, remove: removeTerpene } = useFieldArray({ control, name: "terpeneProfile" });
@@ -296,7 +342,7 @@ export default function EditCultivarPage() {
       let finalPrimaryImage: CultivarImage | undefined = undefined;
       const oldImageUrlFromLoad = initialPrimaryImageUrl;
 
-      if (data.primaryImageFile) {
+      if (data.primaryImageFile instanceof File) {
         const timestamp = Date.now();
         const uniqueFileName = `${timestamp}-${data.primaryImageFile.name}`;
         const newUrl = await uploadImage(data.primaryImageFile, `cultivar-images/${uniqueFileName}`);
@@ -320,7 +366,7 @@ export default function EditCultivarPage() {
             alt: data.primaryImageAlt || `${data.name} primary image`,
             'data-ai-hint': data.primaryImageDataAiHint
         };
-      } else { // No image selected, existing was removed or never existed
+      } else { 
         finalPrimaryImage = undefined;
         if (oldImageUrlFromLoad) {
            try {
@@ -342,12 +388,11 @@ export default function EditCultivarPage() {
         const processedFiles: AdditionalFileInfo[] = [];
         for (const formFile of formFiles) {
           let url = formFile.url;
-          if (formFile.file) {
+          if (formFile.file instanceof File) {
             const timestamp = Date.now();
             const uniqueFileName = `${timestamp}-${formFile.file.name}`;
             url = await uploadImage(formFile.file, `${storagePath}/${uniqueFileName}`);
-            // If there was an old URL for this specific item (and it's different), it should be deleted.
-            // This requires more complex tracking of individual file changes within arrays, which is not implemented here.
+            // TODO: Deletion of old file if formFile.url existed and is different from new url
           }
           if (url) {
             processedFiles.push({
@@ -362,9 +407,7 @@ export default function EditCultivarPage() {
         }
         return processedFiles;
       };
-      // Note: Deleting old files from 'additionalInfo' when items are removed or files replaced is not fully implemented here.
-      // This would require comparing the submitted array with the initial state to identify removed/changed files.
-
+      
       const updatedPlantPictures = await processAdditionalFiles(data.additionalInfo_plantPictures, 'cultivar-images/additional', 'plantPicture', 'image');
       const updatedGeneticCertificates = await processAdditionalFiles(data.additionalInfo_geneticCertificates, 'cultivar-docs/certificates', 'geneticCertificate', 'pdf');
       const updatedCannabinoidInfos = await processAdditionalFiles(data.additionalInfo_cannabinoidInfos, 'cultivar-docs/cannabinoid-info', 'cannabinoidInfo', 'pdf');
@@ -429,7 +472,7 @@ export default function EditCultivarPage() {
   const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string) => {
     const fieldPrefix = String(fieldPrefixKey);
 
-    const errorsAny = errors as any;
+    const errorsAny = errors as any; // Use any for easier dynamic access
     let minErrorMsg, maxErrorMsg, rootErrorMsg;
 
     if (fieldPrefix.includes('.')) {
@@ -437,13 +480,13 @@ export default function EditCultivarPage() {
         if (errorsAny[baseKey] && errorsAny[baseKey][nestedKey]) {
             minErrorMsg = errorsAny[baseKey][nestedKey]?.min?.message;
             maxErrorMsg = errorsAny[baseKey][nestedKey]?.max?.message;
-            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message;
+            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message; // For .refine() error on the object itself
         }
     } else {
         if (errorsAny[fieldPrefix]) {
             minErrorMsg = errorsAny[fieldPrefix]?.min?.message;
             maxErrorMsg = errorsAny[fieldPrefix]?.max?.message;
-            rootErrorMsg = errorsAny[fieldPrefix]?.message;
+            rootErrorMsg = errorsAny[fieldPrefix]?.message; // For .refine() error on the object itself
         }
     }
 
@@ -481,7 +524,7 @@ export default function EditCultivarPage() {
       </div>
     );
   }
-
+  
   return (
     <div className="space-y-8 animate-fadeIn">
       <Link href={`/cultivars/${id}`} className="inline-flex items-center text-primary hover:underline mb-6 font-medium">
@@ -931,7 +974,7 @@ export default function EditCultivarPage() {
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><Award size={18} className="mr-2 text-accent"/>Genetic Certificates (PDF)</h4 >
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendGeneticCertificate({ name: '', file: undefined, category: 'geneticCertificate' })}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendGeneticCertificate({ name: '', file: undefined, category: 'geneticCertificate', url: undefined })}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Certificate
                         </Button>
                     </div>
@@ -962,7 +1005,7 @@ export default function EditCultivarPage() {
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><ImageIcon size={18} className="mr-2 text-accent"/>Plant Pictures (Image)</h4 >
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendPlantPicture({ name: '', file: undefined, dataAiHint: '', category: 'plantPicture' })}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendPlantPicture({ name: '', file: undefined, dataAiHint: '', category: 'plantPicture', url: undefined })}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Picture
                         </Button>
                     </div>
@@ -973,12 +1016,12 @@ export default function EditCultivarPage() {
                                     <p className="text-xs text-muted-foreground">New Preview:</p>
                                     <NextImage src={URL.createObjectURL(watch(`additionalInfo_plantPictures.${index}.file`)!)} alt="New plant picture preview" width={100} height={75} className="rounded-md border object-cover mt-1"/>
                                 </div>
-                            ) : field.url && (
+                            ) : field.url ? (
                                 <div className="mb-2">
                                     <p className="text-xs text-muted-foreground">Current: <a href={field.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{field.name}</a></p>
                                     <NextImage src={field.url} alt={field.name || "Plant picture"} width={100} height={75} className="rounded-md border object-cover mt-1"/>
                                 </div>
-                            )}
+                            ): null}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor={`additionalInfo_plantPictures.${index}.name`}>Picture Name *</Label>
@@ -1007,7 +1050,7 @@ export default function EditCultivarPage() {
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FileText size={18} className="mr-2 text-accent"/>Cannabinoid Information (PDF)</h4 >
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendCannabinoidInfo({ name: '', file: undefined, category: 'cannabinoidInfo' })}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendCannabinoidInfo({ name: '', file: undefined, category: 'cannabinoidInfo', url: undefined })}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Cannabinoid Info
                         </Button>
                     </div>
@@ -1038,7 +1081,7 @@ export default function EditCultivarPage() {
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FlaskConical size={18} className="mr-2 text-accent"/>Terpene Information (PDF)</h4 >
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendTerpeneInfo({ name: '', file: undefined, category: 'terpeneInfo' })}>
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendTerpeneInfo({ name: '', file: undefined, category: 'terpeneInfo', url: undefined })}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Add Terpene Info
                         </Button>
                     </div>
