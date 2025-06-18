@@ -1,10 +1,12 @@
+
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Cultivar } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import StarRating from './StarRating';
-import { Leaf, ThermometerSnowflake, ThermometerSun } from 'lucide-react';
+import { Leaf, ThermometerSnowflake, ThermometerSun, Edit } from 'lucide-react'; // Added Edit icon
+import { Button } from './ui/button'; // Added Button import
 
 interface CultivarCardProps {
   cultivar: Cultivar;
@@ -62,17 +64,26 @@ export default function CultivarCard({ cultivar }: CultivarCardProps) {
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex flex-col items-start gap-2 pt-4 border-t">
+      <CardFooter className="flex flex-col items-start gap-3 pt-4 border-t">
         <div className="flex items-center justify-between w-full">
            <StarRating rating={averageRating} readOnly size={20} />
            {averageRating > 0 && <span className="text-sm text-muted-foreground ml-2">({cultivar.reviews.length} reviews)</span>}
         </div>
-        <Link href={`/cultivars/${cultivar.id}`} className="w-full">
-          <Badge className="w-full text-center py-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-base">
-            View Details
-          </Badge>
-        </Link>
+        <div className="grid grid-cols-2 gap-2 w-full">
+          <Link href={`/cultivars/${cultivar.id}`} className="w-full">
+            <Button variant="default" className="w-full text-sm">
+              View Details
+            </Button>
+          </Link>
+          <Link href={`/cultivars/edit/${cultivar.id}`} className="w-full">
+            <Button variant="outline" className="w-full text-sm">
+              <Edit size={16} className="mr-2" /> Edit
+            </Button>
+          </Link>
+        </div>
       </CardFooter>
     </Card>
   );
 }
+
+    
