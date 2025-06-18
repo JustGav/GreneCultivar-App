@@ -424,7 +424,7 @@ export default function CultivarDetailsPage() {
                         key={effect}
                         variant="outline"
                         className={cn(
-                          "text-black", // Ensure text is black
+                          "text-black",
                           isNegative
                             ? 'bg-destructive/10 border-destructive/30'
                             : 'bg-accent/10 border-accent/30'
@@ -449,7 +449,7 @@ export default function CultivarDetailsPage() {
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {cultivar.flavors.map(flavor => (
-                    <Badge key={flavor} variant="secondary" className="bg-primary/5 border-primary/20 text-primary-foreground/80">{flavor}</Badge>
+                    <Badge key={flavor} variant="secondary" className="bg-primary/5 border-primary/20 text-foreground/90">{flavor}</Badge>
                   ))}
                 </div>
               </CardContent>
@@ -466,7 +466,7 @@ export default function CultivarDetailsPage() {
               <CardContent>
                 <div className="flex flex-wrap gap-2">
                   {cultivar.medicalEffects.map(effect => (
-                    <Badge key={effect} variant="secondary" className="bg-primary/10 border-primary/30 text-primary-foreground/90">{effect}</Badge>
+                    <Badge key={effect} variant="secondary" className="bg-primary/10 border-primary/30 text-foreground/90">{effect}</Badge>
                   ))}
                 </div>
               </CardContent>
