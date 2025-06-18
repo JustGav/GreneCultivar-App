@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Leaf } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function Header() {
   return (
@@ -10,9 +11,9 @@ export default function Header() {
           <h1 className="text-3xl font-headline">GreneCultivar</h1>
         </Link>
         <nav>
-          <Link href="/" className="hover:text-accent transition-colors font-medium">
-            Browse Cultivars
-          </Link>
+          <Button variant="outline" className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:text-primary">
+            Login
+          </Button>
         </nav>
       </div>
     </header>
