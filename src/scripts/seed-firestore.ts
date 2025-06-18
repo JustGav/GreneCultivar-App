@@ -1,20 +1,10 @@
 
 import * as admin from 'firebase-admin';
 import type { ServiceAccount } from 'firebase-admin';
-import type { Cultivar, CannabinoidProfile, CultivationPhases, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, PricingProfile, CultivarImage, Review } from '../src/types';
+import type { Cultivar, CannabinoidProfile, CultivationPhases, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, PricingProfile, CultivarImage, Review, CultivarStatus } from '../src/types';
 
-// --- IMPORTANT: CONFIGURE YOUR SERVICE ACCOUNT KEY PATH ---
-// 1. Download your Firebase service account key JSON file from:
-//    Firebase Console > Project settings > Service accounts > Generate new private key.
-// 2. Place this file somewhere secure (ideally outside your project repo, or add to .gitignore).
-// 3. Update the path below to point to your service account key file.
-//    Example for a file in the same directory: './your-service-account-key.json'
-//    Example for a file one level up: '../your-service-account-key.json'
-const SERVICE_ACCOUNT_KEY_PATH = './serviceAccountKey.json'; // <--- UPDATE THIS PATH if your key is not in the scripts/ directory
-
-// --- CONFIGURE YOUR FIREBASE PROJECT ID ---
-// You can find this in your Firebase project settings.
-const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'grenecultivar'; // <--- UPDATE THIS OR SET VIA ENV
+const SERVICE_ACCOUNT_KEY_PATH = './serviceAccountKey.json'; 
+const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'grenecultivar'; 
 
 const serviceAccount = require(SERVICE_ACCOUNT_KEY_PATH) as ServiceAccount;
 
@@ -31,7 +21,6 @@ try {
     console.error("Please ensure you've downloaded your Firebase service account key JSON file and updated the 'SERVICE_ACCOUNT_KEY_PATH' variable in this script.");
   } else if ((error as any).code === 'app/duplicate-app') {
     console.warn('Firebase Admin SDK already initialized. This is normal if running script multiple times in some environments.');
-    // admin.app() is the already initialized app
   } else {
     process.exit(1);
   }
@@ -44,6 +33,8 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
   {
     name: 'Cosmic Haze',
     genetics: 'Sativa',
+    status: 'verified',
+    source: 'Internal Lab Test CH-001',
     description: 'An uplifting Sativa known for its cerebral effects and citrus aroma. Perfect for daytime use and creative endeavors.',
     supplierUrl: 'https://example.com/cosmic-haze',
     parents: ['Super Silver Haze', 'Galaxy OG'],
@@ -90,6 +81,8 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
   {
     name: 'Indica Dream',
     genetics: 'Indica',
+    status: 'recentlyAdded',
+    source: 'Community Submission ID-002',
     description: 'A deeply relaxing Indica, perfect for unwinding at the end of the day. Features earthy and sweet notes.',
     supplierUrl: 'https://example.com/indica-dream',
     parents: ['Afghan Kush', 'Northern Lights'],
@@ -124,6 +117,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
   {
     name: 'Hybrid Harmony',
     genetics: 'Hybrid',
+    status: 'verified',
     description: 'A balanced hybrid offering the best of both worlds. Provides a gentle euphoria and relaxation without heavy sedation.',
     thc: { min: 19, max: 23 },
     cbd: { min: 0.5, max: 1.5 },
@@ -155,6 +149,7 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
   {
     name: 'Ruderalis Ranger',
     genetics: 'Ruderalis',
+    status: 'recentlyAdded',
     description: 'A hardy autoflowering strain, known for its resilience and quick turnaround. Lower THC but great for beginners.',
     thc: { min: 8, max: 14 },
     cbd: { min: 1, max: 4 },
@@ -210,6 +205,12 @@ const prepareDataForFirestore = (data: Record<string, any>): Record<string, any>
         terpeneInfo: [],
       };
     }
+
+    // Ensure status is set, default to 'recentlyAdded' if not provided
+    if (cleanedData.status === undefined) {
+      cleanedData.status = 'recentlyAdded';
+    }
+
   return cleanedData;
 };
 
@@ -217,26 +218,15 @@ const prepareDataForFirestore = (data: Record<string, any>): Record<string, any>
 async function seedDatabase() {
   console.log(`Starting to seed ${mockCultivarsData.length} cultivars into Firestore...`);
 
-  // Optional: Clear existing cultivars first if you want a fresh seed
-  // const snapshot = await cultivarsCollection.get();
-  // if (!snapshot.empty) {
-  //   console.log(`Deleting ${snapshot.size} existing cultivars...`);
-  //   const batch = db.batch();
-  //   snapshot.docs.forEach(doc => batch.delete(doc.ref));
-  //   await batch.commit();
-  //   console.log('Existing cultivars deleted.');
-  // }
-
   for (const cultivarData of mockCultivarsData) {
     try {
-      // Add initial empty reviews array and ensure no undefined fields
       const dataToSave = {
         ...cultivarData,
         reviews: [], 
       };
       const cleanedData = prepareDataForFirestore(dataToSave);
       const docRef = await cultivarsCollection.add(cleanedData);
-      console.log(`Added cultivar "${cultivarData.name}" with ID: ${docRef.id}`);
+      console.log(`Added cultivar "${cultivarData.name}" (Status: ${cleanedData.status}) with ID: ${docRef.id}`);
     } catch (error) {
       console.error(`Error adding cultivar "${cultivarData.name}":`, error);
     }
@@ -248,4 +238,3 @@ seedDatabase().catch(error => {
   console.error('Error during database seeding process:', error);
   process.exit(1);
 });
-

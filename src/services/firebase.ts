@@ -1,6 +1,6 @@
 
 import { db, storage } from '@/lib/firebase-config';
-import type { Cultivar, Review, CannabinoidProfile, PlantCharacteristics, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, PricingProfile, YieldProfile, CultivarImage } from '@/types';
+import type { Cultivar, Review, CannabinoidProfile, PlantCharacteristics, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, PricingProfile, YieldProfile, CultivarImage, CultivarStatus } from '@/types';
 import {
   collection,
   getDocs,
@@ -19,7 +19,6 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 
 const CULTIVARS_COLLECTION = 'cultivars';
 
-// Helper function to upload an image and get its download URL
 export const uploadImage = async (file: File, path: string): Promise<string> => {
   try {
     const storageRef = ref(storage, path);
@@ -32,7 +31,6 @@ export const uploadImage = async (file: File, path: string): Promise<string> => 
   }
 };
 
-// Helper function to delete an image from Firebase Storage
 export const deleteImageByUrl = async (imageUrl: string): Promise<void> => {
   try {
     const imageRef = ref(storage, imageUrl);
@@ -42,18 +40,20 @@ export const deleteImageByUrl = async (imageUrl: string): Promise<void> => {
       console.warn(`File not found for deletion (may have already been deleted or never existed): ${imageUrl}`);
     } else {
       console.error(`Error deleting image ${imageUrl}:`, error);
-      throw error; // Re-throw other errors
+      throw error; 
     }
   }
 };
 
 
 const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
-  const data = docData as any; // Use 'as any' carefully or define a more specific Firestore type
+  const data = docData as any; 
   return {
     id,
     name: data.name,
     genetics: data.genetics,
+    status: data.status || 'recentlyAdded', // Default status if not present
+    source: data.source,
     thc: data.thc as CannabinoidProfile,
     cbd: data.cbd as CannabinoidProfile,
     cbc: data.cbc as CannabinoidProfile | undefined,
@@ -108,7 +108,6 @@ export const getCultivarById = async (id: string): Promise<Cultivar | null> => {
   }
 };
 
-// Helper to prepare data for Firestore, removing undefined top-level fields
 const prepareDataForFirestore = (data: Record<string, any>): Record<string, any> => {
   const cleanedData: Record<string, any> = {};
   for (const key in data) {
@@ -119,7 +118,7 @@ const prepareDataForFirestore = (data: Record<string, any>): Record<string, any>
   return cleanedData;
 };
 
-export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'reviews'>): Promise<Cultivar> => {
+export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'reviews' | 'status'> & { source?: string }): Promise<Cultivar> => {
   try {
     const dataToSave: { [key: string]: any } = {};
     for (const key in cultivarDataInput) {
@@ -128,7 +127,7 @@ export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'revi
       }
     }
 
-    const arrayFields: (keyof Omit<Cultivar, 'id' | 'reviews'>)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile'];
+    const arrayFields: (keyof (Omit<Cultivar, 'id' | 'reviews' | 'status'> & { source?: string }))[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile'];
     arrayFields.forEach(field => {
       if (dataToSave[field] === undefined) {
         dataToSave[field] = [];
@@ -154,7 +153,8 @@ export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'revi
 
     const finalDataForFirestore = {
       ...dataToSave,
-      reviews: [], // Always initialize reviews as an empty array
+      status: 'recentlyAdded' as CultivarStatus, // Default status for new cultivars
+      reviews: [], 
     };
 
     const cleanedData = prepareDataForFirestore(finalDataForFirestore);
@@ -178,7 +178,6 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Cultivar>
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
     const cleanedData = prepareDataForFirestore(cultivarData);
     
-    // Ensure array fields are not undefined, set to empty array if so
     const arrayFields: (keyof Cultivar)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile'];
     arrayFields.forEach(field => {
       if (cleanedData[field] === undefined && cultivarData.hasOwnProperty(field)) {
@@ -186,7 +185,6 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Cultivar>
       }
     });
 
-    // Ensure additionalInfo and its sub-arrays are not undefined
     if (cultivarData.hasOwnProperty('additionalInfo')) {
       if (cleanedData.additionalInfo === undefined || cleanedData.additionalInfo === null) {
         cleanedData.additionalInfo = {};
@@ -200,10 +198,19 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Cultivar>
       });
     }
 
-
     await updateDoc(cultivarDocRef, cleanedData);
   } catch (error) {
     console.error(`Error updating cultivar with ID ${id}: `, error);
+    throw error;
+  }
+};
+
+export const updateCultivarStatus = async (id: string, status: CultivarStatus): Promise<void> => {
+  try {
+    const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
+    await updateDoc(cultivarDocRef, { status });
+  } catch (error) {
+    console.error(`Error updating status for cultivar with ID ${id}: `, error);
     throw error;
   }
 };
@@ -212,7 +219,6 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Cultivar>
 export const addReviewToCultivar = async (cultivarId: string, reviewData: Review): Promise<void> => {
   try {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, cultivarId);
-    // Ensure createdAt is a string when saving
     const reviewToSave = {
       ...reviewData,
       createdAt: typeof reviewData.createdAt === 'string' ? reviewData.createdAt : new Date(reviewData.createdAt).toISOString(),
@@ -225,4 +231,3 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
     throw error;
   }
 };
-

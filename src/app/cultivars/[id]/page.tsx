@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import NextImage from 'next/image'; 
-import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene } from '@/types';
+import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics, YieldProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, Terpene, CultivarStatus } from '@/types';
 import { getCultivarById, addReviewToCultivar } from '@/services/firebase';
 import ImageGallery from '@/components/ImageGallery';
 import ReviewForm from '@/components/ReviewForm';
@@ -14,11 +14,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Loader2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as LucideImage, FileText, FlaskConical, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Loader2, Database, ShieldCheck, Hourglass, Archive as ArchiveIconLucide, Info } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import CultivarDetailLoading from './loading'; // Import the loading component
+import CultivarDetailLoading from './loading'; 
 
 const calculateAverageRating = (reviews: ReviewType[]): number => {
   if (!reviews || reviews.length === 0) return 0;
@@ -58,6 +58,38 @@ const additionalInfoCategoriesConfig: Record<AdditionalInfoCategoryKey, { title:
   plantPicture: { title: 'Plant Pictures', icon: LucideImage },
   cannabinoidInfo: { title: 'Cannabinoid Information', icon: FileText },
   terpeneInfo: { title: 'Terpene Information', icon: FlaskConical },
+};
+
+const STATUS_LABELS: Record<CultivarStatus, string> = {
+  recentlyAdded: 'Recently Added',
+  verified: 'Verified',
+  archived: 'Archived',
+};
+
+const getStatusBadgeVariant = (status: CultivarStatus): "default" | "secondary" | "destructive" | "outline" => {
+  switch (status) {
+    case 'verified':
+      return 'default'; 
+    case 'recentlyAdded':
+      return 'secondary';
+    case 'archived':
+      return 'destructive';
+    default:
+      return 'outline';
+  }
+};
+
+const getStatusIcon = (status: CultivarStatus) => {
+  switch (status) {
+    case 'verified':
+      return <ShieldCheck size={16} className="mr-1.5" />;
+    case 'recentlyAdded':
+      return <Hourglass size={16} className="mr-1.5" />;
+    case 'archived':
+      return <ArchiveIconLucide size={16} className="mr-1.5" />;
+    default:
+      return <Info size={16} className="mr-1.5" />;
+  }
 };
 
 
@@ -103,7 +135,6 @@ export default function CultivarDetailsPage() {
     if (!cultivar) return;
     try {
       await addReviewToCultivar(cultivar.id, newReview);
-      // Optimistically update UI or re-fetch
       setCultivar(prevCultivar => {
         if (!prevCultivar) return null;
         const updatedReviews = [newReview, ...(prevCultivar.reviews || [])];
@@ -199,9 +230,15 @@ export default function CultivarDetailsPage() {
           
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="font-headline text-4xl text-primary flex items-center">
-                <Leaf size={36} className="mr-3 text-primary/80" /> {cultivar.name}
-              </CardTitle>
+              <div className="flex justify-between items-start">
+                <CardTitle className="font-headline text-4xl text-primary flex items-center">
+                  <Leaf size={36} className="mr-3 text-primary/80" /> {cultivar.name}
+                </CardTitle>
+                <Badge variant={getStatusBadgeVariant(cultivar.status)} className="capitalize text-sm h-fit flex items-center py-1.5 px-3">
+                    {getStatusIcon(cultivar.status)}
+                    {STATUS_LABELS[cultivar.status]}
+                </Badge>
+              </div>
               <div className="flex items-center space-x-2 mt-2">
                 <Badge variant="secondary" className="text-sm">{cultivar.genetics}</Badge>
                 {averageRating > 0 && (
@@ -215,14 +252,23 @@ export default function CultivarDetailsPage() {
             <CardContent>
               <p className="text-lg font-body text-foreground/90 leading-relaxed mb-6">{cultivar.description}</p>
               
-              {cultivar.supplierUrl && (
-                <div className="mb-6">
-                    <a href={cultivar.supplierUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-sm text-primary hover:text-accent font-medium transition-colors">
-                        <ExternalLink size={16} className="mr-2"/>
-                        Visit Supplier
-                    </a>
-                </div>
-              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-6">
+                {cultivar.supplierUrl && (
+                    <div>
+                        <a href={cultivar.supplierUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-primary hover:text-accent font-medium transition-colors">
+                            <ExternalLink size={16} className="mr-2"/>
+                            Visit Supplier
+                        </a>
+                    </div>
+                )}
+                {cultivar.source && (
+                    <div className="flex items-center">
+                       <Database size={16} className="mr-2 text-muted-foreground" />
+                       <span className="font-medium mr-1">Source:</span> {cultivar.source}
+                    </div>
+                )}
+              </div>
+
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="space-y-3">

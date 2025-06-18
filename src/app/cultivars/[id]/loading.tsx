@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network } from "lucide-react";
+import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets, BarChartBig, Paperclip, Award, Image as ImageIconSkeleton, FileText as FileTextSkeleton, FlaskConical as FlaskConicalSkeleton, Palette, DollarSign, Sunrise, Stethoscope, ExternalLink, Network, Database, CheckCheck, ShieldCheck, ArchiveIcon, Info } from "lucide-react";
 
 export default function CultivarDetailLoading() {
   return (
@@ -25,9 +25,12 @@ export default function CultivarDetailLoading() {
           {/* Cultivar Info Skeleton */}
           <Card>
             <CardHeader>
-              <div className="flex items-center">
-                <Leaf size={36} className="mr-3 text-muted-foreground/50" />
-                <Skeleton className="h-10 w-3/4" />
+              <div className="flex justify-between items-start">
+                <div className="flex items-center w-3/4">
+                  <Leaf size={36} className="mr-3 text-muted-foreground/50" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <Skeleton className="h-8 w-28 rounded-md" /> {/* Status Badge Skeleton */}
               </div>
               <div className="flex items-center space-x-2 mt-2">
                 <Skeleton className="h-6 w-20 rounded-full" />
@@ -39,11 +42,14 @@ export default function CultivarDetailLoading() {
               <Skeleton className="h-5 w-full mb-2" />
               <Skeleton className="h-5 w-3/4 mb-4" />
 
-              {/* Supplier URL Skeleton */}
-              <div className="mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm mb-6">
                 <div className="flex items-center">
-                  <ExternalLink size={16} className="mr-2 text-muted-foreground/50"/>
-                  <Skeleton className="h-5 w-1/3" />
+                    <ExternalLink size={16} className="mr-2 text-muted-foreground/50"/>
+                    <Skeleton className="h-5 w-1/3" />
+                </div>
+                 <div className="flex items-center">
+                    <Database size={16} className="mr-2 text-muted-foreground/50"/>
+                    <Skeleton className="h-5 w-1/2" /> {/* Source Skeleton */}
                 </div>
               </div>
               
@@ -59,11 +65,10 @@ export default function CultivarDetailLoading() {
                 </div>
               </div>
 
-              {/* Terpene Profile Skeleton */}
               <div className="mb-6 pt-6 border-t">
                 <div className="flex items-center mb-3">
                   <Palette size={20} className="mr-2 text-muted-foreground/50" />
-                  <Skeleton className="h-6 w-1/3" /> {/* Section Title: Terpene Profile */}
+                  <Skeleton className="h-6 w-1/3" /> 
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {[1, 2, 3].map(i => (
@@ -75,7 +80,6 @@ export default function CultivarDetailLoading() {
                 </div>
               </div>
 
-              {/* Plant Characteristics Skeleton */}
               <div className="mb-6 pt-6 border-t">
                 <h3 className="font-semibold text-lg flex items-center mb-3">
                     <Combine size={20} className="mr-2 text-muted-foreground/50"/>
@@ -109,7 +113,6 @@ export default function CultivarDetailLoading() {
               </div>
 
 
-              {/* Cultivation Phases Skeleton */}
               <div className="pt-6 border-t">
                 <h3 className="font-semibold text-lg flex items-center mb-4">
                   <Timer size={20} className="mr-2 text-muted-foreground/50"/>
@@ -134,7 +137,6 @@ export default function CultivarDetailLoading() {
                 </div>
               </div>
 
-              {/* Pricing Skeleton */}
               <div className="pt-6 border-t">
                 <div className="flex items-center mb-3">
                     <DollarSign size={20} className="mr-2 text-muted-foreground/50" />
@@ -149,7 +151,6 @@ export default function CultivarDetailLoading() {
             </CardContent>
           </Card>
 
-          {/* Reported Effects Skeleton Card */}
           <Card>
             <CardHeader>
               <div className="flex items-center">
@@ -166,7 +167,6 @@ export default function CultivarDetailLoading() {
             </CardContent>
           </Card>
 
-          {/* Potential Medical Effects Skeleton Card */}
           <Card>
             <CardHeader>
               <div className="flex items-center">
@@ -183,29 +183,27 @@ export default function CultivarDetailLoading() {
             </CardContent>
           </Card>
 
-          {/* Lineage Skeleton Card */}
           <Card>
             <CardHeader>
               <div className="flex items-center">
                 <Network size={28} className="mr-3 text-muted-foreground/50" />
-                <Skeleton className="h-8 w-1/3" /> {/* Title: Lineage */}
+                <Skeleton className="h-8 w-1/3" /> 
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <Skeleton className="h-5 w-1/4 mb-1" /> {/* Parents Label */}
-                <Skeleton className="h-4 w-1/2" /> {/* Parent Name */}
-                <Skeleton className="h-4 w-2/5 mt-1" /> {/* Another Parent Name */}
+                <Skeleton className="h-5 w-1/4 mb-1" /> 
+                <Skeleton className="h-4 w-1/2" /> 
+                <Skeleton className="h-4 w-2/5 mt-1" /> 
               </div>
               <div>
-                <Skeleton className="h-5 w-1/4 mb-1" /> {/* Children Label */}
-                <Skeleton className="h-4 w-1/2" /> {/* Child Name */}
+                <Skeleton className="h-5 w-1/4 mb-1" /> 
+                <Skeleton className="h-4 w-1/2" /> 
               </div>
             </CardContent>
           </Card>
 
 
-          {/* Additional Information Skeleton */}
           <Card className="shadow-lg">
             <CardHeader>
               <div className="flex items-center">
@@ -243,7 +241,6 @@ export default function CultivarDetailLoading() {
 
         </div>
 
-        {/* Review Form Skeleton */}
         <div className="lg:col-span-1 space-y-6">
           <Card>
             <CardHeader>
@@ -269,7 +266,6 @@ export default function CultivarDetailLoading() {
 
       <Skeleton className="h-px w-full my-8" />
 
-      {/* Reviews Section Skeleton */}
       <section>
         <div className="flex items-center mb-6">
           <MessageSquare size={30} className="mr-3 text-muted-foreground/50"/>

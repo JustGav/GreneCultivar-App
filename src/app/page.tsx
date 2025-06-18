@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import type { Cultivar, Genetics } from '@/types';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import type { Cultivar, Genetics, CultivarStatus } from '@/types';
 import { EFFECT_OPTIONS } from '@/lib/mock-data'; 
-import { getCultivars } from '@/services/firebase';
+import { getCultivars, updateCultivarStatus } from '@/services/firebase';
 import CultivarCard from '@/components/CultivarCard';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2 } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -16,6 +16,9 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
@@ -26,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
+const STATUS_OPTIONS: CultivarStatus[] = ['recentlyAdded', 'verified', 'archived'];
 
 const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
   if (!reviews || reviews.length === 0) return 0;
@@ -34,37 +38,38 @@ const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
 };
 
 export default function CultivarBrowserPage() {
-  const [cultivars, setCultivars] = useState<Cultivar[]>([]);
+  const [allCultivars, setAllCultivars] = useState<Cultivar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [geneticFilters, setGeneticFilters] = useState<string[]>([]);
-  const [hybridRatio, setHybridRatio] = useState<number>(50); 
+  const [showArchived, setShowArchived] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const { toast } = useToast();
   
   const allAvailableEffects = EFFECT_OPTIONS;
 
-  useEffect(() => {
-    const fetchCultivars = async () => {
-      setIsLoading(true);
-      try {
-        const fetchedCultivars = await getCultivars();
-        setCultivars(fetchedCultivars);
-      } catch (error) {
-        console.error("Failed to fetch cultivars:", error);
-        toast({
-          title: "Error fetching data",
-          description: "Could not load cultivars from the database. Please try again later.",
-          variant: "destructive",
-        });
-        setCultivars([]); // Set to empty array on error
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchCultivars();
+  const fetchCultivars = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const fetchedCultivars = await getCultivars();
+      setAllCultivars(fetchedCultivars);
+    } catch (error) {
+      console.error("Failed to fetch cultivars:", error);
+      toast({
+        title: "Error fetching data",
+        description: "Could not load cultivars from the database. Please try again later.",
+        variant: "destructive",
+      });
+      setAllCultivars([]); 
+    } finally {
+      setIsLoading(false);
+    }
   }, [toast]);
+
+  useEffect(() => {
+    fetchCultivars();
+  }, [fetchCultivars]);
 
   const handleEffectToggle = (effect: string) => {
     setSelectedEffects(prev =>
@@ -78,16 +83,29 @@ export default function CultivarBrowserPage() {
     );
   };
 
+  const handleCultivarStatusChange = useCallback((cultivarId: string, newStatus: CultivarStatus) => {
+    setAllCultivars(prevCultivars =>
+      prevCultivars.map(c => 
+        c.id === cultivarId ? { ...c, status: newStatus } : c
+      )
+    );
+  }, []);
+
+
   const resetFilters = () => {
     setSearchTerm('');
     setSelectedEffects([]);
     setGeneticFilters([]);
-    setHybridRatio(50);
+    setShowArchived(false);
     setSortOption('name-asc');
   };
   
   const filteredAndSortedCultivars = useMemo(() => {
-    let filtered = cultivars;
+    let filtered = allCultivars;
+
+    if (!showArchived) {
+      filtered = filtered.filter(c => c.status !== 'archived');
+    }
 
     if (searchTerm) {
       filtered = filtered.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -121,7 +139,7 @@ export default function CultivarBrowserPage() {
         default: return 0;
       }
     });
-  }, [cultivars, searchTerm, selectedEffects, geneticFilters, sortOption]);
+  }, [allCultivars, searchTerm, selectedEffects, geneticFilters, sortOption, showArchived]);
 
 
   const sortOptions: {value: SortOption, label: string, icon?: React.ReactNode}[] = [
@@ -139,7 +157,7 @@ export default function CultivarBrowserPage() {
   return (
     <div className="space-y-8 animate-fadeIn">
       <section className="bg-card p-6 rounded-lg shadow-lg">
-        <div className="flex justify-between items-start mb-2">
+        <div className="flex flex-col sm:flex-row justify-between items-start mb-2 gap-4">
           <div>
             <h1 className="text-4xl font-headline text-primary">Explore Cultivars</h1>
             <p className="text-muted-foreground font-body mt-1">
@@ -147,14 +165,14 @@ export default function CultivarBrowserPage() {
             </p>
           </div>
           <Link href="/cultivars/add" passHref>
-            <Button variant="default">
+            <Button variant="default" className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-5 w-5" />
               Add New Cultivar
             </Button>
           </Link>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 items-end pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 items-end pt-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
@@ -186,6 +204,10 @@ export default function CultivarBrowserPage() {
           <Button onClick={resetFilters} variant="outline" className="w-full">
             <ListRestart className="mr-2 h-4 w-4" /> Reset Filters
           </Button>
+          <Button onClick={() => setShowArchived(prev => !prev)} variant="outline" className="w-full">
+            {showArchived ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+            {showArchived ? 'Hide Archived' : 'Show Archived'}
+          </Button>
         </div>
         
         <Separator className="my-6" />
@@ -210,23 +232,6 @@ export default function CultivarBrowserPage() {
                   </div>
                 ))}
               </div>
-              {geneticFilters.includes('Hybrid') && (
-                <div className="pt-3 space-y-2">
-                  <Label htmlFor="hybrid-ratio" className="text-sm font-medium">
-                    Hybrid Balance (Sativa {hybridRatio}% / Indica {100-hybridRatio}%)
-                  </Label>
-                  <Slider
-                    id="hybrid-ratio"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={[hybridRatio]}
-                    onValueChange={(value) => setHybridRatio(value[0])}
-                    className="w-full"
-                    aria-label={`Hybrid sativa indica ratio slider, Sativa ${hybridRatio} percent, Indica ${100-hybridRatio} percent`}
-                  />
-                </div>
-              )}
             </div>
           </div>
 
@@ -261,7 +266,7 @@ export default function CultivarBrowserPage() {
       ) : filteredAndSortedCultivars.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAndSortedCultivars.map(cultivar => (
-            <CultivarCard key={cultivar.id} cultivar={cultivar} />
+            <CultivarCard key={cultivar.id} cultivar={cultivar} onStatusChange={handleCultivarStatusChange} />
           ))}
         </div>
       ) : (

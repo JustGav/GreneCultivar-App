@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2, Upload } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2, Upload, Database } from 'lucide-react';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
 
@@ -62,7 +62,7 @@ const pdfFileInputSchema = fileInputSchema.refine(
 const additionalFileFormSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "File name is required."),
-  url: z.string().url({ message: "Please enter a valid URL." }).optional(), // URL will be populated after upload
+  url: z.string().url({ message: "Please enter a valid URL." }).optional(), 
   file: pdfFileInputSchema,
   category: z.custom<AdditionalInfoCategoryKey>()
 });
@@ -70,7 +70,7 @@ const additionalFileFormSchema = z.object({
 const additionalImageFileFormSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "File name is required."),
-  url: z.string().url({ message: "Please enter a valid URL." }).optional(), // URL will be populated after upload
+  url: z.string().url({ message: "Please enter a valid URL." }).optional(), 
   file: imageFileInputSchema,
   dataAiHint: z.string().optional(),
   category: z.custom<AdditionalInfoCategoryKey>()
@@ -112,6 +112,7 @@ const cultivarFormSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }),
   genetics: z.enum(GENETIC_OPTIONS, { required_error: "Genetics type is required." }),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
+  source: z.string().optional(),
 
   supplierUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
   parents: z.array(lineageEntrySchema).optional().default([]),
@@ -174,13 +175,14 @@ export default function AddCultivarPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { control, handleSubmit, register, formState: { errors, isDirty, isValid } } = useForm<CultivarFormData>({
+  const { control, handleSubmit, register, formState: { errors, isDirty, isValid }, watch } = useForm<CultivarFormData>({
     resolver: zodResolver(cultivarFormSchema),
     mode: 'onChange', 
     defaultValues: {
       name: '',
       genetics: undefined,
       description: '',
+      source: '',
       supplierUrl: '',
       parents: [],
       children: [],
@@ -244,13 +246,13 @@ export default function AddCultivarPage() {
         if (!formFiles) return [];
         const processedFiles: AdditionalFileInfo[] = [];
         for (const formFile of formFiles) {
-          let url = formFile.url; // Existing URL in case of edit, undefined for add
-          if (formFile.file) { // New file uploaded
+          let url = formFile.url; 
+          if (formFile.file) { 
             const timestamp = Date.now();
             const uniqueFileName = `${timestamp}-${formFile.file.name}`;
             url = await uploadImage(formFile.file, `${storagePath}/${uniqueFileName}`);
           }
-          if (url) { // Only add if we have a URL
+          if (url) { 
             processedFiles.push({
               id: formFile.id || `${category.substring(0,3)}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
               name: formFile.name,
@@ -269,11 +271,11 @@ export default function AddCultivarPage() {
       const uploadedCannabinoidInfos = await processAdditionalFiles(data.additionalInfo_cannabinoidInfos, 'cultivar-docs/cannabinoid-info', 'cannabinoidInfo', 'pdf');
       const uploadedTerpeneInfos = await processAdditionalFiles(data.additionalInfo_terpeneInfos, 'cultivar-docs/terpene-info', 'terpeneInfo', 'pdf');
 
-
-      const cultivarDataForFirebase: Omit<Cultivar, 'id' | 'reviews'> = {
+      const cultivarDataForFirebase = {
         name: data.name,
         genetics: data.genetics,
         description: data.description,
+        source: data.source || undefined,
         supplierUrl: data.supplierUrl || undefined,
         parents: data.parents ? data.parents.map(p => p.name).filter(name => name) : [],
         children: data.children ? data.children.map(c => c.name).filter(name => name) : [],
@@ -340,7 +342,6 @@ export default function AddCultivarPage() {
   const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string) => {
     const fieldPrefix = String(fieldPrefixKey);
     
-    // Type assertion to help TypeScript understand the structure of errors
     const errorsAny = errors as any;
     let minErrorMsg, maxErrorMsg, rootErrorMsg;
 
@@ -349,7 +350,7 @@ export default function AddCultivarPage() {
         if (errorsAny[baseKey] && errorsAny[baseKey][nestedKey]) {
             minErrorMsg = errorsAny[baseKey][nestedKey]?.min?.message;
             maxErrorMsg = errorsAny[baseKey][nestedKey]?.max?.message;
-            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message; // For root-level errors on the object
+            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message; 
         }
     } else {
         if (errorsAny[fieldPrefix]) {
@@ -425,6 +426,11 @@ export default function AddCultivarPage() {
                 <Label htmlFor="supplierUrl">Supplier URL</Label>
                 <Input id="supplierUrl" type="url" {...register("supplierUrl")} placeholder="https://example-supplier.com/cultivar-link" />
                 {errors.supplierUrl && <p className="text-sm text-destructive mt-1">{errors.supplierUrl.message}</p>}
+            </div>
+            <div>
+              <Label htmlFor="source">Source of Data (Optional)</Label>
+              <Input id="source" {...register("source")} placeholder="e.g., Lab Test ID, Community Submission" />
+              {errors.source && <p className="text-sm text-destructive mt-1">{errors.source.message}</p>}
             </div>
           </CardContent>
         </Card>
@@ -781,7 +787,6 @@ export default function AddCultivarPage() {
                 <CardDescription>Upload relevant documents or images. Add multiple files if needed. Uploading a new file will replace an existing one for that slot.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {/* Genetic Certificates */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><Award size={18} className="mr-2 text-accent"/>Genetic Certificates (PDF)</h4 >
@@ -813,7 +818,6 @@ export default function AddCultivarPage() {
                 </div>
                 <Separator />
 
-                {/* Plant Pictures */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><ImageIcon size={18} className="mr-2 text-accent"/>Plant Pictures (Image)</h4 >
@@ -860,7 +864,6 @@ export default function AddCultivarPage() {
                 </div>
                 <Separator />
                 
-                {/* Cannabinoid Infos */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FileText size={18} className="mr-2 text-accent"/>Cannabinoid Information (PDF)</h4 >
@@ -892,7 +895,6 @@ export default function AddCultivarPage() {
                 </div>
                 <Separator />
 
-                {/* Terpene Infos */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FlaskConical size={18} className="mr-2 text-accent"/>Terpene Information (PDF)</h4 >
@@ -928,7 +930,7 @@ export default function AddCultivarPage() {
 
         <CardFooter className="pt-6 border-t">
           <Button type="submit" className="w-full md:w-auto" size="lg" disabled={isSubmitting || !isDirty || !isValid}>
-            {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Changes...</>) : 'Save Changes'}
+            {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding Cultivar...</>) : 'Add Cultivar'}
           </Button>
         </CardFooter>
       </form>

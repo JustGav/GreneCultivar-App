@@ -9,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getCultivarById, updateCultivar, uploadImage } from '@/services/firebase';
 import { groupTerpenesByCategory, EFFECT_OPTIONS, MEDICAL_EFFECT_OPTIONS } from '@/lib/mock-data';
-import type { Cultivar, Genetics, CannabinoidProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, YieldProfile, Terpene, PricingProfile, CultivarImage } from '@/types';
+import type { Cultivar, Genetics, CannabinoidProfile, AdditionalFileInfo, AdditionalInfoCategoryKey, YieldProfile, Terpene, PricingProfile, CultivarImage, CultivarStatus } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,11 +19,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2, Upload, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Leaf, Percent, Edit3, Clock, ImageIcon, FileText, Award, FlaskConical, Sprout, Combine, Droplets, BarChartBig, Paperclip, Info, PlusCircle, Trash2, Palette, DollarSign, Sunrise, Smile, Stethoscope, ExternalLink, Users, Network, Loader2, Upload, AlertCircle, Database, CheckCheck, ShieldCheck, ArchiveIcon } from 'lucide-react';
 import EditCultivarLoading from './loading';
 import NextImage from 'next/image';
 
 const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
+const STATUS_OPTIONS: CultivarStatus[] = ['recentlyAdded', 'verified', 'archived'];
+const STATUS_LABELS: Record<CultivarStatus, string> = {
+  recentlyAdded: 'Recently Added',
+  verified: 'Verified',
+  archived: 'Archived',
+};
+
 
 const numberRangeSchema = z.object({
   min: z.coerce.number().min(0, "Min must be >= 0").max(100, "Min must be <= 100").optional(),
@@ -63,17 +70,17 @@ const additionalFileFormSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "File name is required."),
   url: z.string().url({ message: "Please enter a valid URL." }).optional(),
-  file: pdfFileInputSchema, // For PDF type files
-  category: z.custom<AdditionalInfoCategoryKey>() // Keep category info
+  file: pdfFileInputSchema, 
+  category: z.custom<AdditionalInfoCategoryKey>() 
 });
 
 const additionalImageFileFormSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "File name is required."),
   url: z.string().url({ message: "Please enter a valid URL." }).optional(),
-  file: imageFileInputSchema, // For image type files
+  file: imageFileInputSchema, 
   dataAiHint: z.string().optional(),
-  category: z.custom<AdditionalInfoCategoryKey>() // Keep category info
+  category: z.custom<AdditionalInfoCategoryKey>() 
 });
 
 const terpeneEntrySchema = z.object({
@@ -98,7 +105,7 @@ const pricingSchema = z.object({
   }).optional();
 
 const effectEntrySchema = z.object({
-  id: z.string().optional(), // Not strictly needed for form, but good for consistency
+  id: z.string().optional(), 
   name: z.string().min(1, "Effect name is required."),
 });
 
@@ -110,6 +117,8 @@ const lineageEntrySchema = z.object({
 const cultivarFormSchema = z.object({
   name: z.string().min(3, { message: "Name must be at least 3 characters." }),
   genetics: z.enum(GENETIC_OPTIONS, { required_error: "Genetics type is required." }),
+  status: z.enum(STATUS_OPTIONS, { required_error: "Status is required." }),
+  source: z.string().optional(),
   description: z.string().min(10, { message: "Description must be at least 10 characters." }),
 
   supplierUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
@@ -124,7 +133,6 @@ const cultivarFormSchema = z.object({
   primaryImageFile: imageFileInputSchema,
   primaryImageAlt: z.string().optional(),
   primaryImageDataAiHint: z.string().optional(),
-  // To store existing primary image URL if no new file is uploaded
   existingPrimaryImageUrl: z.string().optional(),
   existingPrimaryImageId: z.string().optional(),
 
@@ -198,10 +206,11 @@ export default function EditCultivarPage() {
           const cultivar = await getCultivarById(id);
           if (cultivar) {
             setInitialCultivarData(cultivar);
-            // Transform data for form
             const formData: Partial<CultivarFormData> = {
               name: cultivar.name,
               genetics: cultivar.genetics,
+              status: cultivar.status,
+              source: cultivar.source || '',
               description: cultivar.description,
               supplierUrl: cultivar.supplierUrl || '',
               parents: cultivar.parents?.map(p => ({ name: p, id: `parent-${Math.random()}` })) || [],
@@ -293,13 +302,13 @@ export default function EditCultivarPage() {
         if (!formFiles) return [];
         const processedFiles: AdditionalFileInfo[] = [];
         for (const formFile of formFiles) {
-          let url = formFile.url; // Existing URL
-          if (formFile.file) { // New file uploaded
+          let url = formFile.url; 
+          if (formFile.file) { 
             const timestamp = Date.now();
             const uniqueFileName = `${timestamp}-${formFile.file.name}`;
             url = await uploadImage(formFile.file, `${storagePath}/${uniqueFileName}`);
           }
-          if (url) { // Only add if we have a URL
+          if (url) { 
             processedFiles.push({
               id: formFile.id || `${category.substring(0,3)}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
               name: formFile.name,
@@ -322,6 +331,8 @@ export default function EditCultivarPage() {
       const cultivarDataForFirebase: Partial<Cultivar> = {
         name: data.name,
         genetics: data.genetics,
+        status: data.status,
+        source: data.source || undefined,
         description: data.description,
         supplierUrl: data.supplierUrl || undefined,
         parents: data.parents ? data.parents.map(p => p.name).filter(name => name) : [],
@@ -350,7 +361,6 @@ export default function EditCultivarPage() {
           cannabinoidInfo: updatedCannabinoidInfos,
           terpeneInfo: updatedTerpeneInfos,
         },
-        // Reviews are handled separately and not updated here
       };
       
       await updateCultivar(id, cultivarDataForFirebase);
@@ -377,7 +387,6 @@ export default function EditCultivarPage() {
   const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string) => {
     const fieldPrefix = String(fieldPrefixKey);
     
-    // Type assertion to help TypeScript understand the structure of errors
     const errorsAny = errors as any;
     let minErrorMsg, maxErrorMsg, rootErrorMsg;
 
@@ -386,7 +395,7 @@ export default function EditCultivarPage() {
         if (errorsAny[baseKey] && errorsAny[baseKey][nestedKey]) {
             minErrorMsg = errorsAny[baseKey][nestedKey]?.min?.message;
             maxErrorMsg = errorsAny[baseKey][nestedKey]?.max?.message;
-            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message; // For root-level errors on the object
+            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message; 
         }
     } else {
         if (errorsAny[fieldPrefix]) {
@@ -451,24 +460,49 @@ export default function EditCultivarPage() {
               {errors.name && <p className="text-sm text-destructive mt-1">{errors.name.message}</p>}
             </div>
 
-            <div>
-              <Label>Genetics *</Label>
-              <Controller
-                name="genetics"
-                control={control}
-                render={({ field }) => (
-                  <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4 mt-2">
-                    {GENETIC_OPTIONS.map(option => (
-                      <div key={option} className="flex items-center space-x-2">
-                        <RadioGroupItem value={option} id={`genetics-${option}`} />
-                        <Label htmlFor={`genetics-${option}`} className="font-normal">{option}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                )}
-              />
-              {errors.genetics && <p className="text-sm text-destructive mt-1">{errors.genetics.message}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label>Genetics *</Label>
+                <Controller
+                  name="genetics"
+                  control={control}
+                  render={({ field }) => (
+                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex space-x-4 mt-2">
+                      {GENETIC_OPTIONS.map(option => (
+                        <div key={option} className="flex items-center space-x-2">
+                          <RadioGroupItem value={option} id={`genetics-${option}`} />
+                          <Label htmlFor={`genetics-${option}`} className="font-normal">{option}</Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  )}
+                />
+                {errors.genetics && <p className="text-sm text-destructive mt-1">{errors.genetics.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="status">Status *</Label>
+                <Controller
+                  name="status"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger id="status">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map(option => (
+                          <SelectItem key={option} value={option}>
+                            {STATUS_LABELS[option]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.status && <p className="text-sm text-destructive mt-1">{errors.status.message}</p>}
+              </div>
             </div>
+
 
             <div>
               <Label htmlFor="description">Description *</Label>
@@ -479,6 +513,11 @@ export default function EditCultivarPage() {
                 <Label htmlFor="supplierUrl">Supplier URL</Label>
                 <Input id="supplierUrl" type="url" {...register("supplierUrl")} placeholder="https://example-supplier.com/cultivar-link" />
                 {errors.supplierUrl && <p className="text-sm text-destructive mt-1">{errors.supplierUrl.message}</p>}
+            </div>
+             <div>
+              <Label htmlFor="source">Source of Data (Optional)</Label>
+              <Input id="source" {...register("source")} placeholder="e.g., Lab Test ID, Community Submission" />
+              {errors.source && <p className="text-sm text-destructive mt-1">{errors.source.message}</p>}
             </div>
           </CardContent>
         </Card>
@@ -844,7 +883,6 @@ export default function EditCultivarPage() {
                 <CardDescription>Upload relevant documents or images. Add multiple files if needed. Uploading a new file will replace an existing one if names match, or add as new.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {/* Genetic Certificates */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><Award size={18} className="mr-2 text-accent"/>Genetic Certificates (PDF)</h4 >
@@ -876,7 +914,6 @@ export default function EditCultivarPage() {
                 </div>
                 <Separator />
 
-                {/* Plant Pictures */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><ImageIcon size={18} className="mr-2 text-accent"/>Plant Pictures (Image)</h4 >
@@ -923,7 +960,6 @@ export default function EditCultivarPage() {
                 </div>
                 <Separator />
                 
-                {/* Cannabinoid Infos */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FileText size={18} className="mr-2 text-accent"/>Cannabinoid Information (PDF)</h4 >
@@ -955,7 +991,6 @@ export default function EditCultivarPage() {
                 </div>
                 <Separator />
 
-                {/* Terpene Infos */}
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FlaskConical size={18} className="mr-2 text-accent"/>Terpene Information (PDF)</h4 >
@@ -998,4 +1033,3 @@ export default function EditCultivarPage() {
     </div>
   );
 }
-

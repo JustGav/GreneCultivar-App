@@ -18,15 +18,16 @@ export interface Review {
 }
 
 export type Genetics = 'Indica' | 'Sativa' | 'Hybrid' | 'Ruderalis';
+export type CultivarStatus = 'recentlyAdded' | 'verified' | 'archived';
 
 export interface CannabinoidProfile {
-  min?: number; // Made optional to align with zod schema
-  max?: number; // Made optional to align with zod schema
+  min?: number; 
+  max?: number; 
 }
 
 export interface YieldProfile {
-  min?: number; // Made optional
-  max?: number; // Made optional
+  min?: number; 
+  max?: number; 
 }
 
 export interface CultivationPhases {
@@ -75,6 +76,8 @@ export interface Cultivar {
   id: string; // Firestore document ID
   name: string;
   genetics: Genetics;
+  status: CultivarStatus;
+  source?: string;
   thc: CannabinoidProfile;
   cbd: CannabinoidProfile;
   cbc?: CannabinoidProfile;
