@@ -4,130 +4,134 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check for ISO8601 timestamp strings
-    function isISOTimestampString(timestampStr) {
-      return timestampStr is string && timestampStr.matches('^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$');
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Helper function to check if a value is a map (object)
-    function isMap(value) {
-      return value is map;
+    // Validate a client-provided ISO timestamp string
+    function isISOTimestampString(timestamp) {
+      return timestamp is string && timestamp.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$");
     }
 
-    // Helper function to check image object structure (for admin paths)
-    function isValidAdminImage(img) {
-      return img is map &&
-             img.keys().hasAll(['url', 'alt', 'id']) &&
-             img.url is string &&
-             // Allows cultivar-images/ and cultivar-images/additional/ but NOT cultivar-images/user-submitted/
-             // Ensures it's a Firebase Storage URL for your project.
-             img.url.matches('^https://firebasestorage.googleapis.com/v0/b/grenecultivar/o/cultivar-images%2F(?!user-submitted%2F).*\?alt=media.*') &&
-             img.alt is string && img.id is string &&
-             (!('data-ai-hint' in img) || img['data-ai-hint'] is string);
+    function isValidAdminImageUrl(url) {
+      if (!(url is string)) {
+        return false;
+      }
+      // Ensure it's a Firebase Storage URL for this project
+      let projectStoragePrefix = 'https://firebasestorage.googleapis.com/v0/b/' + firebase.env("PROJECT_ID") + '.appspot.com/o/';
+      if (!url.startsWith(projectStoragePrefix)) {
+        return false;
+      }
+      // Ensure it's within 'cultivar-images/' but NOT 'cultivar-images/user-submitted/'
+      let imagePath = url.split('?')[0].replace(projectStoragePrefix, ''); // Get path after /o/
+      return imagePath.startsWith('cultivar-images%2F') && !imagePath.startsWith('cultivar-images%2Fuser-submitted%2F');
     }
 
-    // Rules for the 'submitted_cultivars' collection (for unauthenticated submissions)
+    function isValidUserSubmittedImageUrl(url) {
+      if (!(url is string)) {
+        return false;
+      }
+      let expectedPath = 'https://firebasestorage.googleapis.com/v0/b/' + 'grenecultivar' + '.appspot.com/o/cultivar-images%2Fuser-submitted%2F';
+      return url.startsWith(expectedPath);
+    }
+
+    // Base Cultivar Data Validation (for create/update on main collection)
+    function isValidCultivarData(data) {
+      return data.name is string && data.name.size() >= 3 &&
+             data.status is string &&
+             (!('description' in data) || data.description is string) &&
+             (!('genetics' in data) || data.genetics is string) &&
+             (!('source' in data) || data.source is string) &&
+             (!('supplierUrl' in data) || data.supplierUrl is string || data.supplierUrl == '') &&
+             // THC/CBD checks (optional, but if present, must be maps)
+             (!('thc' in data) || data.thc is map) &&
+             (!('cbd' in data) || data.cbd is map) &&
+             // Images: optional, must be list, each item a map with string id, url, alt
+             (!('images' in data) || data.images == null ||
+               (data.images is list && (data.images.size() == 0 || data.images.all(img ->
+                 img is map &&
+                 'id' in img && img.id is string &&
+                 'url' in img && img.url is string && (isValidAdminImageUrl(img.url) || isValidUserSubmittedImageUrl(img.url)) && // Allow either type if moving
+                 'alt' in img && img.alt is string &&
+                 (!('data-ai-hint' in img) || img['data-ai-hint'] is string)
+               )))
+             ) &&
+             // TerpeneProfile: optional, must be list, each item a map with string name
+            (!('terpeneProfile' in data) || data.terpeneProfile == null ||
+              (data.terpeneProfile is list && (data.terpeneProfile.size() == 0 || data.terpeneProfile.all(tp ->
+                tp is map && 'name' in tp && tp.name is string && (!('percentage' in tp) || tp.percentage is number)
+              )))
+            ) &&
+            // Effects, MedicalEffects, Flavors, Parents, Children: optional, must be lists of strings
+            (!('effects' in data) || (data.effects is list && (data.effects.size() == 0 || data.effects.all(e -> e is string)))) &&
+            (!('medicalEffects' in data) || (data.medicalEffects is list && (data.medicalEffects.size() == 0 || data.medicalEffects.all(me -> me is string)))) &&
+            (!('flavors' in data) || (data.flavors is list && (data.flavors.size() == 0 || data.flavors.all(f -> f is string)))) &&
+            (!('parents' in data) || (data.parents is list && (data.parents.size() == 0 || data.parents.all(p -> p is string)))) &&
+            (!('children' in data) || (data.children is list && (data.children.size() == 0 || data.children.all(c -> c is string))));
+    }
+
+    match /cultivars/{cultivarId} {
+      allow list: if true; // Public listing, client filters
+      allow get: if resource.data.status == 'Live' || resource.data.status == 'featured' || request.auth != null;
+
+      allow create: if request.auth != null &&
+                       isValidCultivarData(request.resource.data) &&
+                       request.resource.data.createdAt == request.time &&
+                       request.resource.data.updatedAt == request.time &&
+                       request.resource.data.history is list && request.resource.data.history.size() > 0 &&
+                       isISOTimestampString(request.resource.data.history[0].timestamp); // Basic check on first history entry
+
+      allow update: if request.auth != null &&
+                       isValidCultivarData(request.resource.data) &&
+                       request.resource.data.updatedAt == request.time &&
+                       request.resource.data.createdAt == resource.data.createdAt && // Cannot change createdAt
+                       // Allow reviews and history to be appended
+                       (request.resource.data.reviews == resource.data.reviews || (request.resource.data.reviews is list && request.resource.data.reviews.size() >= resource.data.reviews.size())) &&
+                       (request.resource.data.history is list && request.resource.data.history.size() >= resource.data.history.size() &&
+                         (request.resource.data.history.size() == resource.data.history.size() || isISOTimestampString(request.resource.data.history[request.resource.data.history.size() - 1].timestamp)));
+
+
+      allow delete: if request.auth != null; // Only authenticated users (admins ideally)
+    }
+
     match /submitted_cultivars/{submissionId} {
-      allow read, update, delete: if request.auth != null; // Only authenticated users (admins) can manage submissions
+      allow read, update, delete: if request.auth != null; // Only admins can manage submissions
 
-      allow create: if request.resource.data.name is string && request.resource.data.name.size() > 0 &&
-                       request.resource.data.sourceEmail is string && request.resource.data.sourceEmail.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$') &&
+      allow create: if request.resource.data.name is string && request.resource.data.name.size() >= 3 &&
+                       request.resource.data.sourceEmail is string && request.resource.data.sourceEmail.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
                        request.resource.data.status == 'User Submitted' &&
                        request.resource.data.submittedAt == request.time &&
-                       // Optional fields: check if present, then validate type, or allow null/absence
-                       (request.resource.data.get('genetics', null) == null || request.resource.data.genetics in ['Sativa', 'Indica', 'Hybrid', 'Ruderalis']) &&
-                       (request.resource.data.get('description', null) == null || request.resource.data.description is string) &&
-                       (request.resource.data.get('effects', []) is list) &&
-                       (request.resource.data.get('flavors', []) is list) &&
-                       (request.resource.data.get('terpeneProfile', []) is list) &&
-                       (request.resource.data.get('images', []) is list) &&
-                       (request.resource.data.get('images', []).size() <= 1) && // Max 1 image for submission
-                       (request.resource.data.get('images', []).size() == 0 || (
-                         request.resource.data.images[0] is map &&
-                         request.resource.data.images[0].url is string &&
-                         // Regex for user-submitted image path
-                         request.resource.data.images[0].url.matches('^https://firebasestorage.googleapis.com/v0/b/grenecultivar/o/cultivar-images%2Fuser-submitted%2F[^?]+\\?alt=media.*') &&
-                         request.resource.data.images[0].alt is string &&
-                         request.resource.data.images[0].id is string
-                       )) &&
-                       (request.resource.data.get('thc', null) == null || request.resource.data.thc is map) &&
-                       (request.resource.data.get('cbd', null) == null || request.resource.data.cbd is map) &&
-                       // Ensure no unexpected fields are present
+                       // Optional fields validation (basic type checks if present)
+                       (!('description' in request.resource.data) || request.resource.data.description is string) &&
+                       (!('genetics' in request.resource.data) || request.resource.data.genetics is string) &&
+                       (!('thc' in request.resource.data) || request.resource.data.thc is map) &&
+                       (!('cbd' in request.resource.data) || request.resource.data.cbd is map) &&
+                       // Images: optional, max 1, if present, must be map with string url matching user-submitted path
+                       (!('images' in request.resource.data) || request.resource.data.images == null ||
+                         (request.resource.data.images is list &&
+                           (request.resource.data.images.size() == 0 ||
+                             (request.resource.data.images.size() == 1 &&
+                               request.resource.data.images[0] is map &&
+                               'url' in request.resource.data.images[0] && request.resource.data.images[0].url is string &&
+                               isValidUserSubmittedImageUrl(request.resource.data.images[0].url) &&
+                               'alt' in request.resource.data.images[0] && request.resource.data.images[0].alt is string &&
+                               'id' in request.resource.data.images[0] && request.resource.data.images[0].id is string
+                             )
+                           )
+                         )
+                       ) &&
+                       // Effects, Flavors, Terpenes: optional, must be lists
+                       (!('effects' in request.resource.data) || (request.resource.data.effects is list && (request.resource.data.effects.size() == 0 || request.resource.data.effects.all(e -> e is string)))) &&
+                       (!('flavors' in request.resource.data) || (request.resource.data.flavors is list && (request.resource.data.flavors.size() == 0 || request.resource.data.flavors.all(f -> f is string)))) &&
+                       (!('terpeneProfile' in request.resource.data) || (request.resource.data.terpeneProfile is list && (request.resource.data.terpeneProfile.size() == 0 || request.resource.data.terpeneProfile.all(tp -> tp is map && 'name' in tp && tp.name is string)))) &&
+                       // Ensure no other fields are present
                        request.resource.data.keys().hasOnly([
                          'name', 'sourceEmail', 'source', 'genetics', 'description', 'effects', 'flavors',
                          'terpeneProfile', 'images', 'thc', 'cbd', 'status', 'submittedAt'
                        ]);
     }
-
-    // Rules for the main 'cultivars' collection
-    match /cultivars/{cultivarId} {
-      allow list: if true; // Allow anyone to list cultivars (client-side filters visibility)
-      allow get: if resource.data.status == 'Live' || resource.data.status == 'featured' || request.auth != null;
-
-      allow create: if request.auth != null &&
-                       // Ensure required fields are present and of correct type
-                       request.resource.data.name is string && request.resource.data.name.size() > 0 &&
-                       request.resource.data.genetics in ['Sativa', 'Indica', 'Hybrid', 'Ruderalis'] &&
-                       request.resource.data.status in ['Live', 'featured', 'User Submitted', 'recentlyAdded', 'Hide', 'archived'] &&
-                       // Timestamps must be set by the server
-                       request.resource.data.createdAt == request.time &&
-                       request.resource.data.updatedAt == request.time &&
-                       // Images, if present, must be a list and valid
-                       (request.resource.data.get('images', []) is list && request.resource.data.images.all(img -> isValidAdminImage(img))) &&
-                       // Reviews must be an empty list on create
-                       request.resource.data.reviews is list && request.resource.data.reviews.size() == 0 &&
-                       // History must be a list with at least one entry on create
-                       request.resource.data.history is list && request.resource.data.history.size() >= 1 &&
-                       isISOTimestampString(request.resource.data.history[0].timestamp) && // Check first history entry
-                       // Optional fields (add more as needed if they have specific create-time validation)
-                       (request.resource.data.get('thc', null) == null || request.resource.data.thc is map) &&
-                       (request.resource.data.get('cbd', null) == null || request.resource.data.cbd is map);
-                       // Add other fields like terpeneProfile, effects, etc., ensuring they are lists if present.
-                       // For brevity, not listing all optional array/map fields here, but they should be checked if they are lists/maps if they exist.
-
-      allow update: if request.auth != null &&
-                       // Ensure updatedAt is set by the server
-                       request.resource.data.updatedAt == request.time &&
-                       // Prevent createdAt from being changed
-                       request.resource.data.createdAt == resource.data.createdAt &&
-                       // Allow history to be appended to (arrayUnion is handled server-side)
-                       (request.resource.data.history.size() >= resource.data.history.size() || !('history' in request.resource.data)) &&
-                       // Allow reviews to be appended to
-                       (request.resource.data.reviews.size() >= resource.data.reviews.size() || !('reviews' in request.resource.data)) &&
-                       // Name should be a string and not empty if provided
-                       (!('name' in request.resource.data) || (request.resource.data.name is string && request.resource.data.name.size() > 0)) &&
-                       // Genetics should be one of the allowed types if provided
-                       (!('genetics' in request.resource.data) || request.resource.data.genetics in ['Sativa', 'Indica', 'Hybrid', 'Ruderalis']) &&
-                       // Status should be one of the allowed types if provided
-                       (!('status' in request.resource.data) || request.resource.data.status in ['Live', 'featured', 'User Submitted', 'recentlyAdded', 'Hide', 'archived']) &&
-                       // Images, if present, must be a list and conform to structure
-                       (!('images' in request.resource.data) || (
-                         request.resource.data.images is list &&
-                         (request.resource.data.images.size() == 0 || // Allow empty list
-                           (request.resource.data.images.size() > 0 && request.resource.data.images.all(img -> isValidAdminImage(img)))
-                         )
-                       )) &&
-                        // Validate additionalInfo structure if present
-                        (!('additionalInfo' in request.resource.data) || (
-                            request.resource.data.additionalInfo is map &&
-                            (!('geneticCertificate' in request.resource.data.additionalInfo) || request.resource.data.additionalInfo.geneticCertificate is list) &&
-                            (!('plantPicture' in request.resource.data.additionalInfo) || request.resource.data.additionalInfo.plantPicture is list) &&
-                            (!('cannabinoidInfo' in request.resource.data.additionalInfo) || request.resource.data.additionalInfo.cannabinoidInfo is list) &&
-                            (!('terpeneInfo' in request.resource.data.additionalInfo) || request.resource.data.additionalInfo.terpeneInfo is list)
-                            // Further validation for elements within these lists can be added if needed
-                        )) &&
-                        // Validate terpeneProfile if present
-                        (!('terpeneProfile' in request.resource.data) || (request.resource.data.terpeneProfile is list)) &&
-                        // Validate effects if present
-                        (!('effects' in request.resource.data) || (request.resource.data.effects is list)) &&
-                        // Validate flavors if present
-                        (!('flavors' in request.resource.data) || (request.resource.data.flavors is list)) &&
-                        // Validate medicalEffects if present
-                        (!('medicalEffects' in request.resource.data) || (request.resource.data.medicalEffects is list));
-
-
-      allow delete: if request.auth != null; // Only authenticated users (admins)
-    }
+    // Ensure all match blocks are closed before this final brace
   }
 }
 
