@@ -47,29 +47,36 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
+  // Effect to handle initial load and changes to initialCultivar prop
   useEffect(() => {
     if (initialCultivar && isOpen) {
-        setDisplayedCultivarData(initialCultivar);
-        if (!historyStack.length || historyStack[historyStack.length - 1]?.id !== initialCultivar.id) {
-            setHistoryStack([initialCultivar]);
-        }
-        setIsLoadingLineage(false);
-        if (scrollAreaRef.current) {
-          scrollAreaRef.current.scrollTo({ top: 0 });
-        }
-    } else if (!isOpen) {
+      setDisplayedCultivarData(initialCultivar);
+      // Reset history if initialCultivar changes or if history is empty/different
+      if (!historyStack.length || historyStack[0]?.id !== initialCultivar.id) {
+        setHistoryStack([initialCultivar]);
+      }
+      setIsLoadingLineage(false);
+      if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollTo({ top: 0 });
+      }
+    }
+  }, [initialCultivar, isOpen]); // Removed historyStack from deps to avoid loop on internal updates
+
+  // Effect to handle cleanup when modal is closed
+  useEffect(() => {
+    if (!isOpen) {
       setDisplayedCultivarData(null);
       setHistoryStack([]);
       setIsLoadingLineage(false);
     }
-  }, [initialCultivar, isOpen, historyStack]);
+  }, [isOpen]);
 
-
+  // Effect to auto-close modal if it's open but seems to be in an invalid state (e.g., opened with no initial data)
   useEffect(() => {
     if (isOpen && !displayedCultivarData && !isLoadingLineage && historyStack.length === 0 && !initialCultivar) {
       onOpenChange(false);
     }
-  }, [isOpen, displayedCultivarData, isLoadingLineage, onOpenChange, historyStack, initialCultivar]);
+  }, [isOpen, displayedCultivarData, isLoadingLineage, historyStack, initialCultivar, onOpenChange]);
 
 
   const handleLineageItemClick = useCallback(async (cultivarId: string) => {
@@ -100,7 +107,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
     } finally {
       setIsLoadingLineage(false);
     }
-  }, [toast]);
+  }, [toast]); // State setters like setIsLoadingLineage, setDisplayedCultivarData, setHistoryStack are stable
 
   const handleBackClick = () => {
     if (historyStack.length > 1) {
@@ -122,26 +129,27 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
     if (typeof currentCultivarName !== 'string' || currentCultivarName.trim() === '') {
         return { effectiveParents: [], effectiveChildren: [] };
     }
+    const currentCultivarNameLower = currentCultivarName.toLowerCase();
 
     const parentsSet = new Set<string>(
-      (displayedCultivarData.parents || []).filter(p => typeof p === 'string' && p.trim() !== '')
+      (displayedCultivarData.parents || []).filter(p => p && typeof p === 'string' && p.trim() !== '')
     );
     const childrenSet = new Set<string>(
-      (displayedCultivarData.children || []).filter(c => typeof c === 'string' && c.trim() !== '')
+      (displayedCultivarData.children || []).filter(c => c && typeof c === 'string' && c.trim() !== '')
     );
 
     for (const info of cultivarInfoMap.values()) {
-      if (typeof info.name !== 'string' || !info.name.trim() || info.name.toLowerCase() === currentCultivarName.toLowerCase()) {
+      if (!info.name || typeof info.name !== 'string' || info.name.trim() === '' || info.name.toLowerCase() === currentCultivarNameLower) {
         continue;
       }
 
-      const infoChildren = (info.children || []).filter(c => typeof c === 'string' && c.trim() !== '');
-      if (infoChildren.includes(currentCultivarName)) {
+      const infoChildren = (info.children || []).filter(c => c && typeof c === 'string');
+      if (infoChildren.map(c => c.toLowerCase()).includes(currentCultivarNameLower)) {
         parentsSet.add(info.name);
       }
 
-      const infoParents = (info.parents || []).filter(p => typeof p === 'string' && p.trim() !== '');
-      if (infoParents.includes(currentCultivarName)) {
+      const infoParents = (info.parents || []).filter(p => p && typeof p === 'string');
+      if (infoParents.map(p => p.toLowerCase()).includes(currentCultivarNameLower)) {
         childrenSet.add(info.name);
       }
     }
@@ -153,10 +161,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
   }, [displayedCultivarData, cultivarInfoMap]);
 
 
-  if (!displayedCultivarData && !isLoadingLineage && !isOpen) {
-    return null;
-  }
-   if (!displayedCultivarData && isOpen && !isLoadingLineage) {
+  if (!displayedCultivarData && isOpen && !isLoadingLineage) {
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0 items-center justify-center">
@@ -178,10 +183,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
-      if (!open) {
-        setDisplayedCultivarData(null);
-        setHistoryStack([]);
-      }
+      // The main cleanup is now handled by the dedicated useEffect for !isOpen
       onOpenChange(open);
     }}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
