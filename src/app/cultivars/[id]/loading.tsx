@@ -207,22 +207,34 @@ export default function CultivarDetailLoading() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-lg"> {/* Lineage Graph Skeleton */}
             <CardHeader>
               <div className="flex items-center">
                 <Network size={28} className="mr-3 text-muted-foreground/50" />
-                <Skeleton className="h-8 w-1/3" />
+                <Skeleton className="h-8 w-1/3" /> {/* Lineage Graph title */}
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="text-center space-y-3">
+              {/* Parent Skeleton */}
               <div>
-                <Skeleton className="h-5 w-1/4 mb-1" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-4 w-2/5 mt-1" />
+                <Skeleton className="h-4 w-1/4 mx-auto mb-2" /> {/* "Parents" label */}
+                <div className="flex justify-center space-x-3">
+                  <Skeleton className="h-10 w-20 rounded-md p-2" />
+                </div>
+                <Skeleton className="h-4 w-px bg-muted mx-auto my-2" /> {/* Connector */}
               </div>
+
+              {/* Current Cultivar Skeleton */}
+              <Skeleton className="h-12 w-28 rounded-lg mx-auto p-3" />
+
+              {/* Children Skeleton */}
               <div>
-                <Skeleton className="h-5 w-1/4 mb-1" />
-                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-px bg-muted mx-auto my-2" /> {/* Connector */}
+                <Skeleton className="h-4 w-1/4 mx-auto mb-2" /> {/* "Children" label */}
+                <div className="flex justify-center space-x-3">
+                  <Skeleton className="h-10 w-20 rounded-md p-2" />
+                  <Skeleton className="h-10 w-20 rounded-md p-2" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -321,3 +333,4 @@ export default function CultivarDetailLoading() {
     </div>
   );
 }
+

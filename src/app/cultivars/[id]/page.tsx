@@ -424,10 +424,10 @@ export default function CultivarDetailsPage() {
                         key={effect}
                         variant="outline"
                         className={cn(
-                          "text-black",
+                          "text-black", // Ensures black text for all effect badges
                           isNegative
                             ? 'bg-destructive/10 border-destructive/30'
-                            : 'bg-primary/10 border-primary/30'
+                            : 'bg-primary/10 border-primary/30' // Use primary (green) for positive effects
                         )}
                       >
                         {effect}
@@ -474,32 +474,55 @@ export default function CultivarDetailsPage() {
           )}
 
           {hasLineage && (
-            <Card className="shadow-lg">
+             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center">
-                  <Network size={28} className="mr-3 text-primary/80" /> Lineage
+                  <Network size={28} className="mr-3 text-primary/80" /> Lineage Graph
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="text-center space-y-3">
+                {/* Parents Section */}
                 {cultivar.parents && cultivar.parents.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-md mb-1">Parents:</h4>
-                    <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
+                  <div className="mb-3">
+                    <h4 className="text-sm font-semibold text-muted-foreground mb-2">Parents</h4>
+                    <div className="flex justify-center items-center space-x-3 flex-wrap">
                       {cultivar.parents.map((parent, index) => (
-                        <li key={`parent-${index}`}>{parent}</li>
+                        <div key={`parent-${index}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm">
+                          {parent}
+                        </div>
                       ))}
-                    </ul>
+                    </div>
+                    <div className="flex justify-center mt-2">
+                      <div className="w-px h-4 bg-border"></div>
+                    </div>
                   </div>
                 )}
+
+                {/* Current Cultivar */}
+                <div className="p-3 border-2 border-primary rounded-lg shadow-md bg-primary/10 inline-block">
+                  <h3 className="text-lg font-semibold text-primary">{cultivar.name}</h3>
+                  <p className="text-xs text-muted-foreground">Current Cultivar</p>
+                </div>
+
+                {/* Children Section */}
                 {cultivar.children && cultivar.children.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-md mb-1">Children:</h4>
-                    <ul className="list-disc list-inside text-sm text-muted-foreground space-y-0.5">
+                  <div className="mt-3">
+                    <div className="flex justify-center mb-2">
+                      <div className="w-px h-4 bg-border"></div>
+                    </div>
+                    <h4 className="text-sm font-semibold text-muted-foreground mb-2">Children</h4>
+                    <div className="flex justify-center items-center space-x-3 flex-wrap">
                       {cultivar.children.map((child, index) => (
-                        <li key={`child-${index}`}>{child}</li>
+                        <div key={`child-${index}`} className="p-2 border rounded-md shadow-sm bg-muted/40 text-sm">
+                          {child}
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
+                )}
+
+                {(!cultivar.parents || cultivar.parents.length === 0) && (!cultivar.children || cultivar.children.length === 0) && (
+                  <p className="text-muted-foreground text-sm">No lineage information available.</p>
                 )}
               </CardContent>
             </Card>
