@@ -36,7 +36,7 @@ export default function EditCultivarLoading() {
             <Palette size={24} className="mr-2 text-muted-foreground/50" />
             <Skeleton className="h-8 w-1/2" /> 
           </div>
-          <Skeleton className="h-5 w-full mt-1" /> 
+          {/* No description skeleton for terpene profile */}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="p-3 border rounded-md space-y-2">
@@ -50,6 +50,7 @@ export default function EditCultivarLoading() {
                     <Skeleton className="h-10 w-full" /> 
                 </div>
             </div>
+            {/* Removed skeleton for description input field */}
           </div>
           <Skeleton className="h-9 w-32" /> 
         </CardContent>

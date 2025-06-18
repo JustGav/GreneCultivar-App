@@ -59,8 +59,8 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
     effects: ['Energetic', 'Creative', 'Uplifted', 'Happy'],
     medicalEffects: ['Stress Relief', 'Depression Relief', 'Fatigue'],
     terpeneProfile: [
-      { id: 'tp-ch-1', name: 'Limonene', percentage: 1.2, description: 'Citrus aroma' },
-      { id: 'tp-ch-2', name: 'Terpinolene', percentage: 0.8, description: 'Fruity, floral notes' },
+      { id: 'tp-ch-1', name: 'Limonene', percentage: 1.2 },
+      { id: 'tp-ch-2', name: 'Terpinolene', percentage: 0.8 },
     ],
     cultivationPhases: {
       germination: '3-5 days',
@@ -106,8 +106,8 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
     effects: ['Relaxed', 'Sleepy', 'Happy', 'Hungry'],
     medicalEffects: ['Pain Relief', 'Insomnia', 'Stress Relief'],
     terpeneProfile: [
-      { id: 'tp-id-1', name: 'Myrcene', percentage: 1.5, description: 'Earthy, musky' },
-      { id: 'tp-id-2', name: 'Beta-Caryophyllene', percentage: 0.7, description: 'Peppery, spicy' },
+      { id: 'tp-id-1', name: 'Myrcene', percentage: 1.5 },
+      { id: 'tp-id-2', name: 'Beta-Caryophyllene', percentage: 0.7 },
     ],
     cultivationPhases: {
       germination: '4-7 days',
@@ -142,8 +142,8 @@ const mockCultivarsData: Omit<Cultivar, 'id' | 'reviews'>[] = [
     effects: ['Happy', 'Uplifted', 'Relaxed', 'Focused'],
     medicalEffects: ['Anxiety Relief', 'Mild Pain Relief'],
     terpeneProfile: [
-        { id: 'tp-hh-1', name: 'Limonene', description: 'Citrus notes' },
-        { id: 'tp-hh-2', name: 'Linalool', description: 'Floral, sweet' },
+        { id: 'tp-hh-1', name: 'Limonene' },
+        { id: 'tp-hh-2', name: 'Linalool' },
     ],
     cultivationPhases: {
         vegetative: '3-5 weeks',

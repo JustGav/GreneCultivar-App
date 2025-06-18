@@ -98,7 +98,6 @@ const terpeneEntrySchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Terpene name is required."),
   percentage: z.coerce.number().min(0, "Percentage must be >=0").max(100, "Percentage must be <=100").optional(),
-  description: z.string().optional(),
 });
 
 const pricingSchema = z.object({
@@ -140,7 +139,7 @@ const cultivarFormSchema = z.object({
   effects: z.array(effectEntrySchema).optional().default([]),
   medicalEffects: z.array(effectEntrySchema).optional().default([]),
 
-  primaryImageFile: requiredImageFileInputSchema, // Primary image is required for new cultivars
+  primaryImageFile: requiredImageFileInputSchema, 
   primaryImageAlt: z.string().optional(),
   primaryImageDataAiHint: z.string().optional(),
 
@@ -248,7 +247,7 @@ export default function AddCultivarPage() {
     setIsSubmitting(true);
     try {
       let primaryImageUrlForFirebase: string | undefined = undefined;
-      if (data.primaryImageFile) { // data.primaryImageFile is now a File object or undefined
+      if (data.primaryImageFile) { 
         const timestamp = Date.now();
         const uniqueFileName = `${timestamp}-${data.primaryImageFile.name}`;
         primaryImageUrlForFirebase = await uploadImage(data.primaryImageFile, `cultivar-images/${uniqueFileName}`);
@@ -264,7 +263,7 @@ export default function AddCultivarPage() {
         const processedFiles: AdditionalFileInfo[] = [];
         for (const formFile of formFiles) {
           let url = formFile.url;
-          if (formFile.file) { // formFile.file is a File object or undefined
+          if (formFile.file) { 
             const timestamp = Date.now();
             const uniqueFileName = `${timestamp}-${formFile.file.name}`;
             url = await uploadImage(formFile.file, `${storagePath}/${uniqueFileName}`);
@@ -300,7 +299,6 @@ export default function AddCultivarPage() {
             id: tp.id || `terp-${Date.now()}-${index}`,
             name: tp.name,
             percentage: tp.percentage,
-            description: tp.description,
         })) || [],
         effects: data.effects ? data.effects.map(e => e.name).filter(e => e) : [],
         medicalEffects: data.medicalEffects ? data.medicalEffects.map(e => e.name).filter(e => e) : [],
@@ -495,16 +493,12 @@ export default function AddCultivarPage() {
                     {errors.terpeneProfile?.[index]?.percentage && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile[index]?.percentage?.message}</p>}
                   </div>
                 </div>
-                 <div>
-                    <Label htmlFor={`terpeneProfile.${index}.description`}>Description (Optional)</Label>
-                    <Input {...register(`terpeneProfile.${index}.description`)} placeholder="e.g., earthy, citrus" />
-                 </div>
                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeTerpene(index)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', percentage: undefined, description: '' })}>
+            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', percentage: undefined })}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Terpene
             </Button>
             {terpeneProfileFields.length === 0 && <p className="text-sm text-muted-foreground">No terpenes added yet.</p>}
@@ -517,10 +511,16 @@ export default function AddCultivarPage() {
             <CardDescription>Upload the main image for this cultivar.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+             {watch("primaryImageFile") instanceof File && (
+                <div className="mb-4">
+                    <Label>New Primary Image Preview:</Label>
+                    <NextImage src={URL.createObjectURL(watch("primaryImageFile")!)} alt="New primary image preview" width={200} height={150} className="rounded-md border object-cover mt-1" />
+                </div>
+            )}
             <div>
                 <Label htmlFor="primaryImageFile">Primary Image File</Label>
                 <Input id="primaryImageFile" type="file" accept="image/*" {...register("primaryImageFile")} />
-                {errors.primaryImageFile && <p className="text-sm text-destructive mt-1">{errors.primaryImageFile.message}</p>}
+                {errors.primaryImageFile && <p className="text-sm text-destructive mt-1">{errors.primaryImageFile.message as string}</p>}
             </div>
             <div>
                 <Label htmlFor="primaryImageAlt">Primary Image Alt Text</Label>

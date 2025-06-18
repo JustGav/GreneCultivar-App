@@ -62,7 +62,6 @@ export interface AdditionalFileInfo {
 export interface Terpene {
   id: string;
   name: string;
-  description?: string;
   percentage?: number;
 }
 

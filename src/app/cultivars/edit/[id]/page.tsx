@@ -64,7 +64,6 @@ const optionalFileBaseSchema = z.preprocess(filePreprocess,
     .optional()
 );
 
-// On Edit page, all file inputs are optional as they might be pre-existing
 const imageFileInputSchema = optionalFileBaseSchema
   .refine(file => file === undefined || ACCEPTED_IMAGE_TYPES.includes(file.type),
     ".jpg, .jpeg, .png and .webp files are accepted."
@@ -97,7 +96,6 @@ const terpeneEntrySchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Terpene name is required."),
   percentage: z.coerce.number().min(0, "Percentage must be >=0").max(100, "Percentage must be <=100").optional(),
-  description: z.string().optional(),
 });
 
 const pricingSchema = z.object({
@@ -140,7 +138,7 @@ const cultivarFormSchema = z.object({
   effects: z.array(effectEntrySchema).optional().default([]),
   medicalEffects: z.array(effectEntrySchema).optional().default([]),
 
-  primaryImageFile: imageFileInputSchema, // Optional on edit page
+  primaryImageFile: imageFileInputSchema, 
   primaryImageAlt: z.string().optional(),
   primaryImageDataAiHint: z.string().optional(),
   existingPrimaryImageUrl: z.string().optional(),
@@ -225,7 +223,7 @@ export default function EditCultivarPage() {
               supplierUrl: cultivar.supplierUrl || '',
               parents: cultivar.parents?.map(p => ({ name: p, id: `parent-${Math.random()}` })) || [],
               children: cultivar.children?.map(c => ({ name: c, id: `child-${Math.random()}` })) || [],
-              terpeneProfile: cultivar.terpeneProfile?.map(tp => ({ ...tp })) || [],
+              terpeneProfile: cultivar.terpeneProfile?.map(tp => ({ id: tp.id, name: tp.name, percentage: tp.percentage })) || [],
               effects: cultivar.effects?.map(e => ({ name: e, id: `effect-${Math.random()}` })) || [],
               medicalEffects: cultivar.medicalEffects?.map(me => ({ name: me, id: `medeffect-${Math.random()}` })) || [],
 
@@ -283,7 +281,7 @@ export default function EditCultivarPage() {
     try {
       let finalPrimaryImage: CultivarImage | undefined = undefined;
 
-      if (data.primaryImageFile) { // data.primaryImageFile is File | undefined
+      if (data.primaryImageFile) { 
         const timestamp = Date.now();
         const uniqueFileName = `${timestamp}-${data.primaryImageFile.name}`;
         const newUrl = await uploadImage(data.primaryImageFile, `cultivar-images/${uniqueFileName}`);
@@ -313,7 +311,7 @@ export default function EditCultivarPage() {
         const processedFiles: AdditionalFileInfo[] = [];
         for (const formFile of formFiles) {
           let url = formFile.url;
-          if (formFile.file) { // formFile.file is File | undefined
+          if (formFile.file) { 
             const timestamp = Date.now();
             const uniqueFileName = `${timestamp}-${formFile.file.name}`;
             url = await uploadImage(formFile.file, `${storagePath}/${uniqueFileName}`);
@@ -351,7 +349,6 @@ export default function EditCultivarPage() {
             id: tp.id || `terp-${Date.now()}-${index}`,
             name: tp.name,
             percentage: tp.percentage,
-            description: tp.description,
         })) || [],
         effects: data.effects ? data.effects.map(e => e.name).filter(e => e) : [],
         medicalEffects: data.medicalEffects ? data.medicalEffects.map(e => e.name).filter(e => e) : [],
@@ -574,16 +571,12 @@ export default function EditCultivarPage() {
                     {errors.terpeneProfile?.[index]?.percentage && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile[index]?.percentage?.message}</p>}
                   </div>
                 </div>
-                 <div>
-                    <Label htmlFor={`terpeneProfile.${index}.description`}>Description (Optional)</Label>
-                    <Input {...register(`terpeneProfile.${index}.description`)} placeholder="e.g., earthy, citrus" />
-                 </div>
                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeTerpene(index)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             ))}
-            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', percentage: undefined, description: '' })}>
+            <Button type="button" variant="outline" size="sm" onClick={() => appendTerpene({ name: '', percentage: undefined })}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Terpene
             </Button>
             {terpeneProfileFields.length === 0 && <p className="text-sm text-muted-foreground">No terpenes added yet.</p>}
@@ -611,7 +604,7 @@ export default function EditCultivarPage() {
                 <div>
                     <Label htmlFor="primaryImageFile">New Primary Image File</Label>
                     <Input id="primaryImageFile" type="file" accept="image/*" {...register("primaryImageFile")} />
-                    {errors.primaryImageFile && <p className="text-sm text-destructive mt-1">{errors.primaryImageFile.message}</p>}
+                    {errors.primaryImageFile && <p className="text-sm text-destructive mt-1">{errors.primaryImageFile.message as string}</p>}
                 </div>
                 <div>
                     <Label htmlFor="primaryImageAlt">Primary Image Alt Text</Label>
