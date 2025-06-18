@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine, Droplets } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const calculateAverageRating = (reviews: ReviewType[]): number => {
@@ -88,6 +88,13 @@ export default function CultivarDetailsPage() {
       </div>
     );
   }
+  
+  const hasPlantCharacteristics = cultivar.plantCharacteristics && (
+    cultivar.plantCharacteristics.minHeight !== undefined ||
+    cultivar.plantCharacteristics.maxHeight !== undefined ||
+    cultivar.plantCharacteristics.minMoisture !== undefined ||
+    cultivar.plantCharacteristics.maxMoisture !== undefined
+  );
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -138,13 +145,22 @@ export default function CultivarDetailsPage() {
                 </div>
               </div>
 
-              {cultivar.plantCharacteristics && (cultivar.plantCharacteristics.minHeight !== undefined || cultivar.plantCharacteristics.maxHeight !== undefined) && (
+              {hasPlantCharacteristics && (
                 <div className="mb-6 pt-6 border-t">
                   <h3 className="font-semibold text-lg flex items-center mb-3"><Combine size={20} className="mr-2 text-accent"/>Plant Characteristics</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                    <PlantCharacteristicDisplay label="Min. Height" value={cultivar.plantCharacteristics.minHeight} unit="cm" />
-                    <PlantCharacteristicDisplay label="Max. Height" value={cultivar.plantCharacteristics.maxHeight} unit="cm" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                    <PlantCharacteristicDisplay label="Min. Height" value={cultivar.plantCharacteristics?.minHeight} unit="cm" />
+                    <PlantCharacteristicDisplay label="Max. Height" value={cultivar.plantCharacteristics?.maxHeight} unit="cm" />
                   </div>
+                  {(cultivar.plantCharacteristics?.minMoisture !== undefined || cultivar.plantCharacteristics?.maxMoisture !== undefined) && (
+                    <div className="mt-4 pt-4 border-t border-dashed">
+                      <h4 className="font-medium text-md flex items-center mb-2"><Droplets size={18} className="mr-2 text-accent/80"/>Dry Product Moisture</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                        <PlantCharacteristicDisplay label="Min. Moisture" value={cultivar.plantCharacteristics?.minMoisture} unit="%" />
+                        <PlantCharacteristicDisplay label="Max. Moisture" value={cultivar.plantCharacteristics?.maxMoisture} unit="%" />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

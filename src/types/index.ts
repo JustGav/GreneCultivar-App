@@ -32,6 +32,8 @@ export interface CultivationPhases {
 export interface PlantCharacteristics {
   minHeight?: number; // cm
   maxHeight?: number; // cm
+  minMoisture?: number; // %
+  maxMoisture?: number; // %
 }
 
 export interface Cultivar {

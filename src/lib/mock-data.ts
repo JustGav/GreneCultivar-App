@@ -32,6 +32,8 @@ export const mockCultivars: Cultivar[] = [
     plantCharacteristics: {
       minHeight: 60,
       maxHeight: 100,
+      minMoisture: 10,
+      maxMoisture: 12,
     }
   },
   {
@@ -62,6 +64,8 @@ export const mockCultivars: Cultivar[] = [
     plantCharacteristics: {
       minHeight: 100,
       maxHeight: 180,
+      minMoisture: 9,
+      maxMoisture: 11,
     }
   },
   {
@@ -94,6 +98,8 @@ export const mockCultivars: Cultivar[] = [
     plantCharacteristics: {
       minHeight: 80,
       // maxHeight: undefined (will show N/A for max)
+      minMoisture: 10,
+      // maxMoisture: undefined (will show N/A for max)
     }
   },
   {
@@ -115,7 +121,8 @@ export const mockCultivars: Cultivar[] = [
       flowering: "10-12 weeks",
       harvest: "After 10-12 weeks of flowering"
     }
-    // plantCharacteristics will be undefined (section won't show or show N/A for both)
+    // plantCharacteristics will be undefined (section won't show or show N/A for all plant char.)
+    // plantCharacteristics: { minMoisture: 11, maxMoisture: 13} // Example if only moisture was present
   },
 ];
 
