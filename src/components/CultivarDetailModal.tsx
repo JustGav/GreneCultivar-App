@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { Cultivar } from '@/types';
 import Image from 'next/image';
 import {
@@ -17,7 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import StarRating from './StarRating';
-import { Leaf, Percent, Smile, ThermometerSun, ThermometerSnowflake, Utensils, ImageOff, Network, ExternalLink, Palette, Loader2 } from 'lucide-react';
+import { Leaf, Percent, Smile, ThermometerSun, ThermometerSnowflake, Utensils, ImageOff, Network, ExternalLink, Palette, Loader2, ArrowLeft } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import { getCultivarById } from '@/services/firebase';
@@ -40,14 +40,34 @@ const calculateAverageRating = (reviews: Cultivar['reviews'] = []): number => {
 const NEGATIVE_EFFECTS_MODAL = ['Dry Mouth', 'Dry Eyes', 'Paranoid', 'Anxious', 'Dizzy'];
 
 export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen, onOpenChange, cultivarNameMap }: CultivarDetailModalProps) {
-  const [displayedCultivarData, setDisplayedCultivarData] = useState<Cultivar | null>(initialCultivar);
+  const [displayedCultivarData, setDisplayedCultivarData] = useState<Cultivar | null>(null);
   const [isLoadingLineage, setIsLoadingLineage] = useState(false);
+  const [historyStack, setHistoryStack] = useState<Cultivar[]>([]);
   const { toast } = useToast();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setDisplayedCultivarData(initialCultivar);
-    setIsLoadingLineage(false);
+    if (initialCultivar) {
+        setDisplayedCultivarData(initialCultivar);
+        setHistoryStack([initialCultivar]); // Reset history with the new initial cultivar
+        setIsLoadingLineage(false);
+        if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTo({ top: 0 });
+        }
+    } else if (isOpen && !initialCultivar) { 
+        // This case is managed by the parent - modal won't open if initialCultivar is null
+    }
   }, [initialCultivar, isOpen]);
+
+
+  useEffect(() => {
+    // Effect to close modal if it's open, data becomes null, and not loading
+    // and there's no history (e.g. initial load failed)
+    if (isOpen && !displayedCultivarData && !isLoadingLineage && historyStack.length === 0) {
+      onOpenChange(false);
+    }
+  }, [isOpen, displayedCultivarData, isLoadingLineage, onOpenChange, historyStack]);
+
 
   const handleLineageItemClick = useCallback(async (cultivarId: string) => {
     if (!cultivarId) return;
@@ -56,6 +76,10 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
       const newCultivarData = await getCultivarById(cultivarId);
       if (newCultivarData) {
         setDisplayedCultivarData(newCultivarData);
+        setHistoryStack(prev => [...prev, newCultivarData]);
+        if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTo({ top: 0 });
+        }
       } else {
         toast({
           title: "Cultivar Not Found",
@@ -75,18 +99,23 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
     }
   }, [toast]);
 
-  useEffect(() => {
-    // If the modal is open, but we have no data and are not loading any,
-    // it means something went wrong or the initial cultivar was null.
-    // In this case, we should close the modal.
-    if (isOpen && !displayedCultivarData && !isLoadingLineage) {
-      onOpenChange(false);
+  const handleBackClick = () => {
+    if (historyStack.length > 1) {
+      const newHistoryStack = historyStack.slice(0, -1);
+      setHistoryStack(newHistoryStack);
+      setDisplayedCultivarData(newHistoryStack[newHistoryStack.length - 1]);
+      if (scrollAreaRef.current) {
+          scrollAreaRef.current.scrollTo({ top: 0 });
+        }
     }
-  }, [isOpen, displayedCultivarData, isLoadingLineage, onOpenChange]);
+  };
 
 
   if (!displayedCultivarData && !isLoadingLineage) {
-    return null; // Don't render anything if no data and not loading
+    // This condition is tricky; if initialCultivar was null, effect might have closed it.
+    // If it's open and no data, it means we are likely in a loading state or initial load failed.
+    // The effect above should handle closing if initial load failed and it was intended to be open.
+    return null;
   }
 
   const averageRating = calculateAverageRating(displayedCultivarData?.reviews);
@@ -98,7 +127,12 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
 
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) { // When modal is explicitly closed by user action
+        setHistoryStack([]); // Clear history for next opening
+      }
+      onOpenChange(open);
+    }}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
         {isLoadingLineage && (
           <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-50">
@@ -107,24 +141,31 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
         )}
         {displayedCultivarData && (
           <>
-            <DialogHeader className="p-6 pb-2">
-              <DialogTitle className="font-headline text-3xl text-primary flex items-center">
-                <Leaf size={30} className="mr-3 text-primary/80" />
-                {displayedCultivarData.name}
-              </DialogTitle>
-              <div className="flex items-center space-x-2 pt-1">
-                <Badge variant="secondary" className="text-sm">{displayedCultivarData.genetics}</Badge>
-                {averageRating > 0 && (
-                  <>
-                    <StarRating rating={averageRating} readOnly size={20} />
-                    <span className="text-xs text-muted-foreground">({(displayedCultivarData.reviews || []).length} reviews)</span>
-                  </>
-                )}
+            <DialogHeader className="p-6 pb-2 flex flex-row items-center space-x-3">
+              {historyStack.length > 1 && (
+                <Button variant="ghost" size="icon" onClick={handleBackClick} className="mr-1 flex-shrink-0" aria-label="Go back to previous cultivar in modal">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <div className={cn("flex-grow", historyStack.length <=1 && "pl-9")}> {/* Add padding if no back button to align title */}
+                <DialogTitle className="font-headline text-3xl text-primary flex items-center">
+                  <Leaf size={30} className="mr-3 text-primary/80 flex-shrink-0" />
+                  <span className="truncate">{displayedCultivarData.name}</span>
+                </DialogTitle>
+                <div className="flex items-center space-x-2 pt-1">
+                  <Badge variant="secondary" className="text-sm">{displayedCultivarData.genetics}</Badge>
+                  {averageRating > 0 && (
+                    <>
+                      <StarRating rating={averageRating} readOnly size={20} />
+                      <span className="text-xs text-muted-foreground">({(displayedCultivarData.reviews || []).length} reviews)</span>
+                    </>
+                  )}
+                </div>
               </div>
             </DialogHeader>
 
-            <ScrollArea className="flex-grow overflow-y-auto px-6">
-              <div key={displayedCultivarData.id} className="space-y-4 pb-6">
+            <ScrollArea ref={scrollAreaRef} className="flex-grow overflow-y-auto px-6">
+              <div key={displayedCultivarData.id} className="space-y-4 pb-6"> {/* Key ensures re-render and potential scroll reset for content block */}
                 {displayedCultivarData.images && displayedCultivarData.images.length > 0 ? (
                   <div className="relative w-full aspect-video rounded-md overflow-hidden my-4 shadow-md">
                     <Image
@@ -155,11 +196,11 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                     <h3 className="font-semibold text-lg flex items-center mb-2"><Percent size={20} className="mr-2 text-accent"/>Cannabinoids</h3>
                     <p className="text-sm flex items-center gap-1.5">
                       <ThermometerSun size={16} className="text-red-500" />
-                      THC: {thcMin}{thcMin !== 'N/A' && thcMin !== 0 ? '%' : ''} - {thcMax}{thcMax !== 'N/A' && thcMax !== 0 ? '%' : ''}
+                      THC: {thcMin}{thcMin !== 'N/A' && thcMin !== undefined && thcMin !== 0 ? '%' : ''} - {thcMax}{thcMax !== 'N/A' && thcMax !== undefined && thcMax !== 0 ? '%' : ''}
                     </p>
                     <p className="text-sm flex items-center gap-1.5">
                       <ThermometerSnowflake size={16} className="text-blue-500" />
-                      CBD: {cbdMin}{cbdMin !== 'N/A' && cbdMin !== 0 ? '%' : ''} - {cbdMax}{cbdMax !== 'N/A' && cbdMax !== 0 ? '%' : ''}
+                      CBD: {cbdMin}{cbdMin !== 'N/A' && cbdMin !== undefined && cbdMin !== 0 ? '%' : ''} - {cbdMax}{cbdMax !== 'N/A' && cbdMax !== undefined && cbdMax !== 0 ? '%' : ''}
                     </p>
                   </div>
 
@@ -173,7 +214,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                             <Badge
                               key={effect}
                               className={cn(
-                                "text-black", // Base text color, can adjust
+                                "text-black",
                                 isNegative
                                   ? 'bg-destructive/10 border-destructive/30'
                                   : 'bg-primary/10 border-primary/30'
@@ -235,17 +276,17 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                             {displayedCultivarData.parents.map((parentName, index) => {
                               const parentId = cultivarNameMap?.get(parentName.toLowerCase());
                               return (
-                                <Button
+                                <Badge
                                   key={`parent-${index}`}
-                                  variant="link"
-                                  className="p-0 h-auto text-xs hover:no-underline"
+                                  variant="outline"
+                                  className={cn("text-xs hover:bg-accent/20 hover:border-accent/50", parentId && "cursor-pointer")}
                                   onClick={() => parentId && handleLineageItemClick(parentId)}
-                                  disabled={isLoadingLineage || !parentId}
+                                  role={parentId ? "button" : undefined}
+                                  tabIndex={parentId ? 0 : -1}
+                                  onKeyDown={parentId ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleLineageItemClick(parentId) } : undefined}
                                 >
-                                  <Badge variant="outline" className={cn("text-xs hover:bg-accent/20 hover:border-accent/50", parentId && "cursor-pointer")}>
-                                    {parentName}
-                                  </Badge>
-                                </Button>
+                                  {parentName}
+                                </Badge>
                               );
                             })}
                           </div>
@@ -270,17 +311,17 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                             {displayedCultivarData.children.map((childName, index) => {
                               const childId = cultivarNameMap?.get(childName.toLowerCase());
                               return (
-                                <Button
+                                 <Badge
                                   key={`child-${index}`}
-                                  variant="link"
-                                  className="p-0 h-auto text-xs hover:no-underline"
+                                  variant="outline"
+                                  className={cn("text-xs hover:bg-accent/20 hover:border-accent/50", childId && "cursor-pointer")}
                                   onClick={() => childId && handleLineageItemClick(childId)}
-                                  disabled={isLoadingLineage || !childId}
+                                  role={childId ? "button" : undefined}
+                                  tabIndex={childId ? 0 : -1}
+                                  onKeyDown={childId ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleLineageItemClick(childId) } : undefined}
                                 >
-                                  <Badge variant="outline" className={cn("text-xs hover:bg-accent/20 hover:border-accent/50", childId && "cursor-pointer")}>
-                                    {childName}
-                                  </Badge>
-                                </Button>
+                                  {childName}
+                                </Badge>
                               );
                             })}
                           </div>
@@ -309,10 +350,9 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                   Close
                 </Button>
               </DialogClose>
-              {/* Ensure we have displayedCultivarData before creating link */}
               {displayedCultivarData.id && (
                 <a href={`/cultivars/${displayedCultivarData.id}`} target="_blank" rel="noopener noreferrer">
-                  <Button type="button" variant="default" onClick={() => onOpenChange(false)}>
+                  <Button type="button" variant="default">
                     View Full Details
                   </Button>
                 </a>
