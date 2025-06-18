@@ -171,18 +171,6 @@ export default function CultivarBrowserPage() {
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      <section className="bg-card p-6 rounded-lg shadow-lg">
-        <div className="flex flex-col sm:flex-row justify-between items-start mb-2 gap-4">
-          <div>
-            <h1 className="text-4xl font-headline text-primary">Explore Cultivars</h1>
-            <p className="text-muted-foreground font-body mt-1">
-              Discover your next favorite strain. Use the search, filter, and sort options in the header.
-            </p>
-          </div>
-        </div>
-        {/* Removed the div that previously held sort and archived toggle */}
-      </section>
-
       {isLoading || authLoading ? (
         <div className="flex flex-col items-center justify-center py-12">
           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -240,3 +228,4 @@ export default function CultivarBrowserPage() {
     </div>
   );
 }
+
