@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors } from "lucide-react";
+import { Leaf, MessageSquare, Percent, Smile, Timer, UserCircle, Sprout, Flower, ScissorsIcon as Scissors, Combine } from "lucide-react";
 
 export default function CultivarDetailLoading() {
   return (
@@ -59,8 +59,21 @@ export default function CultivarDetailLoading() {
                 </div>
               </div>
 
+              {/* Plant Characteristics Skeleton */}
+              <div className="mb-6 pt-6 border-t">
+                <h3 className="font-semibold text-lg flex items-center mb-3">
+                    <Combine size={20} className="mr-2 text-muted-foreground/50"/>
+                    <Skeleton className="h-6 w-1/2" />
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Skeleton className="h-5 w-3/4" /> {/* Min Height */}
+                    <Skeleton className="h-5 w-3/4" /> {/* Max Height */}
+                </div>
+              </div>
+
+
               {/* Cultivation Phases Skeleton */}
-              <div className="mt-6 pt-6 border-t">
+              <div className="pt-6 border-t">
                 <h3 className="font-semibold text-lg flex items-center mb-4">
                   <Timer size={20} className="mr-2 text-muted-foreground/50"/>
                   <Skeleton className="h-6 w-1/2" />

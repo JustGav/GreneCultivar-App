@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import type { Cultivar, Review as ReviewType, CannabinoidProfile } from '@/types';
+import type { Cultivar, Review as ReviewType, CannabinoidProfile, PlantCharacteristics } from '@/types';
 import { mockCultivars } from '@/lib/mock-data';
 import ImageGallery from '@/components/ImageGallery';
 import ReviewForm from '@/components/ReviewForm';
@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CalendarDays, Leaf, MessageSquare, Percent, Smile, UserCircle, Timer, Sprout, Flower, ScissorsIcon as Scissors, Combine } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const calculateAverageRating = (reviews: ReviewType[]): number => {
@@ -29,6 +29,15 @@ const CannabinoidDisplay: React.FC<{ label: string; profile?: CannabinoidProfile
   }
   return (
     <p className="text-sm">{label}: {profile.min}% - {profile.max}%</p>
+  );
+};
+
+const PlantCharacteristicDisplay: React.FC<{ label: string; value?: number; unit: string }> = ({ label, value, unit }) => {
+  if (value === undefined) {
+    return <p className="text-sm">{label}: N/A</p>;
+  }
+  return (
+    <p className="text-sm">{label}: {value}{unit}</p>
   );
 };
 
@@ -129,8 +138,18 @@ export default function CultivarDetailsPage() {
                 </div>
               </div>
 
+              {cultivar.plantCharacteristics && (cultivar.plantCharacteristics.minHeight !== undefined || cultivar.plantCharacteristics.maxHeight !== undefined) && (
+                <div className="mb-6 pt-6 border-t">
+                  <h3 className="font-semibold text-lg flex items-center mb-3"><Combine size={20} className="mr-2 text-accent"/>Plant Characteristics</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <PlantCharacteristicDisplay label="Min. Height" value={cultivar.plantCharacteristics.minHeight} unit="cm" />
+                    <PlantCharacteristicDisplay label="Max. Height" value={cultivar.plantCharacteristics.maxHeight} unit="cm" />
+                  </div>
+                </div>
+              )}
+
               {cultivar.cultivationPhases && (
-                <div className="mt-6 pt-6 border-t">
+                <div className="pt-6 border-t">
                    <h3 className="font-semibold text-lg flex items-center mb-4"><Timer size={20} className="mr-2 text-accent"/>Estimated Cultivation Phases</h3>
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                       <div className="flex items-center">

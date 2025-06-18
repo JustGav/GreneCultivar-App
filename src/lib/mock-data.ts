@@ -28,6 +28,10 @@ export const mockCultivars: Cultivar[] = [
       vegetative: "4-6 weeks",
       flowering: "8-9 weeks",
       harvest: "After 8-9 weeks of flowering"
+    },
+    plantCharacteristics: {
+      minHeight: 60,
+      maxHeight: 100,
     }
   },
   {
@@ -54,6 +58,10 @@ export const mockCultivars: Cultivar[] = [
       vegetative: "3-5 weeks",
       flowering: "9-11 weeks",
       harvest: "After 9-11 weeks of flowering"
+    },
+    plantCharacteristics: {
+      minHeight: 100,
+      maxHeight: 180,
     }
   },
   {
@@ -82,6 +90,10 @@ export const mockCultivars: Cultivar[] = [
       vegetative: "4-7 weeks",
       flowering: "8-10 weeks",
       harvest: "After 8-10 weeks of flowering"
+    },
+    plantCharacteristics: {
+      minHeight: 80,
+      // maxHeight: undefined (will show N/A for max)
     }
   },
   {
@@ -103,6 +115,7 @@ export const mockCultivars: Cultivar[] = [
       flowering: "10-12 weeks",
       harvest: "After 10-12 weeks of flowering"
     }
+    // plantCharacteristics will be undefined (section won't show or show N/A for both)
   },
 ];
 

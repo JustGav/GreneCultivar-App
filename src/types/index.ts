@@ -29,6 +29,11 @@ export interface CultivationPhases {
   harvest: string; // e.g., "After 9 weeks of flowering"
 }
 
+export interface PlantCharacteristics {
+  minHeight?: number; // cm
+  maxHeight?: number; // cm
+}
+
 export interface Cultivar {
   id: string;
   name: string;
@@ -44,4 +49,5 @@ export interface Cultivar {
   images: CultivarImage[];
   reviews: Review[];
   cultivationPhases?: CultivationPhases;
+  plantCharacteristics?: PlantCharacteristics;
 }
