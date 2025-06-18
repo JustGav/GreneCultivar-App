@@ -249,6 +249,14 @@ export const addCultivar = async (cultivarDataInput: Partial<Omit<Cultivar, 'id'
 export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cultivar, 'id' | 'createdAt' | 'history'>>): Promise<void> => {
   try {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
+    
+    // Fetch the current document to compare
+    const currentDocSnap = await getDoc(cultivarDocRef);
+    if (!currentDocSnap.exists()) {
+      throw new Error(`Cultivar with ID ${id} not found for update.`);
+    }
+    const currentCultivarData = currentDocSnap.data();
+
     const dataToUpdate = prepareDataForFirestore(cultivarData);
 
     if (dataToUpdate.additionalInfo && typeof dataToUpdate.additionalInfo === 'object') {
@@ -261,15 +269,54 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
         });
     }
 
+    const changedFields: string[] = [];
+    for (const key in dataToUpdate) {
+      if (key === 'updatedAt' || key === 'history') continue; // Firestore handles updatedAt, history is appended
+
+      const oldValue = currentCultivarData[key];
+      const newValue = dataToUpdate[key];
+
+      // Simple direct comparison for primitive types might be insufficient for objects/arrays.
+      // Using JSON.stringify for a pragmatic check if complex structures have changed.
+      // This won't tell *what* inside the object/array changed, just *that* it changed.
+      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+        changedFields.push(key);
+      }
+    }
+
     const { userId, details: userDetails } = getCurrentUserHistoryDetails();
-    // Consider fetching old cultivar to diff and specify changes in details for better logging. For now, generic update.
-    const changedFields = Object.keys(dataToUpdate).filter(key => key !== 'updatedAt' && key !== 'history');
+    
+    let eventMessage = "Cultivar Details Updated";
+    const detailsForHistory: Record<string, any> = { ...userDetails };
+
+    if (changedFields.length > 0) {
+      detailsForHistory.updatedFields = changedFields.join(', ');
+    } else {
+      // If no fields were technically changed according to the diff, but an update was triggered
+      // (e.g., form was dirty due to re-selection of same values, or just a "save" click)
+      // we can log it as a "Re-save" or similar, or just proceed with a generic update.
+      // For now, if changedFields is empty, we'll just note "No explicit field changes detected".
+      detailsForHistory.updatedFields = 'No explicit field changes detected by diff.';
+    }
+    
+    // Handle status change specifically within the history if it's part of this update
+    if (dataToUpdate.status && dataToUpdate.status !== currentCultivarData.status) {
+        eventMessage = `Status changed to ${dataToUpdate.status}`;
+        detailsForHistory.newStatus = dataToUpdate.status;
+        detailsForHistory.oldStatus = currentCultivarData.status;
+        // Remove 'status' from updatedFields if it's already covered by the event message
+        if(detailsForHistory.updatedFields && typeof detailsForHistory.updatedFields === 'string'){
+            detailsForHistory.updatedFields = detailsForHistory.updatedFields.split(', ').filter((f: string) => f !== 'status').join(', ');
+            if (!detailsForHistory.updatedFields) delete detailsForHistory.updatedFields;
+        }
+    }
+
 
     const historyEntry: CultivarHistoryEntry = {
         timestamp: new Date().toISOString(),
-        event: "Cultivar Details Updated",
+        event: eventMessage,
         userId: userId,
-        details: { ...userDetails, updatedFields: changedFields.join(', ') || 'N/A' }
+        details: detailsForHistory
     };
 
     await updateDoc(cultivarDocRef, {
@@ -351,7 +398,7 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
     const historyEntry: CultivarHistoryEntry = {
         timestamp: new Date().toISOString(),
         event: "Review Added",
-        userId: userId, // Assuming reviewData.user might not be the auth UID. Use auth context if possible.
+        userId: userId, 
         details: { ...userDetails, reviewId: reviewToSave.id, rating: reviewToSave.rating, reviewerName: reviewData.user }
     };
     await updateDoc(cultivarDocRef, {
@@ -364,3 +411,4 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
     throw error;
   }
 };
+
