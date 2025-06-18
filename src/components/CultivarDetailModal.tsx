@@ -22,14 +22,21 @@ import { Separator } from './ui/separator';
 import { cn } from '@/lib/utils';
 import { getCultivarById } from '@/services/firebase';
 import { useToast } from '@/hooks/use-toast';
-import type { CultivarInfoForMap } from '@/app/page';
 
+
+interface CultivarInfoForModalMapValue {
+  id: string;
+  status: CultivarStatus;
+  parents: string[];
+  children: string[];
+  name: string; // Name is useful here for display if the key is just an ID
+}
 
 interface CultivarDetailModalProps {
   cultivar: Cultivar | null;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  cultivarInfoMap?: Map<string, CultivarInfoForMap>;
+  cultivarInfoMap?: Map<string, CultivarInfoForModalMapValue>;
 }
 
 const calculateAverageRating = (reviews: Cultivar['reviews'] = []): number => {
@@ -49,28 +56,29 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
 
   useEffect(() => {
     if (isOpen && initialCultivar) {
-      if (!displayedCultivarData || displayedCultivarData.id !== initialCultivar.id) {
+      // Only reset history if the initial cultivar ID changes or if the modal was previously closed
+      if (!displayedCultivarData || displayedCultivarData.id !== initialCultivar.id || historyStack.length === 0) {
         setDisplayedCultivarData(initialCultivar);
         setHistoryStack([initialCultivar]);
-        setIsLoadingLineage(false);
         if (scrollAreaRef.current) {
           scrollAreaRef.current.scrollTo({ top: 0 });
         }
       }
     }
-  }, [initialCultivar, isOpen, displayedCultivarData]);
-
+    setIsLoadingLineage(false); // Ensure loading is false when initial cultivar is set
+  }, [initialCultivar, isOpen]); // Removed displayedCultivarData and historyStack from deps to avoid loops
 
   useEffect(() => {
     if (!isOpen) {
+      // Cleanup when modal is closed
       setDisplayedCultivarData(null);
       setHistoryStack([]);
       setIsLoadingLineage(false);
     }
   }, [isOpen]);
 
-
-  useEffect(() => {
+  // Effect to auto-close if modal is open but no valid data (e.g., after error or unexpected state)
+   useEffect(() => {
     if (isOpen && !displayedCultivarData && !isLoadingLineage && historyStack.length === 0 && !initialCultivar) {
       onOpenChange(false);
     }
@@ -120,11 +128,14 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
 
   const { effectiveParents, effectiveChildren } = useMemo(() => {
     const currentCultivar = displayedCultivarData;
-    if (!currentCultivar || !cultivarInfoMap || typeof currentCultivar.name !== 'string' || !currentCultivar.name.trim()) {
+    if (!currentCultivar || !cultivarInfoMap) {
       return { effectiveParents: [], effectiveChildren: [] };
     }
 
     const currentCultivarName = currentCultivar.name;
+     if (typeof currentCultivarName !== 'string' || !currentCultivarName.trim()) {
+      return { effectiveParents: (currentCultivar.parents || []).filter(p => p && typeof p === 'string'), effectiveChildren: (currentCultivar.children || []).filter(c => c && typeof c === 'string') };
+    }
     const currentCultivarNameLower = currentCultivarName.toLowerCase();
 
     const parentsSet = new Set<string>(
@@ -326,7 +337,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                               const isLinkable = parentInfo && (parentInfo.status === 'Live' || parentInfo.status === 'featured');
                               return (
                                 <Badge
-                                  key={`parent-${index}-${parentName}`}
+                                  key={`modal-parent-${index}-${parentName}`}
                                   variant="outline"
                                   className={cn("text-xs", isLinkable ? "cursor-pointer hover:bg-accent/20 hover:border-accent/50" : "bg-muted/50 text-muted-foreground/80")}
                                   onClick={isLinkable && parentInfo ? () => handleLineageItemClick(parentInfo.id) : undefined}
@@ -363,7 +374,7 @@ export default function CultivarDetailModal({ cultivar: initialCultivar, isOpen,
                               const isLinkable = childInfo && (childInfo.status === 'Live' || childInfo.status === 'featured');
                               return (
                                  <Badge
-                                  key={`child-${index}-${childName}`}
+                                  key={`modal-child-${index}-${childName}`}
                                   variant="outline"
                                   className={cn("text-xs", isLinkable ? "cursor-pointer hover:bg-accent/20 hover:border-accent/50" : "bg-muted/50 text-muted-foreground/80")}
                                   onClick={isLinkable && childInfo ? () => handleLineageItemClick(childInfo.id) : undefined}

@@ -44,6 +44,7 @@ const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
 
 export interface CultivarInfoForMap {
   id: string;
+  name: string; // Added name here for easier access if needed, though key is name.toLowerCase()
   status: CultivarStatus;
   parents: string[];
   children: string[];
@@ -78,6 +79,7 @@ export default function CultivarBrowserPage() {
         fetchedCultivars.forEach(c => {
             infoMap.set(c.name.toLowerCase(), {
               id: c.id,
+              name: c.name,
               status: c.status,
               parents: c.parents || [],
               children: c.children || []
@@ -174,7 +176,7 @@ export default function CultivarBrowserPage() {
         default: return 0;
       }
     });
-  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived, user, authLoading]);
+  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived, user]);
 
 
   const totalPages = Math.ceil(filteredAndSortedCultivars.length / ITEMS_PER_PAGE);
@@ -396,3 +398,4 @@ export default function CultivarBrowserPage() {
     </div>
   );
 }
+
