@@ -116,10 +116,10 @@ const cultivarFormSchema = z.object({
     yieldPerM2: yieldRangeSchema.optional(),
   }).refine(data => (data.minHeight === undefined || data.maxHeight === undefined) || data.minHeight <= data.maxHeight, {
     message: "Min height must be less than or equal to Max height",
-    path: ["maxHeight"], // Error shown on maxHeight field for better UX
+    path: ["maxHeight"], 
   }).refine(data => (data.minMoisture === undefined || data.maxMoisture === undefined) || data.minMoisture <= data.maxMoisture, {
     message: "Min moisture must be less than or equal to Max moisture",
-    path: ["maxMoisture"], // Error shown on maxMoisture field
+    path: ["maxMoisture"], 
   }).optional(),
   
   additionalInfo_geneticCertificates: z.array(additionalFileSchema).optional(),
@@ -301,21 +301,20 @@ export default function AddCultivarPage() {
     if (nestedErrorPath && errorsForPrefix && errorsForPrefix[nestedErrorPath]) {
         minError = errorsForPrefix[nestedErrorPath]?.min?.message;
         maxError = errorsForPrefix[nestedErrorPath]?.max?.message;
-        rootError = errorsForPrefix[nestedErrorPath]?.message; // For object-level errors like refine
-    } else if (errorsForPrefix && !nestedErrorPath) { // Direct properties of errors object
+        rootError = errorsForPrefix[nestedErrorPath]?.message; 
+    } else if (errorsForPrefix && !nestedErrorPath) { 
         minError = errorsForPrefix?.min?.message;
         maxError = errorsForPrefix?.max?.message;
-        rootError = errorsForPrefix?.message; // For object-level errors like refine
+        rootError = errorsForPrefix?.message; 
     }
 
 
     return (
-        <div className="grid grid-cols-2 gap-4 items-start"> {/* Changed items-end to items-start */}
+        <div className="grid grid-cols-2 gap-4 items-start">
             <div>
                 <Label htmlFor={`${fieldPrefix}.min`}>{label} Min {subLabel}</Label>
                 <Input id={`${fieldPrefix}.min`} type="number" step="0.01" {...register(`${fieldPrefix}.min` as any)} placeholder="e.g., 18.0" />
                 {minError && <p className="text-sm text-destructive mt-1">{minError}</p>}
-                {/* Display root error only once, typically under the first input or a common area if not specific to min/max */}
                 {rootError && !minError && !maxError && <p className="text-sm text-destructive mt-1">{rootError}</p>}
             </div>
             <div>
@@ -547,7 +546,6 @@ export default function AddCultivarPage() {
                     {errors.terpeneProfile?.[index]?.percentage && <p className="text-sm text-destructive mt-1">{errors.terpeneProfile[index]?.percentage?.message}</p>}
                   </div>
                 </div>
-                 {/* Removed Aroma/Notes field for Terpene */}
                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 text-destructive hover:bg-destructive/10" onClick={() => removeTerpene(index)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
