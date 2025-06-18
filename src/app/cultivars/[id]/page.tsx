@@ -420,13 +420,14 @@ export default function CultivarDetailsPage() {
                   {cultivar.effects.map(effect => {
                     const isNegative = NEGATIVE_EFFECTS.includes(effect);
                     return (
-                      <Badge 
-                        key={effect} 
-                        variant="outline" 
+                      <Badge
+                        key={effect}
+                        variant="outline"
                         className={cn(
-                          isNegative 
-                            ? 'bg-destructive/10 border-destructive/30 text-destructive-foreground/90' 
-                            : 'bg-accent/10 border-accent/30 text-accent-foreground/90'
+                          "text-black", // Ensure text is black
+                          isNegative
+                            ? 'bg-destructive/10 border-destructive/30'
+                            : 'bg-accent/10 border-accent/30'
                         )}
                       >
                         {effect}
@@ -614,3 +615,4 @@ export default function CultivarDetailsPage() {
     </div>
   );
 }
+
