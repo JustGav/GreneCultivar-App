@@ -79,29 +79,78 @@ export const getCultivarById = async (id: string): Promise<Cultivar | null> => {
   }
 };
 
-export const addCultivar = async (cultivarData: Omit<Cultivar, 'id' | 'reviews'>): Promise<Cultivar> => {
+export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'reviews'>): Promise<Cultivar> => {
   try {
-    const docRef = await addDoc(collection(db, CULTIVARS_COLLECTION), {
-      ...cultivarData,
-      reviews: [], // Initialize with empty reviews array
+    const dataToSave: { [key: string]: any } = {};
+    // Filter out undefined top-level properties from the input
+    for (const key in cultivarDataInput) {
+      if (cultivarDataInput[key as keyof typeof cultivarDataInput] !== undefined) {
+        dataToSave[key] = cultivarDataInput[key as keyof typeof cultivarDataInput];
+      }
+    }
+
+    // Ensure specific fields that should be arrays are at least empty arrays if not present/defined in dataToSave
+    const arrayFields: (keyof Omit<Cultivar, 'id' | 'reviews'>)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile'];
+    arrayFields.forEach(field => {
+      if (dataToSave[field] === undefined) {
+        dataToSave[field] = [];
+      }
     });
-    return { ...cultivarData, id: docRef.id, reviews: [] };
+
+    // Ensure additionalInfo and its sub-arrays are structured, defaulting to empty arrays
+    if (dataToSave.additionalInfo && typeof dataToSave.additionalInfo === 'object') {
+      const ai = dataToSave.additionalInfo as NonNullable<Cultivar['additionalInfo']>;
+      // Ensure each category under additionalInfo defaults to an empty array if undefined
+      (Object.keys(ai) as (keyof NonNullable<Cultivar['additionalInfo']>)[]).forEach(catKey => {
+        if (ai[catKey] === undefined) {
+          (ai[catKey] as any) = [];
+        }
+      });
+      // Also ensure all expected categories exist, even if not in cultivarDataInput
+      const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
+      expectedAICategories.forEach(catKey => {
+        if (ai[catKey] === undefined) {
+          (ai[catKey] as any) = [];
+        }
+      });
+
+    } else {
+      // If additionalInfo is missing or not an object from cultivarDataInput, initialize it fully
+      dataToSave.additionalInfo = {
+        geneticCertificate: [],
+        plantPicture: [],
+        cannabinoidInfo: [],
+        terpeneInfo: [],
+      };
+    }
+    
+    // Explicitly ensure reviews are initialized here as they are not part of cultivarDataInput type
+    const finalDataForFirestore = {
+      ...dataToSave,
+      reviews: [], 
+    };
+
+    const docRef = await addDoc(collection(db, CULTIVARS_COLLECTION), finalDataForFirestore);
+
+    // Fetch the just-saved document to ensure the returned object matches what's in DB
+    const savedDoc = await getDoc(docRef);
+    if (!savedDoc.exists()) {
+        throw new Error("Failed to retrieve saved cultivar post-creation.");
+    }
+    return mapDocToCultivar(savedDoc.data(), savedDoc.id);
+
   } catch (error) {
     console.error("Error adding cultivar: ", error);
-    throw error;
+    throw error; // Re-throw to allow UI to handle it
   }
 };
 
 export const addReviewToCultivar = async (cultivarId: string, reviewData: Review): Promise<void> => {
   try {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, cultivarId);
-    // Ensure createdAt is a Firestore compatible format or a server timestamp
-    // For client-side date, ensure it's an ISO string or convert to Timestamp if needed.
-    // Firebase's arrayUnion will add the review object to the reviews array.
     await updateDoc(cultivarDocRef, {
       reviews: arrayUnion({
         ...reviewData,
-        // createdAt is already an ISO string from ReviewForm
       })
     });
   } catch (error) {

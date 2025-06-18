@@ -8,11 +8,11 @@ import type { Cultivar, CannabinoidProfile, CultivationPhases, PlantCharacterist
 //    Firebase Console > Project settings > Service accounts > Generate new private key.
 // 2. Place this file somewhere secure (ideally outside your project repo, or add to .gitignore).
 // 3. Update the path below to point to your service account key file.
-const SERVICE_ACCOUNT_KEY_PATH = './config/your-service-account-key.json'; // <--- UPDATE THIS PATH
+const SERVICE_ACCOUNT_KEY_PATH = '/home/user/studio/scripts/serviceAccountKey.json'; // <--- UPDATE THIS PATH
 
 // --- CONFIGURE YOUR FIREBASE PROJECT ID ---
 // You can find this in your Firebase project settings.
-const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'your-project-id'; // <--- UPDATE THIS OR SET VIA ENV
+const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'grenecultivar'; // <--- UPDATE THIS OR SET VIA ENV
 
 const serviceAccount = require(SERVICE_ACCOUNT_KEY_PATH) as ServiceAccount;
 
