@@ -6,6 +6,7 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { FilterProvider } from '@/contexts/FilterContext'; // Import FilterProvider
 
 export const metadata: Metadata = {
   title: 'GreneCultivar',
@@ -26,12 +27,14 @@ export default function RootLayout({
       </head>
       <body className={cn("min-h-screen bg-background font-body antialiased flex flex-col")}>
         <AuthProvider>
-          <Header />
-          <main className="flex-grow container mx-auto px-4 py-8">
-            {children}
-          </main>
-          <Footer />
-          <Toaster />
+          <FilterProvider> {/* Wrap with FilterProvider */}
+            <Header />
+            <main className="flex-grow container mx-auto px-4 py-8">
+              {children}
+            </main>
+            <Footer />
+            <Toaster />
+          </FilterProvider>
         </AuthProvider>
       </body>
     </html>

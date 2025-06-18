@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Leaf, LogIn, LogOut, UserCircle, Loader2, LayoutDashboard, PlusCircleIcon, Home, Search } from 'lucide-react';
+import { Leaf, LogIn, LogOut, UserCircle, Loader2, LayoutDashboard, PlusCircleIcon, Home, Search, Filter as FilterIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -17,35 +17,33 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from 'react';
 import LoginModal from '@/components/auth/LoginModal';
 import SubmitCultivarModal from '@/components/auth/SubmitCultivarModal';
+import FilterModal from '@/components/modals/FilterModal'; // Import FilterModal
 import { Input } from '@/components/ui/input';
-import { useRouter } from 'next/navigation';
+import { useFilterContext } from '@/contexts/FilterContext'; // Import useFilterContext
+import { cn } from '@/lib/utils';
 
 export default function Header() {
   const { user, loading, logout } = useAuth();
+  const { searchTerm, setSearchTerm, isFiltersActive } = useFilterContext(); // Use FilterContext
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSubmitCultivarModalOpen, setIsSubmitCultivarModalOpen] = useState(false);
-  const [headerSearchTerm, setHeaderSearchTerm] = useState('');
-  const router = useRouter();
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false); // State for FilterModal
 
   useEffect(() => {
     if (user && isLoginModalOpen) {
-      setIsLoginModalOpen(false); // Close login modal on successful login
+      setIsLoginModalOpen(false);
     }
   }, [user, isLoginModalOpen]);
 
   const handleHeaderSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setHeaderSearchTerm(e.target.value);
+    setSearchTerm(e.target.value); // Update context search term
   };
 
-  // Optional: Handle search submission, e.g., on Enter key
   const handleHeaderSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (headerSearchTerm.trim()) {
-      // Example: Redirect to a search results page or handle search globally
-      // router.push(`/search?q=${encodeURIComponent(headerSearchTerm.trim())}`);
-      console.log("Header search submitted:", headerSearchTerm);
-      // For now, it just logs. Actual search filtering would need further implementation.
-    }
+    // Search is applied live via context, so submit might not be strictly necessary
+    // but can be used for explicit actions like redirecting to a search page if desired.
+    console.log("Header search term:", searchTerm);
   };
 
   return (
@@ -56,17 +54,35 @@ export default function Header() {
             <Leaf size={28} className="sm:size-32"/>
             <h1 className="text-2xl sm:text-3xl font-headline">GreneCultivar</h1>
           </Link>
-          <form onSubmit={handleHeaderSearchSubmit} className="relative w-full max-w-xs sm:max-w-sm md:max-w-md hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-foreground/60" />
-            <Input
-              type="search"
-              placeholder="Search cultivars..."
-              value={headerSearchTerm}
-              onChange={handleHeaderSearchChange}
-              className="pl-10 pr-3 py-2 h-9 text-sm w-full bg-primary/70 text-primary-foreground placeholder:text-primary-foreground/60 border-primary-foreground/40 focus:bg-primary/90 focus:border-primary-foreground/70 ring-offset-primary"
-              aria-label="Search cultivars"
-            />
-          </form>
+          {/* Search and Filter for md screens and up */}
+          <div className="relative hidden md:flex items-center gap-2 w-full max-w-xs sm:max-w-sm md:max-w-md">
+            <form onSubmit={handleHeaderSearchSubmit} className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-foreground/60" />
+              <Input
+                type="search"
+                placeholder="Search cultivars..."
+                value={searchTerm}
+                onChange={handleHeaderSearchChange}
+                className="pl-10 pr-3 py-2 h-9 text-sm w-full bg-primary/70 text-primary-foreground placeholder:text-primary-foreground/60 border-primary-foreground/40 focus:bg-primary/90 focus:border-primary-foreground/70 ring-offset-primary"
+                aria-label="Search cultivars"
+              />
+            </form>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsFilterModalOpen(true)}
+              className={cn(
+                "h-9 w-9 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground relative",
+                isFiltersActive && "ring-2 ring-offset-1 ring-offset-primary ring-accent"
+              )}
+              aria-label="Open filters"
+            >
+              <FilterIcon className="h-4 w-4" />
+              {isFiltersActive && (
+                <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent border-2 border-primary animate-pulse"></span>
+              )}
+            </Button>
+          </div>
         </div>
         
         <nav className="flex-shrink-0">
@@ -159,22 +175,38 @@ export default function Header() {
           )}
         </nav>
       </div>
-       {/* Search bar for mobile, revealed below header or as part of a mobile menu if needed */}
-      <div className="container mx-auto px-4 pb-2 md:hidden">
-        <form onSubmit={handleHeaderSearchSubmit} className="relative w-full">
+      {/* Search and Filter for mobile */}
+      <div className="container mx-auto px-4 pb-2 md:hidden flex items-center gap-2">
+        <form onSubmit={handleHeaderSearchSubmit} className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-foreground/60" />
           <Input
             type="search"
             placeholder="Search cultivars..."
-            value={headerSearchTerm}
+            value={searchTerm}
             onChange={handleHeaderSearchChange}
             className="pl-10 pr-3 py-2 h-9 text-sm w-full bg-primary/70 text-primary-foreground placeholder:text-primary-foreground/60 border-primary-foreground/40 focus:bg-primary/90 focus:border-primary-foreground/70 ring-offset-primary"
             aria-label="Search cultivars on mobile"
           />
         </form>
+         <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsFilterModalOpen(true)}
+            className={cn(
+              "h-9 w-9 flex-shrink-0 bg-primary/70 border-primary-foreground/40 text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground relative",
+              isFiltersActive && "ring-2 ring-offset-1 ring-offset-primary ring-accent"
+            )}
+            aria-label="Open filters on mobile"
+          >
+            <FilterIcon className="h-4 w-4" />
+            {isFiltersActive && (
+              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-accent border-2 border-primary animate-pulse"></span>
+            )}
+          </Button>
       </div>
       <LoginModal isOpen={isLoginModalOpen} onOpenChange={setIsLoginModalOpen} />
       <SubmitCultivarModal isOpen={isSubmitCultivarModalOpen} onOpenChange={setIsSubmitCultivarModalOpen} />
+      <FilterModal isOpen={isFilterModalOpen} onOpenChange={setIsFilterModalOpen} /> {/* Add FilterModal instance */}
     </header>
   );
 }
