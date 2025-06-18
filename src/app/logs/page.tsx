@@ -120,6 +120,11 @@ export default function LogsPage() {
   const filteredLogs = useMemo(() => {
     return allLogs
       .filter(log => {
+        // Primary filter: ensure log.event is present and a non-empty string
+        if (!log.event || typeof log.event !== 'string' || log.event.trim() === '') {
+          return false;
+        }
+
         const logDate = parseISO(log.timestamp);
         if (!isValidDate(logDate)) return false;
 
@@ -322,7 +327,7 @@ export default function LogsPage() {
               {paginatedLogs.map((log, index) => (
                 <TableRow key={`${log.cultivarId}-${log.timestamp}-${index}`}>
                   <TableCell>{format(parseISO(log.timestamp), "MMM dd, yyyy, HH:mm:ss")}</TableCell>
-                  <TableCell>{log.event || '(No Event Logged)'}</TableCell>
+                  <TableCell>{log.event}</TableCell>
                   <TableCell>
                      <Link href={`/cultivars/${log.cultivarId}`} className="text-primary hover:underline" target="_blank">
                         {log.cultivarName}
@@ -335,10 +340,13 @@ export default function LogsPage() {
                       ? 'System Action'
                       : (log.details && Object.keys(log.details).length > 0)
                         ? Object.entries(log.details)
-                            .filter(([key]) => !(log.event === 'Cultivar Seeded' && key === 'seededBy')) // Hide 'seededBy' if event already states it
+                            .filter(([key]) => !(log.event === 'Cultivar Seeded' && key === 'seededBy')) 
                             .map(([key, value]) => {
                               if (key === 'changes' && typeof value === 'object' && value !== null) {
                                 return `Changes: ${Object.keys(value).join(', ')}`;
+                              }
+                              if (key === 'updatedFields' && Array.isArray(value)) {
+                                return `Updated: ${value.join(', ')}`;
                               }
                               return `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`;
                             })
