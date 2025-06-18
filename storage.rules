@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // User submitted images (public write with validation)
+    // This path is specifically for images uploaded via the "Submit Cultivar" modal by any user.
+    match /cultivar-images/user-submitted/{fileName} {
+      allow read: if request.auth != null; // Admins can read these for moderation
+      allow write: if request.resource.size < 5 * 1024 * 1024 // Max 5MB
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Main cultivar images and additional images (admin-only uploads)
+    // This covers:
+    // - cultivar-images/your-image-id.jpg
+    // - cultivar-images/additional/your-image-id.jpg
+    // - etc.
+    match /cultivar-images/{path=**} {
+      allow read: if true; // All images here are publicly readable once uploaded
+      allow write: if request.auth != null; // Only authenticated users (admins) can write
+    }
+
+    // Cultivar documents (admin-only uploads)
+    // This covers:
+    // - cultivar-docs/certificates/your-doc-id.pdf
+    // - cultivar-docs/cannabinoid-info/your-doc-id.pdf
+    // - etc.
+    match /cultivar-docs/{path=**} {
+      allow read: if true; // Documents are publicly readable (adjust if some are sensitive)
+      allow write: if request.auth != null; // Only authenticated users (admins) can write
+    }
+
+    // By default, all other paths are denied if not explicitly matched above.
+  }
+}

@@ -1,24 +1,18 @@
+
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import type { Cultivar, Genetics } from '@/types';
-import { mockCultivars, getAllEffects } from '@/lib/mock-data';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import type { Cultivar, Genetics, CultivarStatus } from '@/types';
+import { getCultivars } from '@/services/firebase';
 import CultivarCard from '@/components/CultivarCard';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import CultivarDetailModal from '@/components/CultivarDetailModal';
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Loader2, EyeOff, Eye, ChevronLeft, ChevronRight, Filter as FilterIcon } from 'lucide-react'; 
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { useFilterContext, type SortOption, SORT_OPTIONS_CONFIG } from '@/contexts/FilterContext'; 
 
-type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
+const ITEMS_PER_PAGE = 9;
 
 const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
   if (!reviews || reviews.length === 0) return 0;
@@ -26,174 +20,212 @@ const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
   return total / reviews.length;
 };
 
+export interface CultivarInfoForMap {
+  id: string;
+  name: string; 
+  status: CultivarStatus;
+  parents: string[];
+  children: string[];
+}
+
 export default function CultivarBrowserPage() {
-  const [cultivars, setCultivars] = useState<Cultivar[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
-  const [selectedGenetics, setSelectedGenetics] = useState<Genetics | 'All'>('All');
-  const [sortOption, setSortOption] = useState<SortOption>('name-asc');
-  
-  const [allAvailableEffects, setAllAvailableEffects] = useState<string[]>([]);
+  const [allCultivars, setAllCultivars] = useState<Cultivar[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  // Consume sortOption from context, not local state
+  const { searchTerm, selectedEffects, selectedFlavors, sortOption, setSortOption } = useFilterContext(); 
+  const [showArchived, setShowArchived] = useState(false); // This state is for admin view logic, not directly controlled by a button here anymore
+  const [currentPage, setCurrentPage] = useState(1);
+  const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+
+  const [selectedCultivarForModal, setSelectedCultivarForModal] = useState<Cultivar | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [cultivarInfoMap, setCultivarInfoMap] = useState<Map<string, CultivarInfoForMap>>(new Map());
+
+  const fetchCultivars = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const fetchedCultivars = await getCultivars();
+      setAllCultivars(fetchedCultivars);
+      const infoMap = new Map<string, CultivarInfoForMap>();
+        fetchedCultivars.forEach(c => {
+            infoMap.set(c.name.toLowerCase(), {
+              id: c.id,
+              name: c.name,
+              status: c.status,
+              parents: c.parents || [],
+              children: c.children || []
+            });
+        });
+      setCultivarInfoMap(infoMap);
+    } catch (error) {
+      console.error("Failed to fetch cultivars:", error);
+      toast({
+        title: "Error fetching data",
+        description: "Could not load cultivars from the database. Please try again later.",
+        variant: "destructive",
+      });
+      setAllCultivars([]);
+      setCultivarInfoMap(new Map());
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    // Simulating data fetch
-    setCultivars(mockCultivars);
-    setAllAvailableEffects(getAllEffects());
-  }, []);
+    fetchCultivars();
+  }, [fetchCultivars]);
 
-  const handleEffectToggle = (effect: string) => {
-    setSelectedEffects(prev =>
-      prev.includes(effect) ? prev.filter(e => e !== effect) : [...prev, effect]
-    );
-  };
-
-  const resetFilters = () => {
-    setSearchTerm('');
-    setSelectedEffects([]);
-    setSelectedGenetics('All');
-    setSortOption('name-asc');
-  };
-  
   const filteredAndSortedCultivars = useMemo(() => {
-    let filtered = cultivars;
+    let baseFilteredCultivars: Cultivar[];
 
+    if (!user && !authLoading) { 
+      baseFilteredCultivars = allCultivars.filter(c => c.status === 'Live' || c.status === 'featured');
+    } else if (user) { 
+      // Admin view logic: show all non-archived by default. Archived can be toggled on Dashboard page.
+      // For this public page, if admin is logged in, we'll assume they might want to see everything not explicitly 'archived' or 'Hide'
+      // This could be refined based on specific requirements for admin view on public page.
+      // For now, let's show 'Live', 'featured', 'User Submitted', 'recentlyAdded'
+      baseFilteredCultivars = allCultivars.filter(c => c.status !== 'archived' && c.status !== 'Hide');
+    } else { 
+        baseFilteredCultivars = [];
+    }
+
+    let furtherFilteredCultivars = baseFilteredCultivars;
+    
     if (searchTerm) {
-      filtered = filtered.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      furtherFilteredCultivars = furtherFilteredCultivars.filter(c => 
+        c.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
-
+    
     if (selectedEffects.length > 0) {
-      filtered = filtered.filter(c => selectedEffects.every(eff => c.effects.includes(eff)));
+      furtherFilteredCultivars = furtherFilteredCultivars.filter(c => c.effects && selectedEffects.every(eff => c.effects.includes(eff)));
+    }
+    if (selectedFlavors.length > 0) {
+      furtherFilteredCultivars = furtherFilteredCultivars.filter(c => c.flavors && selectedFlavors.every(flav => c.flavors.includes(flav)));
     }
 
-    if (selectedGenetics !== 'All') {
-      filtered = filtered.filter(c => c.genetics === selectedGenetics);
-    }
+    return [...furtherFilteredCultivars].sort((a, b) => {
+      const isPublic = !user;
+      if (isPublic) {
+        const isAFeatured = a.status === 'featured';
+        const isBFeatured = b.status === 'featured';
+        if (isAFeatured && !isBFeatured) return -1;
+        if (!isAFeatured && isBFeatured) return 1;
+      }
 
-    return filtered.sort((a, b) => {
       const ratingA = calculateAverageRating(a.reviews);
       const ratingB = calculateAverageRating(b.reviews);
+      const thcMaxA = a.thc?.max ?? 0;
+      const thcMaxB = b.thc?.max ?? 0;
+      const cbdMaxA = a.cbd?.max ?? 0;
+      const cbdMaxB = b.cbd?.max ?? 0;
+
       switch (sortOption) {
         case 'name-asc': return a.name.localeCompare(b.name);
         case 'name-desc': return b.name.localeCompare(a.name);
-        case 'thc-asc': return a.thc.max - b.thc.max;
-        case 'thc-desc': return b.thc.max - a.thc.max;
-        case 'cbd-asc': return a.cbd.max - b.cbd.max;
-        case 'cbd-desc': return b.cbd.max - a.cbd.max;
+        case 'thc-asc': return thcMaxA - thcMaxB;
+        case 'thc-desc': return thcMaxB - thcMaxA;
+        case 'cbd-asc': return cbdMaxA - cbdMaxB;
+        case 'cbd-desc': return cbdMaxB - cbdMaxA;
         case 'rating-asc': return ratingA - ratingB;
         case 'rating-desc': return ratingB - ratingA;
         default: return 0;
       }
     });
-  }, [cultivars, searchTerm, selectedEffects, selectedGenetics, sortOption]);
+  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, user, authLoading]);
 
-  const geneticsOptions: {value: Genetics | 'All', label: string}[] = [
-    { value: 'All', label: 'All Genetics' },
-    { value: 'Indica', label: 'Indica' },
-    { value: 'Sativa', label: 'Sativa' },
-    { value: 'Hybrid', label: 'Hybrid' },
-  ];
 
-  const sortOptions: {value: SortOption, label: string, icon?: React.ReactNode}[] = [
-    { value: 'name-asc', label: 'Name (A-Z)'},
-    { value: 'name-desc', label: 'Name (Z-A)'},
-    { value: 'thc-asc', label: 'THC (Low to High)'},
-    { value: 'thc-desc', label: 'THC (High to Low)'},
-    { value: 'cbd-asc', label: 'CBD (Low to High)'},
-    { value: 'cbd-desc', label: 'CBD (High to Low)'},
-    { value: 'rating-asc', label: 'Rating (Low to High)'},
-    { value: 'rating-desc', label: 'Rating (High to Low)'},
-  ];
+  const totalPages = Math.ceil(filteredAndSortedCultivars.length / ITEMS_PER_PAGE);
+
+  const paginatedCultivars = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredAndSortedCultivars.slice(startIndex, endIndex);
+  }, [filteredAndSortedCultivars, currentPage]);
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleOpenCultivarModal = (cultivar: Cultivar) => {
+    setSelectedCultivarForModal(cultivar);
+    setIsModalOpen(true);
+  };
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    } else if (currentPage === 0 && totalPages > 0) {
+       setCurrentPage(1);
+    } else if (filteredAndSortedCultivars.length === 0 && currentPage !==1) {
+      setCurrentPage(1);
+    }
+  }, [selectedEffects, selectedFlavors, searchTerm, totalPages, currentPage, filteredAndSortedCultivars.length]);
 
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      <section className="bg-card p-6 rounded-lg shadow-lg">
-        <h1 className="text-4xl font-headline text-primary mb-2">Explore Cultivars</h1>
-        <p className="text-muted-foreground font-body mb-6">
-          Discover your next favorite strain. Filter by effects, genetics, or search by name.
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search by name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-              aria-label="Search by cultivar name"
-            />
-          </div>
-
-          <Select value={selectedGenetics} onValueChange={(value) => setSelectedGenetics(value as Genetics | 'All')}>
-            <SelectTrigger aria-label="Filter by genetics">
-              <SelectValue placeholder="Filter by Genetics" />
-            </SelectTrigger>
-            <SelectContent>
-              {geneticsOptions.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full justify-between">
-                Sort By: {sortOptions.find(s => s.value === sortOption)?.label || 'Select'}
-                {sortOption.endsWith('-asc') ? <SortAsc className="ml-2 h-4 w-4" /> : <SortDesc className="ml-2 h-4 w-4" />}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuRadioGroup value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
-                {sortOptions.map(opt => (
-                  <DropdownMenuRadioItem key={opt.value} value={opt.value}>{opt.label}</DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Button onClick={resetFilters} variant="outline" className="w-full">
-            <ListRestart className="mr-2 h-4 w-4" /> Reset Filters
-          </Button>
+      {isLoading || authLoading ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <p className="text-lg text-muted-foreground">{authLoading && !user ? 'Checking authentication...' : 'Loading cultivars...'}</p>
         </div>
-        
-        <Separator className="my-6" />
-
-        <div>
-          <h3 className="text-lg font-semibold mb-3 flex items-center">
-            <Filter className="mr-2 h-5 w-5 text-primary" />
-            Filter by Effects:
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {allAvailableEffects.map(effect => (
-              <Button
-                key={effect}
-                variant={selectedEffects.includes(effect) ? "default" : "outline"}
-                onClick={() => handleEffectToggle(effect)}
-                className={`transition-all duration-200 ease-in-out text-sm rounded-full px-4 py-1 ${selectedEffects.includes(effect) ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-accent/10'}`}
-              >
-                {effect}
-                {selectedEffects.includes(effect) && <X className="ml-2 h-3 w-3" />}
-              </Button>
+      ) : paginatedCultivars.length > 0 ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {paginatedCultivars.map(cultivar => (
+              <CultivarCard 
+                key={cultivar.id} 
+                cultivar={cultivar} 
+                isPublicView={!user}
+                onViewInModal={handleOpenCultivarModal}
+              />
             ))}
           </div>
-        </div>
-      </section>
-
-      {filteredAndSortedCultivars.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAndSortedCultivars.map(cultivar => (
-            <CultivarCard key={cultivar.id} cultivar={cultivar} />
-          ))}
-        </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center space-x-4 mt-8">
+              <Button
+                variant="outline"
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1}
+                aria-label="Go to previous page"
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+                aria-label="Go to next page"
+              >
+                Next <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-12">
-          <Search className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+          <FilterIcon className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
           <p className="text-xl text-muted-foreground font-body">No cultivars match your current filters.</p>
-          <p className="text-sm text-muted-foreground font-body mt-2">Try adjusting your search or filter criteria.</p>
+          <p className="text-sm text-muted-foreground font-body mt-2">Try adjusting your search or filter criteria, or click "Reset Filters" in the filter modal.</p>
         </div>
       )}
+      <CultivarDetailModal 
+        cultivar={selectedCultivarForModal} 
+        isOpen={isModalOpen} 
+        onOpenChange={setIsModalOpen}
+        cultivarInfoMap={cultivarInfoMap}
+      />
     </div>
   );
 }
+
