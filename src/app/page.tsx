@@ -3,12 +3,12 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Cultivar, Genetics, CultivarStatus } from '@/types';
-import { EFFECT_OPTIONS } from '@/lib/mock-data'; 
+import { EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data'; 
 import { getCultivars, updateCultivarStatus } from '@/services/firebase';
 import CultivarCard from '@/components/CultivarCard';
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -28,7 +28,6 @@ import { useToast } from '@/hooks/use-toast';
 
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
-const GENETIC_OPTIONS: Genetics[] = ['Sativa', 'Indica', 'Ruderalis', 'Hybrid'];
 const ITEMS_PER_PAGE = 9;
 
 const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
@@ -42,13 +41,14 @@ export default function CultivarBrowserPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
-  const [geneticFilters, setGeneticFilters] = useState<string[]>([]);
+  const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
   
   const allAvailableEffects = EFFECT_OPTIONS;
+  const allAvailableFlavors = FLAVOR_OPTIONS;
 
   const fetchCultivars = useCallback(async () => {
     setIsLoading(true);
@@ -79,9 +79,9 @@ export default function CultivarBrowserPage() {
     setCurrentPage(1);
   };
 
-  const handleGeneticFilterChange = (geneticType: Genetics, checked: boolean) => {
-    setGeneticFilters(prev =>
-      checked ? [...prev, geneticType] : prev.filter(g => g !== geneticType)
+  const handleFlavorToggle = (flavor: string, checked: boolean) => {
+    setSelectedFlavors(prev =>
+      checked ? [...prev, flavor] : prev.filter(f => f !== flavor)
     );
     setCurrentPage(1);
   };
@@ -92,14 +92,12 @@ export default function CultivarBrowserPage() {
         c.id === cultivarId ? { ...c, status: newStatus } : c
       )
     );
-    // Potentially refetch or smarter update if status change affects filtering
-    // For now, relying on the showArchived filter to re-evaluate
   }, []);
 
   const resetFilters = () => {
     setSearchTerm('');
     setSelectedEffects([]);
-    setGeneticFilters([]);
+    setSelectedFlavors([]);
     setShowArchived(false);
     setSortOption('name-asc');
     setCurrentPage(1);
@@ -120,8 +118,8 @@ export default function CultivarBrowserPage() {
       filtered = filtered.filter(c => c.effects && selectedEffects.every(eff => c.effects.includes(eff)));
     }
 
-    if (geneticFilters.length > 0) {
-      filtered = filtered.filter(c => geneticFilters.includes(c.genetics));
+    if (selectedFlavors.length > 0) {
+      filtered = filtered.filter(c => c.flavors && selectedFlavors.every(flav => c.flavors.includes(flav)));
     }
 
     return [...filtered].sort((a, b) => {
@@ -144,7 +142,7 @@ export default function CultivarBrowserPage() {
         default: return 0;
       }
     });
-  }, [allCultivars, searchTerm, selectedEffects, geneticFilters, sortOption, showArchived]);
+  }, [allCultivars, searchTerm, selectedEffects, selectedFlavors, sortOption, showArchived]);
 
   const totalPages = Math.ceil(filteredAndSortedCultivars.length / ITEMS_PER_PAGE);
 
@@ -196,7 +194,7 @@ export default function CultivarBrowserPage() {
           <div>
             <h1 className="text-4xl font-headline text-primary">Explore Cultivars</h1>
             <p className="text-muted-foreground font-body mt-1">
-              Discover your next favorite strain. Filter by effects, genetics, or search by name.
+              Discover your next favorite strain. Filter by effects, flavors, or search by name.
             </p>
           </div>
           <Link href="/cultivars/add" passHref>
@@ -250,20 +248,20 @@ export default function CultivarBrowserPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <h3 className="text-lg font-semibold mb-3 flex items-center">
-              <Leaf className="mr-2 h-5 w-5 text-primary" />
-              Filter by Genetics:
+              <Utensils className="mr-2 h-5 w-5 text-primary" />
+              Filter by Flavors:
             </h3>
             <div className="space-y-3">
-              <div className="flex flex-wrap gap-x-6 gap-y-3">
-                {GENETIC_OPTIONS.map(geneticType => (
-                  <div key={geneticType} className="flex items-center space-x-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                {allAvailableFlavors.map(flavor => (
+                  <div key={flavor} className="flex items-center space-x-2">
                     <Checkbox
-                      id={`genetic-${geneticType}`}
-                      checked={geneticFilters.includes(geneticType)}
-                      onCheckedChange={(checked) => handleGeneticFilterChange(geneticType, !!checked)}
-                      aria-label={`Filter by ${geneticType}`}
+                      id={`flavor-${flavor}`}
+                      checked={selectedFlavors.includes(flavor)}
+                      onCheckedChange={(checked) => handleFlavorToggle(flavor, !!checked)}
+                      aria-label={`Filter by ${flavor}`}
                     />
-                    <Label htmlFor={`genetic-${geneticType}`} className="font-normal text-sm">{geneticType}</Label>
+                    <Label htmlFor={`flavor-${flavor}`} className="font-normal text-sm">{flavor}</Label>
                   </div>
                 ))}
               </div>
