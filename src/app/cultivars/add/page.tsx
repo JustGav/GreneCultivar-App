@@ -44,26 +44,42 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ACCEPTED_DOC_TYPES = ["application/pdf"];
 
+const filePreprocess = (arg: unknown) => {
+  if (arg instanceof FileList && arg.length > 0) return arg[0];
+  if (arg instanceof FileList && arg.length === 0) return undefined;
+  return arg;
+};
 
-const fileInputSchema = z.instanceof(File, { message: "File is required." })
-  .refine((file) => file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
-  .optional();
+const optionalFileBaseSchema = z.preprocess(filePreprocess,
+  z.instanceof(File)
+    .refine(file => file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+    .optional()
+);
 
-const imageFileInputSchema = fileInputSchema.refine(
-    (file) => !file || ACCEPTED_IMAGE_TYPES.includes(file.type),
+const requiredFileBaseSchema = z.preprocess(filePreprocess,
+  z.instanceof(File, { message: "File is required." })
+    .refine(file => file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+);
+
+const imageFileInputSchema = optionalFileBaseSchema
+  .refine(file => file === undefined || ACCEPTED_IMAGE_TYPES.includes(file.type),
     ".jpg, .jpeg, .png and .webp files are accepted."
-  ).optional();
+  );
 
-const pdfFileInputSchema = fileInputSchema.refine(
-    (file) => !file || ACCEPTED_DOC_TYPES.includes(file.type),
+const requiredImageFileInputSchema = requiredFileBaseSchema
+  .refine(file => ACCEPTED_IMAGE_TYPES.includes(file.type),
+    ".jpg, .jpeg, .png and .webp files are accepted."
+  );
+
+const pdfFileInputSchema = optionalFileBaseSchema
+  .refine(file => file === undefined || ACCEPTED_DOC_TYPES.includes(file.type),
     ".pdf files are accepted."
-  ).optional();
-
+  );
 
 const additionalFileFormSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "File name is required."),
-  url: z.string().url({ message: "Please enter a valid URL." }).optional(), 
+  url: z.string().url({ message: "Please enter a valid URL." }).optional(),
   file: pdfFileInputSchema,
   category: z.custom<AdditionalInfoCategoryKey>()
 });
@@ -71,7 +87,7 @@ const additionalFileFormSchema = z.object({
 const additionalImageFileFormSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "File name is required."),
-  url: z.string().url({ message: "Please enter a valid URL." }).optional(), 
+  url: z.string().url({ message: "Please enter a valid URL." }).optional(),
   file: imageFileInputSchema,
   dataAiHint: z.string().optional(),
   category: z.custom<AdditionalInfoCategoryKey>()
@@ -124,7 +140,7 @@ const cultivarFormSchema = z.object({
   effects: z.array(effectEntrySchema).optional().default([]),
   medicalEffects: z.array(effectEntrySchema).optional().default([]),
 
-  primaryImageFile: imageFileInputSchema,
+  primaryImageFile: requiredImageFileInputSchema, // Primary image is required for new cultivars
   primaryImageAlt: z.string().optional(),
   primaryImageDataAiHint: z.string().optional(),
 
@@ -178,7 +194,7 @@ export default function AddCultivarPage() {
 
   const { control, handleSubmit, register, formState: { errors, isDirty, isValid }, watch } = useForm<CultivarFormData>({
     resolver: zodResolver(cultivarFormSchema),
-    mode: 'onChange', 
+    mode: 'onChange',
     defaultValues: {
       name: '',
       genetics: undefined,
@@ -232,12 +248,12 @@ export default function AddCultivarPage() {
     setIsSubmitting(true);
     try {
       let primaryImageUrlForFirebase: string | undefined = undefined;
-      if (data.primaryImageFile) {
+      if (data.primaryImageFile) { // data.primaryImageFile is now a File object or undefined
         const timestamp = Date.now();
         const uniqueFileName = `${timestamp}-${data.primaryImageFile.name}`;
         primaryImageUrlForFirebase = await uploadImage(data.primaryImageFile, `cultivar-images/${uniqueFileName}`);
       }
-      
+
       const processAdditionalFiles = async (
         formFiles: (typeof data.additionalInfo_plantPictures | typeof data.additionalInfo_geneticCertificates),
         storagePath: string,
@@ -247,13 +263,13 @@ export default function AddCultivarPage() {
         if (!formFiles) return [];
         const processedFiles: AdditionalFileInfo[] = [];
         for (const formFile of formFiles) {
-          let url = formFile.url; 
-          if (formFile.file) { 
+          let url = formFile.url;
+          if (formFile.file) { // formFile.file is a File object or undefined
             const timestamp = Date.now();
             const uniqueFileName = `${timestamp}-${formFile.file.name}`;
             url = await uploadImage(formFile.file, `${storagePath}/${uniqueFileName}`);
           }
-          if (url) { 
+          if (url) {
             processedFiles.push({
               id: formFile.id || `${category.substring(0,3)}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
               name: formFile.name,
@@ -342,7 +358,7 @@ export default function AddCultivarPage() {
 
   const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string) => {
     const fieldPrefix = String(fieldPrefixKey);
-    
+
     const errorsAny = errors as any;
     let minErrorMsg, maxErrorMsg, rootErrorMsg;
 
@@ -351,7 +367,7 @@ export default function AddCultivarPage() {
         if (errorsAny[baseKey] && errorsAny[baseKey][nestedKey]) {
             minErrorMsg = errorsAny[baseKey][nestedKey]?.min?.message;
             maxErrorMsg = errorsAny[baseKey][nestedKey]?.max?.message;
-            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message; 
+            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message;
         }
     } else {
         if (errorsAny[fieldPrefix]) {
@@ -360,7 +376,7 @@ export default function AddCultivarPage() {
             rootErrorMsg = errorsAny[fieldPrefix]?.message;
         }
     }
-    
+
     return (
         <div className="grid grid-cols-2 gap-4 items-start">
             <div>
@@ -494,10 +510,10 @@ export default function AddCultivarPage() {
             {terpeneProfileFields.length === 0 && <p className="text-sm text-muted-foreground">No terpenes added yet.</p>}
           </CardContent>
         </Card>
-        
+
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="font-headline text-2xl text-primary flex items-center"><ImageIcon size={24} className="mr-2" /> Primary Image</CardTitle>
+            <CardTitle className="font-headline text-2xl text-primary flex items-center"><ImageIcon size={24} className="mr-2" /> Primary Image *</CardTitle>
             <CardDescription>Upload the main image for this cultivar.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -533,7 +549,7 @@ export default function AddCultivarPage() {
             {renderMinMaxInput("thcv", "THCV", "(%)")}
           </CardContent>
         </Card>
-        
+
         <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center"><Smile size={24} className="mr-2" /> Reported Effects</CardTitle>
@@ -864,7 +880,7 @@ export default function AddCultivarPage() {
                     {plantPictureFields.length === 0 && <p className="text-sm text-muted-foreground">No plant pictures added.</p>}
                 </div>
                 <Separator />
-                
+
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FileText size={18} className="mr-2 text-accent"/>Cannabinoid Information (PDF)</h4 >
@@ -931,10 +947,11 @@ export default function AddCultivarPage() {
 
         <CardFooter className="pt-6 border-t">
           <Button type="submit" className="w-full md:w-auto" size="lg" disabled={isSubmitting || !isDirty || !isValid}>
-            {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Changes...</>) : 'Save Changes'}
+            {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Cultivar...</>) : (<><Upload className="mr-2 h-4 w-4" /> Add Cultivar</>)}
           </Button>
         </CardFooter>
       </form>
     </div>
   );
 }
+

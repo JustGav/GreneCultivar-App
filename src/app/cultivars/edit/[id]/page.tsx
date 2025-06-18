@@ -52,35 +52,45 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 const ACCEPTED_DOC_TYPES = ["application/pdf"];
 
-const fileInputSchema = z.instanceof(File, { message: "File is required." })
-  .refine((file) => file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
-  .optional();
+const filePreprocess = (arg: unknown) => {
+  if (arg instanceof FileList && arg.length > 0) return arg[0];
+  if (arg instanceof FileList && arg.length === 0) return undefined;
+  return arg;
+};
 
-const imageFileInputSchema = fileInputSchema.refine(
-    (file) => !file || ACCEPTED_IMAGE_TYPES.includes(file.type),
+const optionalFileBaseSchema = z.preprocess(filePreprocess,
+  z.instanceof(File)
+    .refine(file => file.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+    .optional()
+);
+
+// On Edit page, all file inputs are optional as they might be pre-existing
+const imageFileInputSchema = optionalFileBaseSchema
+  .refine(file => file === undefined || ACCEPTED_IMAGE_TYPES.includes(file.type),
     ".jpg, .jpeg, .png and .webp files are accepted."
-  ).optional();
+  );
 
-const pdfFileInputSchema = fileInputSchema.refine(
-    (file) => !file || ACCEPTED_DOC_TYPES.includes(file.type),
+const pdfFileInputSchema = optionalFileBaseSchema
+  .refine(file => file === undefined || ACCEPTED_DOC_TYPES.includes(file.type),
     ".pdf files are accepted."
-  ).optional();
+  );
+
 
 const additionalFileFormSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "File name is required."),
   url: z.string().url({ message: "Please enter a valid URL." }).optional(),
-  file: pdfFileInputSchema, 
-  category: z.custom<AdditionalInfoCategoryKey>() 
+  file: pdfFileInputSchema,
+  category: z.custom<AdditionalInfoCategoryKey>()
 });
 
 const additionalImageFileFormSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "File name is required."),
   url: z.string().url({ message: "Please enter a valid URL." }).optional(),
-  file: imageFileInputSchema, 
+  file: imageFileInputSchema,
   dataAiHint: z.string().optional(),
-  category: z.custom<AdditionalInfoCategoryKey>() 
+  category: z.custom<AdditionalInfoCategoryKey>()
 });
 
 const terpeneEntrySchema = z.object({
@@ -105,7 +115,7 @@ const pricingSchema = z.object({
   }).optional();
 
 const effectEntrySchema = z.object({
-  id: z.string().optional(), 
+  id: z.string().optional(),
   name: z.string().min(1, "Effect name is required."),
 });
 
@@ -130,7 +140,7 @@ const cultivarFormSchema = z.object({
   effects: z.array(effectEntrySchema).optional().default([]),
   medicalEffects: z.array(effectEntrySchema).optional().default([]),
 
-  primaryImageFile: imageFileInputSchema,
+  primaryImageFile: imageFileInputSchema, // Optional on edit page
   primaryImageAlt: z.string().optional(),
   primaryImageDataAiHint: z.string().optional(),
   existingPrimaryImageUrl: z.string().optional(),
@@ -218,12 +228,12 @@ export default function EditCultivarPage() {
               terpeneProfile: cultivar.terpeneProfile?.map(tp => ({ ...tp })) || [],
               effects: cultivar.effects?.map(e => ({ name: e, id: `effect-${Math.random()}` })) || [],
               medicalEffects: cultivar.medicalEffects?.map(me => ({ name: me, id: `medeffect-${Math.random()}` })) || [],
-              
+
               existingPrimaryImageUrl: cultivar.images?.[0]?.url,
               existingPrimaryImageId: cultivar.images?.[0]?.id,
               primaryImageAlt: cultivar.images?.[0]?.alt || '',
               primaryImageDataAiHint: cultivar.images?.[0]?.['data-ai-hint'] || '',
-              
+
               thc: cultivar.thc || {},
               cbd: cultivar.cbd || {},
               cbc: cultivar.cbc || {},
@@ -273,7 +283,7 @@ export default function EditCultivarPage() {
     try {
       let finalPrimaryImage: CultivarImage | undefined = undefined;
 
-      if (data.primaryImageFile) {
+      if (data.primaryImageFile) { // data.primaryImageFile is File | undefined
         const timestamp = Date.now();
         const uniqueFileName = `${timestamp}-${data.primaryImageFile.name}`;
         const newUrl = await uploadImage(data.primaryImageFile, `cultivar-images/${uniqueFileName}`);
@@ -302,13 +312,13 @@ export default function EditCultivarPage() {
         if (!formFiles) return [];
         const processedFiles: AdditionalFileInfo[] = [];
         for (const formFile of formFiles) {
-          let url = formFile.url; 
-          if (formFile.file) { 
+          let url = formFile.url;
+          if (formFile.file) { // formFile.file is File | undefined
             const timestamp = Date.now();
             const uniqueFileName = `${timestamp}-${formFile.file.name}`;
             url = await uploadImage(formFile.file, `${storagePath}/${uniqueFileName}`);
           }
-          if (url) { 
+          if (url) {
             processedFiles.push({
               id: formFile.id || `${category.substring(0,3)}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
               name: formFile.name,
@@ -321,7 +331,7 @@ export default function EditCultivarPage() {
         }
         return processedFiles;
       };
-      
+
       const updatedPlantPictures = await processAdditionalFiles(data.additionalInfo_plantPictures, 'cultivar-images/additional', 'plantPicture', 'image');
       const updatedGeneticCertificates = await processAdditionalFiles(data.additionalInfo_geneticCertificates, 'cultivar-docs/certificates', 'geneticCertificate', 'pdf');
       const updatedCannabinoidInfos = await processAdditionalFiles(data.additionalInfo_cannabinoidInfos, 'cultivar-docs/cannabinoid-info', 'cannabinoidInfo', 'pdf');
@@ -362,7 +372,7 @@ export default function EditCultivarPage() {
           terpeneInfo: updatedTerpeneInfos,
         },
       };
-      
+
       await updateCultivar(id, cultivarDataForFirebase);
 
       toast({
@@ -386,7 +396,7 @@ export default function EditCultivarPage() {
 
   const renderMinMaxInput = (fieldPrefixKey: keyof CultivarFormData | `plantCharacteristics.${keyof NonNullable<CultivarFormData['plantCharacteristics']>}` | `pricing`, label: string, subLabel?: string) => {
     const fieldPrefix = String(fieldPrefixKey);
-    
+
     const errorsAny = errors as any;
     let minErrorMsg, maxErrorMsg, rootErrorMsg;
 
@@ -395,7 +405,7 @@ export default function EditCultivarPage() {
         if (errorsAny[baseKey] && errorsAny[baseKey][nestedKey]) {
             minErrorMsg = errorsAny[baseKey][nestedKey]?.min?.message;
             maxErrorMsg = errorsAny[baseKey][nestedKey]?.max?.message;
-            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message; 
+            rootErrorMsg = errorsAny[baseKey][nestedKey]?.message;
         }
     } else {
         if (errorsAny[fieldPrefix]) {
@@ -404,7 +414,7 @@ export default function EditCultivarPage() {
             rootErrorMsg = errorsAny[fieldPrefix]?.message;
         }
     }
-    
+
     return (
         <div className="grid grid-cols-2 gap-4 items-start">
             <div>
@@ -521,7 +531,7 @@ export default function EditCultivarPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline text-2xl text-primary flex items-center"><Palette size={24} className="mr-2" /> Terpene Profile</CardTitle>
@@ -630,7 +640,7 @@ export default function EditCultivarPage() {
             {renderMinMaxInput("thcv", "THCV", "(%)")}
           </CardContent>
         </Card>
-        
+
         <Card className="shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline text-2xl text-primary flex items-center"><Smile size={24} className="mr-2" /> Reported Effects</CardTitle>
@@ -959,7 +969,7 @@ export default function EditCultivarPage() {
                     {plantPictureFields.length === 0 && <p className="text-sm text-muted-foreground">No plant pictures added.</p>}
                 </div>
                 <Separator />
-                
+
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <h4 className="font-medium text-md flex items-center"><FileText size={18} className="mr-2 text-accent"/>Cannabinoid Information (PDF)</h4 >
@@ -1033,3 +1043,4 @@ export default function EditCultivarPage() {
     </div>
   );
 }
+
