@@ -6,7 +6,7 @@ import Footer from '@/components/layout/Footer';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'CannaDex',
+  title: 'GreneCultivar',
   description: 'Categorize, review, and explore cannabis cultivars.',
 };
 

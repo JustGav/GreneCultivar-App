@@ -7,7 +7,7 @@ export default function Header() {
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <Leaf size={32} />
-          <h1 className="text-3xl font-headline">CannaDex</h1>
+          <h1 className="text-3xl font-headline">GreneCultivar</h1>
         </Link>
         <nav>
           <Link href="/" className="hover:text-accent transition-colors font-medium">
