@@ -3,22 +3,19 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import type { Cultivar, Genetics, CultivarStatus } from '@/types';
 import { EFFECT_OPTIONS, FLAVOR_OPTIONS } from '@/lib/mock-data';
 import { getCultivars, updateCultivarStatus } from '@/services/firebase';
-import CultivarListItem from '@/components/CultivarListItem'; // Changed from CultivarCard
 import { Input } from "@/components/ui/input";
 import { Button } from '@/components/ui/button';
-import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, ArchiveIcon, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown, AlertTriangle } from 'lucide-react';
+import { Filter, ListRestart, Search, SortAsc, SortDesc, X, Leaf, PlusCircle, Loader2, Archive, EyeOff, Eye, ChevronLeft, ChevronRight, Utensils, ChevronsUpDown, AlertTriangle, Edit, ThermometerSun, ThermometerSnowflake, ImageOff, ShieldCheck, Hourglass, Info as InfoIcon } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuCheckboxItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,15 +29,51 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 type SortOption = 'name-asc' | 'name-desc' | 'thc-asc' | 'thc-desc' | 'cbd-asc' | 'cbd-desc' | 'rating-asc' | 'rating-desc';
 
-const ITEMS_PER_PAGE = 10; // Might want more items per page for a list view
+const ITEMS_PER_PAGE = 10;
 
 const calculateAverageRating = (reviews: Cultivar['reviews']): number => {
   if (!reviews || reviews.length === 0) return 0;
   const total = reviews.reduce((acc, review) => acc + review.rating, 0);
   return total / reviews.length;
+};
+
+const getStatusBadgeVariant = (status?: CultivarStatus): "default" | "secondary" | "destructive" | "outline" => {
+  if (!status) return 'outline';
+  switch (status) {
+    case 'verified': return 'default';
+    case 'recentlyAdded': return 'secondary';
+    case 'archived': return 'destructive';
+    default: return 'outline';
+  }
+};
+
+const getStatusIcon = (status?: CultivarStatus) => {
+  if (!status) return <InfoIcon size={14} className="mr-1" />;
+  switch (status) {
+    case 'verified': return <ShieldCheck size={14} className="mr-1" />;
+    case 'recentlyAdded': return <Hourglass size={14} className="mr-1" />;
+    case 'archived': return <Archive size={14} className="mr-1" />;
+    default: return <InfoIcon size={14} className="mr-1" />;
+  }
+};
+
+const STATUS_LABELS: Record<CultivarStatus, string> = {
+  recentlyAdded: 'Recently Added',
+  verified: 'Verified',
+  archived: 'Archived',
 };
 
 export default function DashboardPage() {
@@ -109,8 +142,6 @@ export default function DashboardPage() {
         c.id === cultivarId ? { ...c, status: newStatus } : c
       )
     );
-    // Optional: Re-fetch or intelligently update list if sort/filter depends on status
-    // For now, this local update should reflect correctly if 'showArchived' is toggled.
   }, []);
 
   const resetFilters = () => {
@@ -191,6 +222,25 @@ export default function DashboardPage() {
     setShowArchived(prev => !prev);
     setCurrentPage(1);
   }
+  
+  const handleArchive = async (e: React.MouseEvent, cultivarId: string, cultivarName: string) => {
+    e.stopPropagation();
+    try {
+      await updateCultivarStatus(cultivarId, 'archived');
+      toast({
+        title: "Cultivar Archived",
+        description: `${cultivarName} has been moved to archives.`,
+      });
+      handleCultivarStatusChange(cultivarId, 'archived');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to archive ${cultivarName}.`,
+        variant: "destructive",
+      });
+      console.error("Failed to archive cultivar:", error);
+    }
+  };
 
   const sortOptions: {value: SortOption, label: string, icon?: React.ReactNode}[] = [
     { value: 'name-asc', label: 'Name (A-Z)'},
@@ -350,14 +400,91 @@ export default function DashboardPage() {
         </div>
       ) : paginatedCultivars.length > 0 ? (
         <>
-          <div className="space-y-4"> {/* Changed from grid */}
-            {paginatedCultivars.map(cultivar => (
-              <CultivarListItem 
-                key={cultivar.id} 
-                cultivar={cultivar} 
-                onStatusChange={handleCultivarStatusChange} 
-              />
-            ))}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[64px]">Image</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Genetics</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>THC (%)</TableHead>
+                  <TableHead>CBD (%)</TableHead>
+                  <TableHead className="text-right w-[180px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedCultivars.map(cultivar => {
+                  const isArchived = cultivar.status === 'archived';
+                  const thcMin = cultivar.thc?.min ?? 'N/A';
+                  const thcMax = cultivar.thc?.max ?? 'N/A';
+                  const cbdMin = cultivar.cbd?.min ?? 'N/A';
+                  const cbdMax = cultivar.cbd?.max ?? 'N/A';
+
+                  return (
+                    <TableRow key={cultivar.id} className={cn(isArchived && "opacity-60 bg-muted/30")}>
+                      <TableCell>
+                        {cultivar.images && cultivar.images.length > 0 ? (
+                          <Image
+                            src={cultivar.images[0].url}
+                            alt={cultivar.images[0].alt}
+                            data-ai-hint={cultivar.images[0]['data-ai-hint'] as string}
+                            width={40}
+                            height={40}
+                            className="rounded-md object-cover h-10 w-10"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 bg-muted rounded-md flex items-center justify-center text-muted-foreground">
+                            <ImageOff size={20} />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Link href={`/cultivars/${cultivar.id}`} className="font-medium text-primary hover:underline">
+                          {cultivar.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">{cultivar.genetics}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {cultivar.status && (
+                          <Badge variant={getStatusBadgeVariant(cultivar.status)} className="capitalize text-xs flex items-center w-fit">
+                            {getStatusIcon(cultivar.status)}
+                            {STATUS_LABELS[cultivar.status]}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {thcMin}{thcMin !== 'N/A' && thcMin !== undefined ? '%' : ''} - {thcMax}{thcMax !== 'N/A' && thcMax !== undefined ? '%' : ''}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {cbdMin}{cbdMin !== 'N/A' && cbdMin !== undefined ? '%' : ''} - {cbdMax}{cbdMax !== 'N/A' && cbdMax !== undefined ? '%' : ''}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link href={`/cultivars/edit/${cultivar.id}`}>
+                            <Button variant="outline" size="sm" disabled={isArchived} aria-label={`Edit ${cultivar.name}`}>
+                              <Edit size={14} />
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                            onClick={(e) => handleArchive(e, cultivar.id, cultivar.name)}
+                            disabled={isArchived}
+                            aria-label={`Archive ${cultivar.name}`}
+                          >
+                            <Archive size={14} />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
           {totalPages > 1 && (
             <div className="flex items-center justify-center space-x-4 mt-8">
