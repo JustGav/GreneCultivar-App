@@ -14,7 +14,7 @@ import {
   query,
   orderBy,
   deleteField,
-  serverTimestamp, // Import serverTimestamp
+  serverTimestamp, 
   writeBatch,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -56,14 +56,12 @@ const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
       return timestamp.toDate().toISOString();
     }
     if (typeof timestamp === 'string') {
-      // If it's already an ISO string (e.g., from older data or client-set review.createdAt)
       return timestamp;
     }
-    // Fallback for any other case, though Firestore Timestamps are preferred
-    if (timestamp && typeof timestamp.toDate === 'function') { // Check for Firestore Timestamp like objects from other sources
+    if (timestamp && typeof timestamp.toDate === 'function') { 
         return timestamp.toDate().toISOString();
     }
-    return new Date().toISOString(); // Should ideally not happen for createdAt/updatedAt with serverTimestamp
+    return new Date().toISOString(); 
   };
 
   const defaultCannabinoidProfile: CannabinoidProfile = { min: undefined, max: undefined };
@@ -86,7 +84,7 @@ const mapDocToCultivar = (docData: DocumentData, id: string): Cultivar => {
     images: data.images || [],
     reviews: (data.reviews || []).map((review: any) => ({
       ...review,
-      createdAt: mapTimestampToString(review.createdAt), // Review createdAt is client-set ISO string
+      createdAt: mapTimestampToString(review.createdAt), 
     })),
     cultivationPhases: data.cultivationPhases,
     plantCharacteristics: data.plantCharacteristics as PlantCharacteristics | undefined,
@@ -137,19 +135,18 @@ export const getCultivarById = async (id: string): Promise<Cultivar | null> => {
 const prepareDataForFirestore = (data: Record<string, any>): Record<string, any> => {
   const cleanedData: Record<string, any> = {};
   for (const key in data) {
-    // Allow FieldValue instances (like serverTimestamp()) to pass through
     if (data[key] !== undefined) {
       cleanedData[key] = data[key];
     }
   }
-  // Ensure cannabinoid profiles are objects, even if empty
+  
   const cannabinoidFields: (keyof Cultivar)[] = ['thc', 'cbd', 'cbc', 'cbg', 'cbn', 'thcv'];
   cannabinoidFields.forEach(field => {
-    if (cleanedData[field] && typeof cleanedData[field] === 'object') {
-      if (cleanedData[field].min === undefined) delete cleanedData[field].min;
-      if (cleanedData[field].max === undefined) delete cleanedData[field].max;
-    } else if (data.hasOwnProperty(field) && cleanedData[field] === undefined) {
-      cleanedData[field] = {};
+    const fieldName = field as string; // Type assertion
+    if (cleanedData[fieldName] && typeof cleanedData[fieldName] === 'object') {
+      const profile = cleanedData[fieldName] as CannabinoidProfile; // Type assertion
+      if (profile.min === undefined) delete profile.min;
+      if (profile.max === undefined) delete profile.max;
     }
   });
   return cleanedData;
@@ -221,31 +218,22 @@ export const addCultivar = async (cultivarDataInput: Omit<Cultivar, 'id' | 'revi
 export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cultivar, 'id' | 'createdAt' | 'history'>>): Promise<void> => {
   try {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, id);
-    const cleanedData = prepareDataForFirestore(cultivarData);
+    
+    const dataToUpdate = prepareDataForFirestore(cultivarData);
 
-    const arrayFields: (keyof Cultivar)[] = ['images', 'parents', 'children', 'effects', 'medicalEffects', 'terpeneProfile'];
-    arrayFields.forEach(field => {
-      if (cleanedData[field] === undefined && cultivarData.hasOwnProperty(field)) {
-        if (cultivarData[field] === undefined) {
-             cleanedData[field] = [];
-        }
-      }
-    });
-
-    if (cultivarData.hasOwnProperty('additionalInfo')) {
-      if (cleanedData.additionalInfo === undefined || cleanedData.additionalInfo === null) {
-        cleanedData.additionalInfo = {};
-      }
-      const ai = cleanedData.additionalInfo as NonNullable<Cultivar['additionalInfo']>;
-      const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
-      expectedAICategories.forEach(catKey => {
-        if (ai[catKey] === undefined && cultivarData.additionalInfo?.hasOwnProperty(catKey)) {
-           if (cultivarData.additionalInfo?.[catKey] === undefined) {
-                (ai[catKey] as any) = [];
-           }
-        }
-      });
+    // Ensure additionalInfo and its categories are at least empty arrays if additionalInfo itself is provided
+    // This is important because the form might submit an additionalInfo object where some categories are undefined
+    // if all their files were removed, but we want to store them as empty arrays in Firestore.
+    if (dataToUpdate.additionalInfo && typeof dataToUpdate.additionalInfo === 'object') {
+        const ai = dataToUpdate.additionalInfo as NonNullable<Cultivar['additionalInfo']>;
+        const expectedAICategories: (keyof NonNullable<Cultivar['additionalInfo']>)[] = ['geneticCertificate', 'plantPicture', 'cannabinoidInfo', 'terpeneInfo'];
+        expectedAICategories.forEach(catKey => {
+            if (ai[catKey] === undefined) { 
+                ai[catKey] = [] as any; // Ensure the category array exists, even if empty
+            }
+        });
     }
+
 
     const historyEntry: Omit<CultivarHistoryEntry, 'timestamp'> & { timestamp: any } = {
         timestamp: serverTimestamp(),
@@ -253,13 +241,13 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
     };
 
     await updateDoc(cultivarDocRef, {
-        ...cleanedData,
+        ...dataToUpdate, 
         updatedAt: serverTimestamp(),
         history: arrayUnion(historyEntry)
     });
   } catch (error) {
     console.error(`Error updating cultivar with ID ${id}: `, error);
-    throw error;
+    throw error; 
   }
 };
 
@@ -286,10 +274,8 @@ export const updateCultivarStatus = async (id: string, status: CultivarStatus): 
 export const addReviewToCultivar = async (cultivarId: string, reviewData: Review): Promise<void> => {
   try {
     const cultivarDocRef = doc(db, CULTIVARS_COLLECTION, cultivarId);
-    // reviewData.createdAt is already an ISO string from the client / AI flow
     const reviewToSave = {
       ...reviewData,
-      // Ensure createdAt is always a string as expected by the type and Firestore rules for this specific field
       createdAt: typeof reviewData.createdAt === 'string' ? reviewData.createdAt : new Date().toISOString(),
     };
      const historyEntry: Omit<CultivarHistoryEntry, 'timestamp'> & { timestamp: any } = {
@@ -298,7 +284,7 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
         details: { reviewId: reviewToSave.id, rating: reviewToSave.rating }
     };
     await updateDoc(cultivarDocRef, {
-      reviews: arrayUnion(reviewToSave), // reviewToSave.createdAt is a client-set ISO string
+      reviews: arrayUnion(reviewToSave), 
       updatedAt: serverTimestamp(),
       history: arrayUnion(historyEntry)
     });
@@ -307,5 +293,3 @@ export const addReviewToCultivar = async (cultivarId: string, reviewData: Review
     throw error;
   }
 };
-
-    
