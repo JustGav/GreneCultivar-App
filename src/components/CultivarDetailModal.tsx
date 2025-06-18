@@ -49,7 +49,7 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
   const cbdMin = cultivar.cbd?.min ?? 'N/A';
   const cbdMax = cultivar.cbd?.max ?? 'N/A';
 
-  const hasLineage = (cultivar.parents && cultivar.parents.length > 0) || (cultivar.children && cultivar.children.length > 0);
+  const hasLineageData = (cultivar.parents && cultivar.parents.length > 0) || (cultivar.children && cultivar.children.length > 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -120,7 +120,7 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                         <Badge 
                           key={effect} 
                           className={cn(
-                            "text-black", // Ensure text is black for readability
+                            "text-black", 
                             isNegative 
                               ? 'bg-destructive/10 border-destructive/30'
                               : 'bg-primary/10 border-primary/30'
@@ -148,17 +148,17 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                 </div>
               )}
             
-            {hasLineage && (
+            {hasLineageData && (
               <div className="pt-2">
                 <Separator className="my-3"/>
                 <h3 className="font-semibold text-lg flex items-center mb-3">
                   <Network size={20} className="mr-2 text-accent" />Lineage
                 </h3>
-                <div className="text-sm space-y-3">
+                <div className="text-center space-y-3">
                   {cultivar.parents && cultivar.parents.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">Parents</h4>
-                      <div className="flex flex-wrap gap-1.5">
+                    <div className="mb-3">
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-2">Parents</h4>
+                      <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                         {cultivar.parents.map((parentName, index) => {
                            const parentId = cultivarNameMap?.get(parentName.toLowerCase());
                            return parentId ? (
@@ -166,7 +166,7 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                               <Badge 
                                 variant="outline" 
                                 className="text-xs hover:bg-accent/20 hover:border-accent/50 cursor-pointer"
-                                onClick={() => onOpenChange(false)} // Close modal on click
+                                onClick={() => onOpenChange(false)}
                               >
                                 {parentName}
                               </Badge>
@@ -178,20 +178,24 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                            );
                         })}
                       </div>
+                      <div className="flex justify-center mt-2">
+                        <div className="w-px h-4 bg-border"></div>
+                      </div>
                     </div>
                   )}
-                   {cultivar.name && (
-                    <div className="my-1.5">
-                      <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">Current</h4>
-                        <Badge variant="secondary" className="text-xs bg-primary/20 border-primary/40 text-primary font-medium">
-                            {cultivar.name}
-                        </Badge>
-                    </div>
-                  )}
+
+                  <div className="p-3 border-2 border-primary rounded-lg shadow-md bg-primary/10 inline-block">
+                     <h3 className="text-md font-semibold text-primary">{cultivar.name}</h3>
+                     <p className="text-xs text-muted-foreground">Current Cultivar</p>
+                  </div>
+
                   {cultivar.children && cultivar.children.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">Children</h4>
-                      <div className="flex flex-wrap gap-1.5">
+                    <div className="mt-3">
+                      <div className="flex justify-center mb-2">
+                        <div className="w-px h-4 bg-border"></div>
+                      </div>
+                      <h4 className="text-xs font-semibold text-muted-foreground mb-2">Children</h4>
+                      <div className="flex justify-center items-center space-x-3 flex-wrap gap-y-2">
                         {cultivar.children.map((childName, index) => {
                           const childId = cultivarNameMap?.get(childName.toLowerCase());
                           return childId ? (
@@ -199,7 +203,7 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                                <Badge 
                                 variant="outline" 
                                 className="text-xs hover:bg-accent/20 hover:border-accent/50 cursor-pointer"
-                                onClick={() => onOpenChange(false)} // Close modal on click
+                                onClick={() => onOpenChange(false)}
                               >
                                 {childName}
                               </Badge>
@@ -212,6 +216,9 @@ export default function CultivarDetailModal({ cultivar, isOpen, onOpenChange, cu
                         })}
                       </div>
                     </div>
+                  )}
+                  {(!cultivar.parents || cultivar.parents.length === 0) && (!cultivar.children || cultivar.children.length === 0) && (
+                     <p className="text-muted-foreground text-sm pt-2">No specific parent/child lineage information available.</p>
                   )}
                 </div>
               </div>
