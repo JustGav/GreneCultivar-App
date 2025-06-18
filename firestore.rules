@@ -4,76 +4,118 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Cultivars Collection (Main Data)
+    // Cultivars Collection
     match /cultivars/{cultivarId} {
-      // Anyone can read cultivars that are 'Live' or 'featured'
-      allow read: if resource.data.status == 'Live' || resource.data.status == 'featured';
-      // Authenticated users (intended as admins) can read any cultivar
-      allow read: if request.auth != null;
+      // --- Helper Functions ---
+      function isExistingDoc() {
+        return exists(path());
+      }
+      function isIncomingDoc() {
+        return request.resource != null;
+      }
+      function isAuth() {
+        return request.auth != null;
+      }
+      function isAdmin() { // Simplified for dev: any authenticated user is "admin"
+        return request.auth != null;
+      }
+      function isNewCultivarDataValid() {
+        let data = request.resource.data;
+        return data.name is string && data.name.size() > 0
+               && data.status is string && (data.status == 'Live' || data.status == 'featured' || data.status == 'recentlyAdded' || data.status == 'User Submitted' || data.status == 'Hide' || data.status == 'archived')
+               && data.createdAt == request.time // Expect server timestamp
+               && data.updatedAt == request.time // Expect server timestamp
+               && data.reviews is list && data.reviews.size() == 0
+               && data.history is list && data.history.size() == 1
+               && data.history[0].timestamp is string // Client sends ISO string
+               && data.history[0].event is string // e.g., "Cultivar Created by Admin"
+               && (data.containsKey('source') ? data.source is string : true)
+               && (data.containsKey('genetics') ? data.genetics is string : true)
+               && (data.containsKey('description') ? data.description is string : true);
+      }
+      function isUpdateCultivarDataValid() {
+        let data = request.resource.data;
+        return data.name is string && data.name.size() > 0
+               && data.status is string && (data.status == 'Live' || data.status == 'featured' || data.status == 'recentlyAdded' || data.status == 'User Submitted' || data.status == 'Hide' || data.status == 'archived')
+               && data.updatedAt == request.time // Expect server timestamp
+               && data.createdAt == resource.data.createdAt // Don't allow changing createdAt
+               && (data.reviews.size() >= resource.data.reviews.size() || (data.reviews.size() > 0 && data.reviews[data.reviews.size() - 1].createdAt is string)) // Allow adding reviews with string timestamps
+               && (data.history.size() >= resource.data.history.size() || (data.history.size() > 0 && data.history[data.history.size() - 1].timestamp is string)); // Allow adding history with string timestamps
+      }
 
+      // --- Read Rules ---
+      // Public can read 'Live' or 'featured' cultivars. Admins (any auth user for dev) can read any.
+      allow get: if isAdmin() || resource.data.status == 'Live' || resource.data.status == 'featured';
 
-      // Only authenticated users (intended as admins) can create new cultivars directly
-      allow create: if request.auth != null &&
-                       request.resource.data.name is string &&
-                       request.resource.data.name.size() > 0 &&
-                       request.resource.data.status is string &&
-                       request.resource.data.createdAt == request.time &&
-                       request.resource.data.updatedAt == request.time &&
-                       request.resource.data.history is list &&
-                       request.resource.data.history.size() > 0 &&
-                       request.resource.data.history[0].event == "Cultivar Created by Admin" &&
-                       request.resource.data.reviews is list &&
-                       request.resource.data.reviews.size() == 0;
+      // Allows anyone to list the collection. Client-side filters what is displayed.
+      allow list: if true;
 
-      // Only authenticated users (intended as admins) can update cultivars
-      allow update: if request.auth != null &&
-                       request.resource.data.updatedAt == request.time &&
-                       request.resource.data.createdAt == resource.data.createdAt; // createdAt should not change
-
-      // Only authenticated users (intended as admins) can delete cultivars
-      allow delete: if request.auth != null;
+      // --- Write Rules (Admin only - any auth user for dev) ---
+      allow create: if isAdmin() && isIncomingDoc() && isNewCultivarDataValid();
+      allow update: if isAdmin() && isExistingDoc() && isIncomingDoc() && isUpdateCultivarDataValid();
+      allow delete: if isAdmin();
     }
 
-    // Submitted Cultivars Collection (For Review)
+    // Submitted Cultivars Collection (for user submissions)
     match /submitted_cultivars/{submissionId} {
-      // Admins can read, update, delete submissions
-      allow read, update, delete: if request.auth != null; // TODO: Restrict to admin role
+      // --- Helper Functions ---
+      function isNewSubmissionValid() {
+        let data = request.resource.data;
+        // Required fields for submission
+        let requiredFields = ['name', 'sourceEmail', 'status', 'submittedAt', 'source']; // 'source' is now also required
+        // Optional fields for submission
+        let optionalFields = ['genetics', 'description', 'effects', 'flavors', 'terpeneProfile', 'images', 'thc', 'cbd', 'primaryImageAlt'];
+        let allAllowedFields = requiredFields.concat(optionalFields);
 
-      // Allow anyone to submit a new cultivar for review
-      allow create: if request.resource.data.name is string && request.resource.data.name.size() > 0 &&
-                       request.resource.data.sourceEmail is string && request.resource.data.sourceEmail.matches("^[^@]+@[^@]+\\.[^@]+$") &&
-                       request.resource.data.status == 'User Submitted' &&
-                       request.resource.data.submittedAt == request.time &&
-                       // Optional fields: check for null or correct type using get()
-                       (request.resource.data.get('genetics', null) == null || request.resource.data.genetics is string) &&
-                       (request.resource.data.get('description', null) == null || request.resource.data.description is string) &&
-                       (request.resource.data.get('effects', null) == null || request.resource.data.effects is list) &&
-                       (request.resource.data.get('flavors', null) == null || request.resource.data.flavors is list) &&
-                       (request.resource.data.get('terpeneProfile', null) == null || request.resource.data.terpeneProfile is list) &&
-                       (request.resource.data.get('thc', null) == null || request.resource.data.thc is map) &&
-                       (request.resource.data.get('cbd', null) == null || request.resource.data.cbd is map) &&
-                       // Image validation with hardcoded project ID
-                       (request.resource.data.get('images', null) == null || (
-                           request.resource.data.images is list &&
-                           (request.resource.data.images.size() == 0 ||
-                            (request.resource.data.images.size() == 1 &&
-                             request.resource.data.images[0].url is string &&
-                             // Replace 'grenecultivar' with your actual Firebase Project ID if different.
-                             request.resource.data.images[0].url.matches('^https://firebasestorage.googleapis.com/v0/b/grenecultivar/o/cultivar-images%2Fuser-submitted%2F.+') &&
-                             request.resource.data.images[0].alt is string
-                            )
-                           )
-                         )
-                       ) &&
-                       // Ensure no unexpected top-level fields are present
-                       request.resource.data.keys().hasOnly(['name', 'sourceEmail', 'source', 'genetics', 'description', 'effects', 'flavors', 'terpeneProfile', 'images', 'thc', 'cbd', 'status', 'submittedAt']);
+        return data.name is string && data.name.size() >= 3 && data.name.size() <= 100
+               && data.sourceEmail is string && data.sourceEmail.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$')
+               && data.source is string && data.source == data.sourceEmail // Ensure source is the email
+               && data.status == 'User Submitted'
+               && data.submittedAt == request.time // Server timestamp
+               // Optional field validations
+               && (data.get('genetics', null) == null || data.genetics is string)
+               && (data.get('description', null) == null || (data.description is string && data.description.size() <= 2000))
+               && (data.get('effects', null) == null || (data.effects is list && data.effects.size() <= 20))
+               && (data.get('flavors', null) == null || (data.flavors is list && data.flavors.size() <= 20))
+               && (data.get('terpeneProfile', null) == null || (data.terpeneProfile is list && data.terpeneProfile.size() <= 10 && data.terpeneProfile.all(tp, tp.name is string && tp.id is string)))
+               && (
+                    data.get('images', null) == null ||
+                    (data.images is list && data.images.size() <= 1 && (data.images.size() == 0 ||
+                      (
+                        data.images[0].url is string
+                        // Ensure image URL is from Firebase Storage and the correct path for user submissions
+                        // Replace 'grenecultivar' with your actual Firebase project ID if different
+                        && data.images[0].url.matches('https://firebasestorage.googleapis.com/v0/b/grenecultivar.appspot.com/o/cultivar-images%2Fuser-submitted%2F.*')
+                        && (data.images[0].get('alt', null) == null || data.images[0].alt is string)
+                      )
+                    ))
+                  )
+               && (data.get('thc', null) == null || (data.thc.isMap() && (data.thc.get('min', null) == null || data.thc.min is number) && (data.thc.get('max', null) == null || data.thc.max is number) ))
+               && (data.get('cbd', null) == null || (data.cbd.isMap() && (data.cbd.get('min', null) == null || data.cbd.min is number) && (data.cbd.get('max', null) == null || data.cbd.max is number) ))
+               // Ensure no unexpected fields
+               && request.resource.data.keys().hasOnly(allAllowedFields);
+      }
+      function isAdminForSubmitted() { // Simplified for dev: any authenticated user is "admin"
+        return request.auth != null;
+      }
+
+      // --- Read Rules ---
+      // Only admins (any auth user for dev) can read submissions.
+      allow get: if isAdminForSubmitted();
+      allow list: if isAdminForSubmitted();
+
+      // --- Write Rules ---
+      // Anyone can create (submit) a new cultivar for review.
+      allow create: if isNewSubmissionValid();
+      // Only admins (any auth user for dev) can update (e.g., mark as reviewed) or delete submissions.
+      allow update: if isAdminForSubmitted();
+      allow delete: if isAdminForSubmitted();
     }
 
-    // TODO: Add rules for user profiles if you have them
-    // match /users/{userId} {
-    //   allow read: if true;
-    //   allow write: if request.auth.uid == userId;
-    // }
+    // Optional: Users collection for more granular admin roles (not fully implemented here)
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
 
