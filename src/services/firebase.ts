@@ -275,7 +275,7 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
     }
 
     const changedFields: string[] = [];
-    const fieldChangesDetails: Record<string, {old: any, new: any}> = {};
+    const fieldChangesDetails: Record<string, {old: any; new: any}> = {};
 
     for (const key in dataToUpdate) {
       if (key === 'updatedAt' || key === 'history' || key === 'reviews' || key === 'createdAt') continue;
@@ -298,17 +298,22 @@ export const updateCultivar = async (id: string, cultivarData: Partial<Omit<Cult
       detailsForHistory.updatedFields = changedFields; 
       detailsForHistory.changes = fieldChangesDetails; 
     } else {
-      detailsForHistory.updatedFields = 'No explicit field changes detected by diff.';
+      // If dataToUpdate.status has changed, it would be caught above.
+      // If no *other* fields changed, and status didn't change, this block might not be hit often
+      // unless an update is triggered with identical data.
+      detailsForHistory.message = 'Update triggered, but no specific field changes detected by comparison.';
     }
     
     if (dataToUpdate.status && dataToUpdate.status !== currentCultivarData.status) {
         eventMessage = `Status changed from ${currentCultivarData.status || 'unknown'} to ${dataToUpdate.status}`;
-        // Add specific status change to details, but don't overwrite other field changes
         detailsForHistory.statusChange = { old: currentCultivarData.status, new: dataToUpdate.status };
-        // Remove 'status' from generic updatedFields if it's now part of the event message
         if (Array.isArray(detailsForHistory.updatedFields)) {
            detailsForHistory.updatedFields = detailsForHistory.updatedFields.filter((f: string) => f !== 'status');
-           if (detailsForHistory.updatedFields.length === 0) delete detailsForHistory.updatedFields;
+           if (detailsForHistory.updatedFields.length === 0 && Object.keys(fieldChangesDetails).filter(k => k !== 'status').length === 0) {
+             delete detailsForHistory.updatedFields;
+             // If status was the *only* change, the eventMessage covers it.
+             // We might not need to repeat it in updatedFields.
+           }
         }
     }
 
