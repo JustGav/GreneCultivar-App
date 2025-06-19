@@ -78,7 +78,7 @@ export default function LoginModal({ isOpen, onOpenChange }: LoginModalProps) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center">
-            <LogIn className="mr-2 h-5 w-5" /> Login to GreneCultivar
+            <LogIn className="mr-2 h-5 w-5" /> Login to Grene.Life Seedbank
           </DialogTitle>
           <DialogDescription>
             Access your account to manage cultivars or sign up.

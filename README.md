@@ -1,6 +1,7 @@
-# Firebase Studio
 
-This is a NextJS starter in Firebase Studio.
+# Firebase Studio: Grene.Life Seedbank
+
+This is a NextJS starter for Grene.Life Seedbank in Firebase Studio.
 
 To get started, take a look at src/app/page.tsx.
 

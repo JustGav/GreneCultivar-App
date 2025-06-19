@@ -10,8 +10,8 @@ import { FilterProvider } from '@/contexts/FilterContext';
 import { FeatureToggleProvider } from '@/contexts/FeatureToggleContext'; // Import FeatureToggleProvider
 
 export const metadata: Metadata = {
-  title: 'GreneCultivar',
-  description: 'Categorize, review, and explore cannabis cultivars.',
+  title: 'Grene.Life Seedbank',
+  description: 'Categorize, review, and explore cannabis cultivars at Grene.Life Seedbank.',
 };
 
 export default function RootLayout({

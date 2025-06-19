@@ -69,7 +69,7 @@ export default function Header() {
         <div className="flex items-center gap-2 sm:gap-3 flex-grow min-w-0">
           <Link href="/" className="flex items-center gap-1.5 sm:gap-2 hover:opacity-80 transition-opacity flex-shrink-0">
             <Leaf size={20} />
-            <h1 className="text-lg font-headline">GreneCultivar</h1>
+            <h1 className="text-lg font-headline">Grene.Life Seedbank</h1>
           </Link>
 
           <div className="relative hidden md:flex items-center gap-1.5 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
